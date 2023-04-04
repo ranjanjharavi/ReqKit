@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --background: #ffffff;
+      --foreground: #0b1220;
+      --muted: #f8fbff;
+      --muted-foreground: #475569;
+      --card-soft: #f5f9ff;
+      --border: #dbe7f5;
+      --border-strong: #bfd3ef;
+      --input: #ffffff;
+      --ring: rgba(59, 130, 246, 0.18);
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --primary-foreground: #ffffff;
+      --secondary: #edf4ff;
+      --secondary-hover: #e3eeff;
+      --secondary-foreground: #1d4ed8;
+      --success: #15803d;
+      --danger: #b91c1c;
+      --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
+      --shadow-sm: 0 12px 30px rgba(37, 99, 235, 0.08);
+      --shadow-md: 0 26px 60px rgba(37, 99, 235, 0.12);
+      --radius-lg: 12px;
+      --radius-md: 10px;
+      --radius-sm: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      -webkit-font-smoothing: antialiased;
+      width: 480px;
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      color: var(--foreground);
+      background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+      position: relative;
+    }
+
+    body::before,
+    body::after {
+      content: '';
+      position: fixed;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    body::before {
+      top: -100px;
+      left: -90px;
+      width: 260px;
+      height: 260px;
+      background: radial-gradient(circle, rgba(59, 130, 246, 0.12), transparent 68%);
+    }
+
+    body::after {
+      right: -100px;
+      bottom: -120px;
+      width: 280px;
+      height: 280px;
+      background: radial-gradient(circle, rgba(125, 211, 252, 0.18), transparent 70%);
+    }
+
+    .shell {
+      position: relative;
+      z-index: 1;
+      padding: 20px;
+    }
+
+    .app-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      padding: 0 10px;
+      margin: 0 auto;
+      border-radius: 999px;
+      border: 1px solid #dbeafe;
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 26px;
+      line-height: 1.12;
+      letter-spacing: -0.03em;
+    }
+
+    .tabs-shell {
+      display: grid;
+      gap: 14px;
+    }
+
+    .tabs-list {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+      padding: 6px;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, #f8fbff 0%, #eef5ff 100%);
+      box-shadow: var(--shadow-xs);
+    }
+
+    .tab-btn {
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--muted-foreground);
+      padding: 10px 14px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    }
+
+    .tab-btn:hover {
+      background: rgba(255, 255, 255, 0.72);
+      color: var(--foreground);
+    }
+
+    .tab-btn.active {
+      border-color: rgba(191, 219, 254, 0.95);
+      background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+      color: #0f172a;
+      box-shadow: 0 10px 22px rgba(148, 163, 184, 0.16);
+    }
+
+    .tab-panel {
+      display: none;
+    }
+
+    .tab-panel.active {
+      display: block;
+      animation: panel-in 0.22s ease;
+    }
+
+    .panel {
+      position: relative;
+      overflow: hidden;
+      padding: 20px;
+      border: 1px solid rgba(191, 219, 254, 0.95);
+      border-radius: var(--radius-lg);
+      background: linear-gradient(180deg, #ffffff 0%, var(--card-soft) 52%, #f9fbff 100%);
+      box-shadow: var(--shadow-md);
+    }
+
+    .panel::before {
+      content: '';
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 56px;
+      background: linear-gradient(180deg, rgba(219, 234, 254, 0.42), rgba(219, 234, 254, 0));
+      pointer-events: none;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid rgba(219, 234, 254, 0.9);
+      position: relative;
+      z-index: 1;
+    }
+
+    .panel-kicker {
+      margin-bottom: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #2563eb;
+    }
+
+    .panel-title {
+      font-size: 19px;
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+    }
+
+    .panel-copy {
+      margin-top: 6px;
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--muted-foreground);
+      max-width: 320px;
+    }
+
+    .panel-copy strong,
+    .helper-text strong {
+      color: var(--foreground);
+    }
+
+    .content-stack,
+    .field,
+    .field-group {
+      display: grid;
+      gap: 8px;
+    }
+
+    .content-stack {
+      gap: 16px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .field-group {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    label,
+    .field-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    .helper-text {
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--muted-foreground);
+    }
+
+    .token-entry-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .token-library-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .token-count-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      padding: 0 8px;
+      border: 1px solid #dbeafe;
+      border-radius: 999px;
+      background: #ffffff;
+      color: #475569;
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    .token-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .token-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: start;
+      padding: 10px 12px;
+      border: 1px solid rgba(191, 219, 254, 0.9);
+      border-radius: var(--radius-md);
+      background: linear-gradient(180deg, #ffffff 0%, #f9fcff 100%);
+      box-shadow: var(--shadow-xs);
+      transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+    }
+
+    .token-item.is-active {
+      border-color: #93c5fd;
+      background: linear-gradient(180deg, #ffffff 0%, #f2f7ff 100%);
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.08);
+    }
+
+    .token-choice {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      min-width: 0;
+      cursor: pointer;
+    }
+
+    .token-radio {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .token-radio-mark {
+      position: relative;
+      width: 16px;
+      height: 16px;
+      flex: 0 0 auto;
+      margin-top: 1px;
+      border: 1.5px solid #94a3b8;
+      border-radius: 999px;
+      background: #ffffff;
+    }
+
+    .token-radio-mark::after {
+      content: '';
+      position: absolute;
+      inset: 3px;
+      border-radius: 999px;
+      background: var(--primary);
+      transform: scale(0);
+      transition: transform 0.18s ease;
+    }
+
+    .token-item.is-active .token-radio-mark {
+      border-color: var(--primary);
+    }
+
+    .token-item.is-active .token-radio-mark::after {
+      transform: scale(1);
+    }
+
+    .token-choice-copy {
+      min-width: 0;
+      display: grid;
+      gap: 6px;
+    }
+
+    .token-choice-title {
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.4;
+      color: var(--foreground);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .token-pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .token-date-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      padding: 0 8px;
+      border: 1px solid #dbeafe;
+      border-radius: 999px;
+      background: #ffffff;
+      color: #334155;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+    }
+
+    .token-date-pill strong {
+      margin-right: 4px;
+      color: #64748b;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 9px;
+    }
+
+    .token-date-pill.expired {
+      border-color: #fecaca;
+      background: #fff5f5;
+      color: #b91c1c;
+    }
+
+    .token-empty {
+      padding: 12px;
+      border: 1px dashed #dbeafe;
+      border-radius: var(--radius-md);
+      background: rgba(239, 246, 255, 0.55);
+      text-align: center;
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--muted-foreground);
+    }
+
+    .token-delete-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      min-height: 30px;
+      padding: 0;
+      border: 1px solid #fecaca;
+      border-radius: 999px;
+      background: #fff1f2;
+      color: #b91c1c;
+      box-shadow: none;
+    }
+
+    .token-copy-btn.small-btn,
+    .token-delete-btn.small-btn {
+      padding: 0;
+    }
+
+    .token-delete-btn:hover {
+      border-color: #fca5a5;
+      background: #ffe4e6;
+    }
+
+    .token-delete-icon {
+      width: 12px;
+      height: 12px;
+      display: block;
+    }
+
+    .token-meta-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      padding: 0 8px;
+      border: 1px solid #bfdbfe;
+      border-radius: 999px;
+      background: #ffffff;
+      color: #1e40af;
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    .token-meta-pill.invalid {
+      border-color: #fecaca;
+      background: #fff5f5;
+      color: #b91c1c;
+    }
+
+    .token-meta-pill.warning {
+      border-color: #fcd34d;
+      background: #fffbeb;
+      color: #92400e;
+    }
+
+    .token-actions {
+      display: flex;
+      gap: 4px;
+      align-items: flex-start;
+    }
+
+    .token-copy-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      min-height: 30px;
+      padding: 0;
+      border: 1px solid #bfdbfe;
+      border-radius: 999px;
+      background: #eff6ff;
+      color: #1e40af;
+      box-shadow: none;
+      transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+    }
+
+    .token-copy-btn:hover {
+      border-color: #93c5fd;
+      background: #dbeafe;
+    }
+
+    .token-copy-btn.is-copied {
+      border-color: #86efac;
+      background: #f0fdf4;
+      color: #15803d;
+    }
+
+    .token-claim {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 22px;
+      padding: 0 8px;
+      border: 1px solid #dbeafe;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.92);
+      font-size: 10px;
+      color: #334155;
+    }
+
+    .token-claim-label {
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #64748b;
+    }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .stat-box {
+      display: grid;
+      gap: 6px;
+      padding: 14px 16px;
+      border: 1px solid rgba(191, 219, 254, 0.92);
+      border-radius: var(--radius-md);
+      background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+      box-shadow: var(--shadow-xs);
+    }
+
+    .stat-box-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #64748b;
+    }
+
+    .stat-box-value {
+      font-size: 30px;
+      line-height: 1;
+      letter-spacing: -0.04em;
+      color: #0f172a;
+      font-weight: 700;
+    }
+
+    .stat-box-note {
+      font-size: 11px;
+      line-height: 1.45;
+      color: #64748b;
+    }
+
+    .pause-section {
+      display: grid;
+      gap: 8px;
+    }
+
+    .pause-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 40px;
+      padding: 0 16px;
+      border: 1px solid rgba(191, 219, 254, 0.95);
+      border-radius: var(--radius-sm);
+      background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+      color: var(--foreground);
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: var(--shadow-xs);
+      transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+    }
+
+    .pause-btn:hover {
+      border-color: var(--border-strong);
+      background: linear-gradient(180deg, #f9fbff 0%, var(--secondary-hover) 100%);
+      transform: translateY(-1px);
+    }
+
+    .pause-btn.is-paused {
+      border-color: #fcd34d;
+      background: linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%);
+      color: #92400e;
+    }
+
+    .pause-btn.is-paused:hover {
+      border-color: #fbbf24;
+      background: linear-gradient(180deg, #fef3c7 0%, #fde68a 100%);
+      transform: translateY(-1px);
+    }
+
+    .pause-btn-icon {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+    }
+
+    .input-icon-wrapper {
+      position: relative;
+      display: grid;
+      height: 40px;
+    }
+
+    .input-icon-wrapper > input {
+      padding-right: 38px;
+    }
+
+    .input-eye-btn {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      padding: 0;
+      border: none;
+      background: transparent;
+      color: #94a3b8;
+      cursor: pointer;
+      border-radius: var(--radius-sm);
+      transition: color 0.18s ease;
+    }
+
+    .input-eye-btn:hover {
+      color: #475569;
+    }
+
+    .eye-icon {
+      width: 14px;
+      height: 14px;
+      display: block;
+    }
+
+    .token-save-btn {
+      width: 42px;
+      min-height: 42px;
+    }
+
+    input,
+    select,
+    textarea,
+    button {
+      font: inherit;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      padding: 12px 13px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+      color: var(--foreground);
+      transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+      box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.02);
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+      color: #8ca0bc;
+    }
+
+    input:hover,
+    select:hover,
+    textarea:hover {
+      border-color: var(--border-strong);
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      outline: none;
+      border-color: #93c5fd;
+      box-shadow: 0 0 0 4px var(--ring);
+      background: #ffffff;
+    }
+
+    textarea {
+      min-height: 96px;
+      resize: vertical;
+      line-height: 1.5;
+      background: linear-gradient(180deg, #fbfdff 0%, #f6faff 100%);
+    }
+
+    .action-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+
+    .primary-btn,
+    .secondary-btn,
+    .small-btn {
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+      cursor: pointer;
+    }
+
+    .primary-btn,
+    .secondary-btn {
+      min-height: 40px;
+      padding: 0 14px;
+    }
+
+    .primary-btn {
+      border: 0;
+      background: linear-gradient(180deg, #3b82f6 0%, var(--primary) 100%);
+      color: var(--primary-foreground);
+      box-shadow: 0 12px 28px rgba(37, 99, 235, 0.22);
+    }
+
+    .primary-btn:hover {
+      background: linear-gradient(180deg, #2563eb 0%, var(--primary-hover) 100%);
+      transform: translateY(-1px);
+    }
+
+    .secondary-btn,
+    .small-btn {
+      border: 1px solid rgba(191, 219, 254, 0.95);
+      background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+      color: var(--foreground);
+      box-shadow: var(--shadow-xs);
+    }
+
+    .secondary-btn:hover,
+    .small-btn:hover {
+      border-color: var(--border-strong);
+      background: linear-gradient(180deg, #f9fbff 0%, var(--secondary-hover) 100%);
+      transform: translateY(-1px);
+    }
+
+    .small-btn {
+      min-height: 34px;
+      padding: 0 12px;
+    }
+
+    .small-btn.danger {
+      border-color: #fecaca;
+      color: var(--danger);
+      background: linear-gradient(180deg, #fff7f7 0%, #fff1f2 100%);
+    }
+
+    .small-btn.danger:hover {
+      border-color: #fca5a5;
+      background: linear-gradient(180deg, #fff1f2 0%, #ffe4e6 100%);
+    }
+
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible {
+      outline: none;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+
+    .status-msg {
+      min-height: 18px;
+      font-size: 12px;
+      line-height: 1.4;
+      color: transparent;
+      transition: color 0.18s ease;
+    }
+
+    .status-msg.visible.success {
+      color: var(--success);
+    }
+
+    .status-msg.visible.error {
+      color: var(--danger);
+    }
+
+    .rule-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .rule-card {
+      position: relative;
+      overflow: hidden;
+      padding: 16px;
+      border: 1px solid rgba(191, 219, 254, 0.95);
+      border-radius: var(--radius-lg);
+      background: linear-gradient(180deg, #ffffff 0%, #f9fcff 100%);
+      box-shadow: var(--shadow-sm);
+      display: grid;
+      gap: 12px;
+    }
+
+    .rule-card::before {
+      content: '';
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 2px;
+      background: linear-gradient(90deg, #60a5fa 0%, transparent 100%);
+    }
+
+    .rule-card.paused {
+      opacity: 0.72;
+    }
+
+    .rule-main,
+    .domain-rule-content {
+      display: grid;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .rule-topline,
+    .rule-actions,
+    .chip-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .chip-row {
+      justify-content: flex-start;
+    }
+
+    .rule-topline {
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .rule-card > .rule-topline {
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(219, 234, 254, 0.9);
+    }
+
+    .rule-domain {
+      flex: 1 1 auto;
+      min-width: 0;
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      word-break: break-word;
+    }
+
+    .rule-domain-count {
+      white-space: nowrap;
+      background: #ffffff;
+    }
+
+    .domain-rule-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .domain-rule-row {
+      display: block;
+    }
+
+    .domain-rule-row + .domain-rule-row {
+      padding-top: 12px;
+      border-top: 1px solid rgba(219, 234, 254, 0.88);
+    }
+
+    .rule-meta-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .domain-rule-row.is-paused {
+      opacity: 0.72;
+    }
+
+    .rule-actions {
+      flex: 0 0 auto;
+      justify-content: flex-end;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .rule-icon-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      min-height: 40px;
+      padding: 0;
+      border: 1px solid #bfdbfe;
+      border-radius: 999px;
+      background: #eff6ff;
+      color: #1e40af;
+      box-shadow: none;
+    }
+
+    .rule-icon-btn:hover {
+      border-color: #93c5fd;
+      background: #dbeafe;
+    }
+
+    .rule-icon-btn.danger {
+      border-color: #fecaca;
+      background: #fff1f2;
+      color: #b91c1c;
+    }
+
+    .rule-icon-btn.danger:hover {
+      border-color: #fca5a5;
+      background: #ffe4e6;
+    }
+
+    .rule-icon {
+      width: 12px;
+      height: 12px;
+      display: block;
+    }
+
+    .rule-header-line {
+      display: flex;
+      /* align-items: flex-start; */
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .rule-header-name {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 0 10px;
+      border: 1px solid #bfdbfe;
+      border-radius: var(--radius-md);
+      background: #ffffff;
+      color: #1e40af;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+    }
+
+    .rule-header-value {
+      flex: 1 1 220px;
+      min-width: 0;
+      padding: 11px 13px;
+      border-radius: var(--radius-md);
+      border: 1px solid #dbeafe;
+      background: linear-gradient(180deg, #f6faff 0%, #eef5ff 100%);
+      color: var(--foreground);
+      font-size: 13px;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+
+    .status-pill,
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 20px;
+      padding: 0 8px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    .status-pill {
+      background: #ecfdf5;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+    }
+
+    .status-pill.is-off {
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      color: #475569;
+    }
+
+    .chip {
+      background: #eff6ff;
+      color: #1e40af;
+      border: 1px solid #bfdbfe;
+    }
+
+    .empty-state {
+      padding: 20px;
+      border: 1px dashed #bfdbfe;
+      border-radius: var(--radius-lg);
+      background: linear-gradient(180deg, rgba(239, 246, 255, 0.86) 0%, rgba(245, 250, 255, 0.92) 100%);
+      text-align: center;
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--muted-foreground);
+    }
+
+    @keyframes panel-in {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (max-width: 520px) {
+      .rule-topline {
+        flex-wrap: wrap;
+      }
+
+      .domain-rule-row {
+        display: block;
+      }
+
+      .rule-meta-row {
+        align-items: flex-start;
+      }
+
+      .rule-actions {
+        justify-content: flex-start;
+      }
+
+      .field-group {
+        grid-template-columns: 1fr;
+      }
+
+      .panel-head {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="app-header">
+      <p class="eyebrow">ReqKit</p>
+    </div>
+    
+    <main class="tabs-shell">
+      <div class="tabs-list" role="tablist" aria-label="Utility features">
+        <button id="transformer-tab" class="tab-btn active" type="button" role="tab" aria-selected="true" aria-controls="transformer-panel" data-tab="transformer">URL transform</button>
+        <button id="headers-tab" class="tab-btn" type="button" role="tab" aria-selected="false" aria-controls="headers-panel" data-tab="headers">Headers</button>
+        <button id="settings-tab" class="tab-btn" type="button" role="tab" aria-selected="false" aria-controls="settings-panel" data-tab="settings">Settings</button>
+      </div>
+
+      <section id="transformer-panel" class="tab-panel active" data-panel="transformer" role="tabpanel" aria-labelledby="transformer-tab">
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <p class="panel-kicker">URL transformer</p>
+              <h2 class="panel-title">Build Auth redirect URLs</h2>
+            </div>
+          </div>
+
+          <div class="content-stack">
+            <div class="field">
+              <label for="sourceUrl">Source URL</label>
+              <input type="text" id="sourceUrl" placeholder="https://example.com/path or example.com/path" autocapitalize="off" autocorrect="off" spellcheck="false">
+            </div>
+
+            <div class="field">
+              <label for="authToken">Auth token</label>
+              <div class="token-entry-row">
+                <div class="input-icon-wrapper">
+                  <input type="password" id="authToken" placeholder="Stored locally on this browser" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+                  <button id="toggleTokenVisibility" class="input-eye-btn" type="button" aria-label="Show token" title="Show token"><svg class="eye-icon" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M1.5 8C3 5 5.3 3.5 8 3.5S13 5 14.5 8C13 11 10.7 12.5 8 12.5S3 11 1.5 8Zm6.5 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm0-1.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Z"/></svg></button>
+                </div>
+                <button id="saveTokenBtn" class="small-btn rule-icon-btn token-save-btn" type="button" aria-label="Save token to library" title="Save token to library"><svg class="rule-icon" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M4 2a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v11.47a.5.5 0 0 1-.78.41L8 11.58l-3.22 2.3A.5.5 0 0 1 4 13.47V2Z"/></svg></button>
+              </div>
+              <p class="helper-text">Paste a token, save it locally, and keep one active token selected below.</p>
+            </div>
+
+            <div class="action-row">
+              <button id="transformUrlBtn" class="primary-btn" type="button">Transform URL</button>
+              <button id="copyUrlBtn" class="secondary-btn" type="button" disabled>Copy</button>
+              <button id="openUrlBtn" class="secondary-btn" type="button" disabled>Open (Incognito)</button>
+            </div>
+
+            <div class="field">
+              <label for="transformedUrl">Transformed URL</label>
+              <textarea id="transformedUrl" readonly placeholder="The transformed URL will appear here."></textarea>
+            </div>
+
+            <div id="transformerStatus" class="status-msg"></div>
+
+            <div class="field">
+              <div class="token-library-head">
+                <div class="field-label">Saved tokens</div>
+                <span id="tokenLibraryCount" class="token-count-pill">0 saved</span>
+              </div>
+              <div id="tokenListContainer" class="token-list"></div>
+            </div>
+
+          </div>
+        </article>
+      </section>
+
+      <section id="headers-panel" class="tab-panel" data-panel="headers" role="tabpanel" aria-labelledby="headers-tab" hidden>
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <p class="panel-kicker">Header rules</p>
+              <h2 class="panel-title">Inject request headers</h2>
+              <p class="panel-copy">Rules apply only to the exact hostname you enter. <strong>example.com</strong> will not match <strong>api.example.com</strong>.</p>
+            </div>
+            <button id="useCurrentDomainBtn" class="secondary-btn" type="button">Use current host</button>
+          </div>
+
+          <div class="content-stack">
+            <div class="field">
+              <label for="domain">Exact host</label>
+              <input type="text" id="domain" placeholder="example.com or https://example.com/path">
+              <p class="helper-text">Only the current hostname is used. Paths are ignored.</p>
+            </div>
+
+            <div class="field-group">
+              <div class="field">
+                <label for="headerName">Header name</label>
+                <input type="text" id="headerName" placeholder="X-Custom-Auth">
+              </div>
+
+              <div class="field">
+                <label for="requestScope">Request scope</label>
+                <select id="requestScope">
+                  <option value="all">All requests</option>
+                  <option value="pages">Page navigations only</option>
+                  <option value="api">API and asset calls</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="headerValue">Header value</label>
+              <input type="text" id="headerValue" placeholder="token-or-static-value">
+            </div>
+
+            <div class="action-row">
+              <button id="addHeaderBtn" class="primary-btn" type="button">Add rule</button>
+            </div>
+
+            <div id="headerStatus" class="status-msg"></div>
+            <div id="ruleListContainer" class="rule-list"></div>
+          </div>
+        </article>
+      </section>
+
+      <section id="settings-panel" class="tab-panel" data-panel="settings" role="tabpanel" aria-labelledby="settings-tab" hidden>
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <p class="panel-kicker">Settings</p>
+              <h2 class="panel-title">Extension control</h2>
+            </div>
+          </div>
+
+          <div class="content-stack">
+            <div class="stats-row">
+              <div class="stat-box">
+                <div class="stat-box-label">Total intercepts</div>
+                <div id="totalIntercepts" class="stat-box-value">0</div>
+                <div class="stat-box-note">Matched requests across all rules</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-box-label">Active rules</div>
+                <div id="activeRulesCount" class="stat-box-value">0</div>
+                <div class="stat-box-note">Header rules currently enabled</div>
+              </div>
+            </div>
+
+            <div class="pause-section">
+              <div class="field-label">Global control</div>
+              <p class="helper-text" style="margin-top: 4px;">Pauses all header injection without deleting any saved rules.</p>
+              <div class="action-row">
+                <button id="globalPauseBtn" class="pause-btn" type="button" aria-label="Pause extension globally" title="Pause extension globally">
+                  <span class="pause-btn-icon-wrap" aria-hidden="true"><svg class="pause-btn-icon" viewBox="0 0 16 16" aria-hidden="true"><rect fill="currentColor" x="3" y="2.5" width="3.25" height="11" rx="1"/><rect fill="currentColor" x="9.75" y="2.5" width="3.25" height="11" rx="1"/></svg></span>
+                  <span class="pause-btn-label">Pause extension globally</span>
+                </button>
+              </div>
+            </div>
+
+            <div id="settingsStatus" class="status-msg"></div>
+          </div>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
