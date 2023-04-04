@@ -3,7 +3,7 @@
   "name": "ReqKit",
   "version": "1.0",
   "description": "Add domain-bound request headers and transform authenticated redirect URLs.",
-  "permissions": ["activeTab", "clipboardWrite", "declarativeNetRequest", "declarativeNetRequestFeedback", "storage"],
+  "permissions": ["activeTab", "clipboardWrite", "declarativeNetRequest", "storage"],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js"

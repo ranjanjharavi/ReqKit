@@ -20,16 +20,10 @@ const RESOURCE_SCOPE_MAP = {
   api: ['xmlhttprequest', 'script', 'stylesheet', 'image', 'font', 'media', 'websocket', 'ping', 'other']
 };
 
-chrome.declarativeNetRequest.onRuleMatchedDebug.addListener(() => {
-  chrome.storage.local.get(['interceptionCount'], (result) => {
-    chrome.storage.local.set({ interceptionCount: (result.interceptionCount || 0) + 1 });
-  });
-});
-
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
 
-  if ('extensionPaused' in changes || RULE_STORAGE_KEY in changes) {
+  if (RULE_STORAGE_KEY in changes) {
     restorePersistedRules().catch((error) => {
       console.error('Could not update rules after state change.', error);
     });
@@ -50,27 +44,18 @@ chrome.runtime.onStartup.addListener(() => {
 
 async function restorePersistedRules() {
   const rules = await getStoredRules();
-  const [currentRules, { extensionPaused }] = await Promise.all([
-    getDynamicRules(),
-    storageAreaGet(chrome.storage.local, ['extensionPaused'])
-  ]);
-  const addRules = extensionPaused ? [] : rules.filter((rule) => rule.enabled).map(buildDynamicRule);
+  const currentRules = await getDynamicRules();
+  const addRules = rules.filter((rule) => rule.enabled).map(buildDynamicRule);
 
   await updateDynamicRules({
     removeRuleIds: currentRules.map((rule) => rule.id),
     addRules
   });
 
-  await updateBadge(rules, extensionPaused);
+  await updateBadge(rules);
 }
 
-async function updateBadge(rules, isPaused) {
-  if (isPaused) {
-    await chrome.action.setBadgeBackgroundColor({ color: '#f59e0b' });
-    await chrome.action.setBadgeText({ text: '||' });
-    return;
-  }
-
+async function updateBadge(rules) {
   const activeCount = (rules || []).filter((rule) => rule.enabled).length;
   if (activeCount === 0) {
     await chrome.action.setBadgeText({ text: '' });

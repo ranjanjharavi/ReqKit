@@ -57,11 +57,7 @@ function bindEvents() {
   document.getElementById('copyUrlBtn').addEventListener('click', copyTransformedUrl);
   document.getElementById('openUrlBtn').addEventListener('click', openTransformedUrl);
   document.getElementById('saveTokenBtn').addEventListener('click', saveCurrentToken);
-  document.getElementById('globalPauseBtn').addEventListener('click', toggleGlobalPause);
   document.getElementById('toggleTokenVisibility').addEventListener('click', toggleTokenVisibility);
-
-  loadAnalytics();
-  loadPauseState();
 
   document.getElementById('headerValue').addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
@@ -363,7 +359,6 @@ async function addRule() {
     await syncDynamicRules(updatedRules);
     await storageLocalSet({ [RULE_STORAGE_KEY]: updatedRules });
     renderRules(updatedRules);
-    updateActiveRulesCount(updatedRules);
     clearHeaderForm();
     showStatus('headerStatus', 'Header rule added.', 'success');
   } catch (error) {
@@ -384,7 +379,6 @@ async function toggleRule(id) {
     await syncDynamicRules(updatedRules);
     await storageLocalSet({ [RULE_STORAGE_KEY]: updatedRules });
     renderRules(updatedRules);
-    updateActiveRulesCount(updatedRules);
 
     const toggledRule = updatedRules.find((rule) => rule.id === id);
     showStatus('headerStatus', toggledRule?.enabled ? 'Rule enabled.' : 'Rule paused.', 'success');
@@ -402,7 +396,6 @@ async function deleteRule(id) {
     await syncDynamicRules(updatedRules);
     await storageLocalSet({ [RULE_STORAGE_KEY]: updatedRules });
     renderRules(updatedRules);
-    updateActiveRulesCount(updatedRules);
     showStatus('headerStatus', 'Rule removed.', 'success');
   } catch (error) {
     console.error(error);
@@ -948,60 +941,6 @@ function showStatus(elementId, message, type) {
   element._statusTimer = globalThis.setTimeout(() => {
     element.className = 'status-msg';
   }, 2800);
-}
-
-function loadAnalytics() {
-  storageLocalGet(['interceptionCount']).then(async (result) => {
-    const rules = await getStoredRules();
-    const totalEl = document.getElementById('totalIntercepts');
-    const activeEl = document.getElementById('activeRulesCount');
-    if (totalEl) totalEl.textContent = String(Number(result.interceptionCount) || 0);
-    if (activeEl) activeEl.textContent = String(rules.filter((r) => r.enabled).length);
-  }).catch(console.error);
-}
-
-function updateActiveRulesCount(rules) {
-  const el = document.getElementById('activeRulesCount');
-  if (el) el.textContent = String(rules.filter((r) => r.enabled).length);
-}
-
-async function loadPauseState() {
-  const { extensionPaused } = await storageLocalGet(['extensionPaused']);
-  updatePauseButton(Boolean(extensionPaused));
-}
-
-async function toggleGlobalPause() {
-  const { extensionPaused } = await storageLocalGet(['extensionPaused']);
-  const nextPaused = !Boolean(extensionPaused);
-
-  try {
-    await storageLocalSet({ extensionPaused: nextPaused });
-    updatePauseButton(nextPaused);
-
-    showStatus('settingsStatus', nextPaused ? 'Extension paused. No headers will be injected.' : 'Extension resumed. Header rules are active.', nextPaused ? 'error' : 'success');
-  } catch (error) {
-    console.error(error);
-    showStatus('settingsStatus', 'Could not update pause state.', 'error');
-  }
-}
-
-function updatePauseButton(isPaused) {
-  const btn = document.getElementById('globalPauseBtn');
-  if (!btn) return;
-
-  btn.classList.toggle('is-paused', isPaused);
-  btn.setAttribute('aria-label', isPaused ? 'Resume extension' : 'Pause extension globally');
-  btn.setAttribute('title', isPaused ? 'Resume extension' : 'Pause extension globally');
-
-  const iconWrap = btn.querySelector('.pause-btn-icon-wrap');
-  const label = btn.querySelector('.pause-btn-label');
-
-  if (label) label.textContent = isPaused ? 'Resume extension' : 'Pause extension globally';
-  if (iconWrap) {
-    iconWrap.innerHTML = isPaused
-      ? '<svg class="pause-btn-icon" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M4 2.75v10.5c0 .6.65.98 1.18.69l7.88-5.25a.79.79 0 0 0 0-1.38L5.18 2.06A.79.79 0 0 0 4 2.75Z"/></svg>'
-      : '<svg class="pause-btn-icon" viewBox="0 0 16 16" aria-hidden="true"><rect fill="currentColor" x="3" y="2.5" width="3.25" height="11" rx="1"/><rect fill="currentColor" x="9.75" y="2.5" width="3.25" height="11" rx="1"/></svg>';
-  }
 }
 
 function toggleTokenVisibility() {

@@ -119,7 +119,7 @@
 
     .tabs-list {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 6px;
       padding: 6px;
       border: 1px solid var(--border);
@@ -512,91 +512,6 @@
       letter-spacing: 0.04em;
       text-transform: uppercase;
       color: #64748b;
-    }
-
-    .stats-row {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-    }
-
-    .stat-box {
-      display: grid;
-      gap: 6px;
-      padding: 14px 16px;
-      border: 1px solid rgba(191, 219, 254, 0.92);
-      border-radius: var(--radius-md);
-      background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
-      box-shadow: var(--shadow-xs);
-    }
-
-    .stat-box-label {
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: #64748b;
-    }
-
-    .stat-box-value {
-      font-size: 30px;
-      line-height: 1;
-      letter-spacing: -0.04em;
-      color: #0f172a;
-      font-weight: 700;
-    }
-
-    .stat-box-note {
-      font-size: 11px;
-      line-height: 1.45;
-      color: #64748b;
-    }
-
-    .pause-section {
-      display: grid;
-      gap: 8px;
-    }
-
-    .pause-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      min-height: 40px;
-      padding: 0 16px;
-      border: 1px solid rgba(191, 219, 254, 0.95);
-      border-radius: var(--radius-sm);
-      background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
-      color: var(--foreground);
-      font: inherit;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      box-shadow: var(--shadow-xs);
-      transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
-    }
-
-    .pause-btn:hover {
-      border-color: var(--border-strong);
-      background: linear-gradient(180deg, #f9fbff 0%, var(--secondary-hover) 100%);
-      transform: translateY(-1px);
-    }
-
-    .pause-btn.is-paused {
-      border-color: #fcd34d;
-      background: linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%);
-      color: #92400e;
-    }
-
-    .pause-btn.is-paused:hover {
-      border-color: #fbbf24;
-      background: linear-gradient(180deg, #fef3c7 0%, #fde68a 100%);
-      transform: translateY(-1px);
-    }
-
-    .pause-btn-icon {
-      width: 14px;
-      height: 14px;
-      flex-shrink: 0;
     }
 
     .input-icon-wrapper {
@@ -1054,7 +969,6 @@
       <div class="tabs-list" role="tablist" aria-label="Utility features">
         <button id="transformer-tab" class="tab-btn active" type="button" role="tab" aria-selected="true" aria-controls="transformer-panel" data-tab="transformer">URL transform</button>
         <button id="headers-tab" class="tab-btn" type="button" role="tab" aria-selected="false" aria-controls="headers-panel" data-tab="headers">Headers</button>
-        <button id="settings-tab" class="tab-btn" type="button" role="tab" aria-selected="false" aria-controls="settings-panel" data-tab="settings">Settings</button>
       </div>
 
       <section id="transformer-panel" class="tab-panel active" data-panel="transformer" role="tabpanel" aria-labelledby="transformer-tab">
@@ -1158,44 +1072,6 @@
         </article>
       </section>
 
-      <section id="settings-panel" class="tab-panel" data-panel="settings" role="tabpanel" aria-labelledby="settings-tab" hidden>
-        <article class="panel">
-          <div class="panel-head">
-            <div>
-              <p class="panel-kicker">Settings</p>
-              <h2 class="panel-title">Extension control</h2>
-            </div>
-          </div>
-
-          <div class="content-stack">
-            <div class="stats-row">
-              <div class="stat-box">
-                <div class="stat-box-label">Total intercepts</div>
-                <div id="totalIntercepts" class="stat-box-value">0</div>
-                <div class="stat-box-note">Matched requests across all rules</div>
-              </div>
-              <div class="stat-box">
-                <div class="stat-box-label">Active rules</div>
-                <div id="activeRulesCount" class="stat-box-value">0</div>
-                <div class="stat-box-note">Header rules currently enabled</div>
-              </div>
-            </div>
-
-            <div class="pause-section">
-              <div class="field-label">Global control</div>
-              <p class="helper-text" style="margin-top: 4px;">Pauses all header injection without deleting any saved rules.</p>
-              <div class="action-row">
-                <button id="globalPauseBtn" class="pause-btn" type="button" aria-label="Pause extension globally" title="Pause extension globally">
-                  <span class="pause-btn-icon-wrap" aria-hidden="true"><svg class="pause-btn-icon" viewBox="0 0 16 16" aria-hidden="true"><rect fill="currentColor" x="3" y="2.5" width="3.25" height="11" rx="1"/><rect fill="currentColor" x="9.75" y="2.5" width="3.25" height="11" rx="1"/></svg></span>
-                  <span class="pause-btn-label">Pause extension globally</span>
-                </button>
-              </div>
-            </div>
-
-            <div id="settingsStatus" class="status-msg"></div>
-          </div>
-        </article>
-      </section>
     </main>
   </div>
 
