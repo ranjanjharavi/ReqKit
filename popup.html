@@ -801,6 +801,37 @@
       opacity: 0.72;
     }
 
+    .rule-edit-form {
+      display: grid;
+      gap: 8px;
+    }
+
+    .rule-edit-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .rule-edit-field {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .rule-edit-domain,
+    .rule-edit-value {
+      grid-column: 1 / -1;
+    }
+
+    .rule-edit-actions {
+      justify-content: flex-end;
+      margin-top: 0;
+    }
+
+    .rule-edit-status {
+      min-height: 0;
+    }
+
     .rule-actions {
       flex: 0 0 auto;
       justify-content: flex-end;

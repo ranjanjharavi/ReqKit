@@ -33,6 +33,7 @@ const SCOPE_LABELS = {
 
 let transformerResult = null;
 let tokenLibrary = [];
+let editingRuleId = null;
 
 document.addEventListener('DOMContentLoaded', () => {
   bindEvents();
@@ -236,9 +237,10 @@ function renderRules(rules) {
 
   container.innerHTML = groupedRules.map(({ domain, rules: domainRules }) => {
     const allPaused = domainRules.every((rule) => !rule.enabled);
+    const hasEditingRule = domainRules.some((rule) => rule.id === editingRuleId);
 
     return `
-      <article class="rule-card${allPaused ? ' paused' : ''}">
+      <article class="rule-card${allPaused && !hasEditingRule ? ' paused' : ''}">
         <div class="rule-topline">
           <p class="rule-domain">${escapeHtml(domain)}</p>
           <span class="chip rule-domain-count">${domainRules.length} ${domainRules.length === 1 ? 'rule' : 'rules'}</span>
@@ -249,6 +251,18 @@ function renderRules(rules) {
       </article>
     `;
   }).join('');
+
+  container.querySelectorAll('.edit-rule-btn').forEach((button) => {
+    button.addEventListener('click', (event) => {
+      const id = Number(event.currentTarget.dataset.id);
+      editingRuleId = id;
+      renderRules(rules);
+
+      const domainInput = document.getElementById(`editDomain-${id}`);
+      domainInput?.focus();
+      domainInput?.select();
+    });
+  });
 
   container.querySelectorAll('.toggle-rule-btn').forEach((button) => {
     button.addEventListener('click', async (event) => {
@@ -261,6 +275,48 @@ function renderRules(rules) {
     button.addEventListener('click', async (event) => {
       const id = Number(event.currentTarget.dataset.id);
       await deleteRule(id);
+    });
+  });
+
+  container.querySelectorAll('.cancel-edit-rule-btn').forEach((button) => {
+    button.addEventListener('click', () => {
+      editingRuleId = null;
+      renderRules(rules);
+    });
+  });
+
+  container.querySelectorAll('.rule-edit-form').forEach((form) => {
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const id = Number(event.currentTarget.dataset.id);
+      const buttons = event.currentTarget.querySelectorAll('button');
+      const saveButton = event.currentTarget.querySelector('.save-edit-rule-btn');
+
+      buttons.forEach((button) => {
+        button.disabled = true;
+      });
+      saveButton.textContent = 'Saving…';
+
+      try {
+        await saveEditedRule(id);
+      } finally {
+        if (saveButton.isConnected) {
+          buttons.forEach((button) => {
+            button.disabled = false;
+          });
+          saveButton.textContent = 'Save changes';
+        }
+      }
+    });
+
+    form.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') {
+        return;
+      }
+
+      event.preventDefault();
+      editingRuleId = null;
+      renderRules(rules);
     });
   });
 }
@@ -281,6 +337,10 @@ function groupRulesByDomain(rules) {
 }
 
 function renderGroupedRuleRow(rule) {
+  if (rule.id === editingRuleId) {
+    return renderRuleEditForm(rule);
+  }
+
   const toggleTitle = rule.enabled ? 'Pause rule' : 'Enable rule';
   const toggleIcon = rule.enabled
     ? '<svg class="rule-icon" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="2.5" width="3.25" height="11" rx="1"></rect><rect x="9.75" y="2.5" width="3.25" height="11" rx="1"></rect></svg>'
@@ -299,11 +359,48 @@ function renderGroupedRuleRow(rule) {
             <span class="status-pill${rule.enabled ? '' : ' is-off'}">${rule.enabled ? 'Active' : 'Paused'}</span>
           </div>
           <div class="rule-actions">
+            <button class="small-btn rule-icon-btn edit-rule-btn" type="button" data-id="${rule.id}" aria-label="Edit rule" title="Edit rule"><svg class="rule-icon" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="m11.85 1.65 2.5 2.5a1.2 1.2 0 0 1 0 1.7l-7.8 7.8-4.05.85.85-4.05 7.8-7.8a1.2 1.2 0 0 1 1.7 0ZM4.7 11.2l-.35 1.45 1.45-.35 7.45-7.45-2.5-2.5L4.7 11.2Z"/></svg></button>
             <button class="small-btn rule-icon-btn toggle-rule-btn" type="button" data-id="${rule.id}" aria-label="${toggleTitle}" title="${toggleTitle}">${toggleIcon}</button>
             <button class="small-btn rule-icon-btn danger delete-rule-btn" type="button" data-id="${rule.id}" aria-label="Delete rule" title="Delete rule"><svg class="rule-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.25 2.5h3.5l.5 1H13a.75.75 0 0 1 0 1.5h-.6l-.55 7.14A1.5 1.5 0 0 1 10.35 13.5h-4.7a1.5 1.5 0 0 1-1.5-1.36L3.6 5H3a.75.75 0 0 1 0-1.5h2.75l.5-1Zm-.46 2.5.5 6.5h3.42l.5-6.5H5.79Z" fill="currentColor"></path></svg></button>
           </div>
         </div>
       </div>
+    </div>
+  `;
+}
+
+function renderRuleEditForm(rule) {
+  return `
+    <div class="domain-rule-row is-editing">
+      <form id="rule-edit-form-${rule.id}" class="rule-edit-form" data-id="${rule.id}">
+        <div class="rule-edit-grid">
+          <div class="rule-edit-field rule-edit-domain">
+            <label for="editDomain-${rule.id}">Exact host</label>
+            <input id="editDomain-${rule.id}" type="text" value="${escapeHtml(rule.domain)}" autocapitalize="off" autocorrect="off" spellcheck="false">
+          </div>
+          <div class="rule-edit-field">
+            <label for="editHeaderName-${rule.id}">Header name</label>
+            <input id="editHeaderName-${rule.id}" type="text" value="${escapeHtml(rule.headerName)}" autocapitalize="off" autocorrect="off" spellcheck="false">
+          </div>
+          <div class="rule-edit-field">
+            <label for="editRequestScope-${rule.id}">Request scope</label>
+            <select id="editRequestScope-${rule.id}">
+              <option value="all"${rule.requestScope === 'all' ? ' selected' : ''}>All requests</option>
+              <option value="pages"${rule.requestScope === 'pages' ? ' selected' : ''}>Page navigations only</option>
+              <option value="api"${rule.requestScope === 'api' ? ' selected' : ''}>API and asset calls</option>
+            </select>
+          </div>
+          <div class="rule-edit-field rule-edit-value">
+            <label for="editHeaderValue-${rule.id}">Header value</label>
+            <input id="editHeaderValue-${rule.id}" type="text" value="${escapeHtml(rule.headerValue)}" autocapitalize="off" autocorrect="off" spellcheck="false">
+          </div>
+        </div>
+        <div id="ruleEditStatus-${rule.id}" class="status-msg rule-edit-status" aria-live="polite"></div>
+        <div class="action-row rule-edit-actions">
+          <button class="primary-btn save-edit-rule-btn" type="submit">Save changes</button>
+          <button class="secondary-btn cancel-edit-rule-btn" type="button">Cancel</button>
+        </div>
+      </form>
     </div>
   `;
 }
@@ -400,6 +497,67 @@ async function deleteRule(id) {
   } catch (error) {
     console.error(error);
     showStatus('headerStatus', error.message || 'Could not remove that rule.', 'error');
+  }
+}
+
+async function saveEditedRule(id) {
+  const domain = normalizeDomain(document.getElementById(`editDomain-${id}`).value);
+  const headerName = document.getElementById(`editHeaderName-${id}`).value.trim();
+  const headerValue = document.getElementById(`editHeaderValue-${id}`).value.trim();
+  const requestScope = document.getElementById(`editRequestScope-${id}`).value;
+  const statusId = `ruleEditStatus-${id}`;
+
+  if (!domain || !headerName || !headerValue) {
+    showStatus(statusId, 'Host, header name, and header value are required.', 'error');
+    return;
+  }
+
+  if (!isValidHeaderName(headerName)) {
+    showStatus(statusId, 'Enter a valid HTTP header name.', 'error');
+    return;
+  }
+
+  if (/\r|\n/.test(headerValue)) {
+    showStatus(statusId, 'Header values cannot contain line breaks.', 'error');
+    return;
+  }
+
+  const rules = await getStoredRules();
+  const duplicateRule = rules.some((rule) => (
+    rule.id !== id
+    && rule.domain === domain
+    && rule.headerName.toLowerCase() === headerName.toLowerCase()
+    && rule.headerValue === headerValue
+    && rule.requestScope === requestScope
+  ));
+
+  if (duplicateRule) {
+    showStatus(statusId, 'That rule already exists.', 'error');
+    return;
+  }
+
+  if (!rules.some((rule) => rule.id === id)) {
+    editingRuleId = null;
+    renderRules(rules);
+    showStatus('headerStatus', 'That rule no longer exists.', 'error');
+    return;
+  }
+
+  const updatedRules = rules.map((rule) => (
+    rule.id === id
+      ? { ...rule, domain, headerName, headerValue, requestScope }
+      : rule
+  ));
+
+  try {
+    await syncDynamicRules(updatedRules);
+    await storageLocalSet({ [RULE_STORAGE_KEY]: updatedRules });
+    editingRuleId = null;
+    renderRules(updatedRules);
+    showStatus('headerStatus', 'Header rule updated.', 'success');
+  } catch (error) {
+    console.error(error);
+    showStatus(statusId, error.message || 'Could not update that rule.', 'error');
   }
 }
 
