@@ -706,6 +706,129 @@
       gap: 12px;
     }
 
+    .current-site-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 10px 12px;
+      border: 1px solid rgba(191, 219, 254, 0.9);
+      border-radius: var(--radius-md);
+      background: rgba(239, 246, 255, 0.72);
+    }
+
+    .current-site-summary {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-width: 0;
+    }
+
+    .current-site-dot {
+      width: 8px;
+      height: 8px;
+      flex: 0 0 auto;
+      border-radius: 999px;
+      background: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+    .current-site-toolbar.is-unavailable .current-site-dot {
+      background: #94a3b8;
+      box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.12);
+    }
+
+    .current-site-copy {
+      display: grid;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .current-site-label {
+      color: #64748b;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .current-site-host {
+      max-width: 170px;
+      overflow: hidden;
+      color: var(--foreground);
+      font-size: 12px;
+      font-weight: 600;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .current-site-host.is-unavailable {
+      color: var(--muted-foreground);
+      font-weight: 500;
+    }
+
+    .rule-view-toggle {
+      display: inline-grid;
+      grid-auto-flow: column;
+      gap: 3px;
+      padding: 3px;
+      border: 1px solid rgba(191, 219, 254, 0.9);
+      border-radius: var(--radius-sm);
+      background: #ffffff;
+    }
+
+    .rule-view-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-height: 30px;
+      padding: 0 9px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted-foreground);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .rule-view-btn:hover:not(:disabled) {
+      background: var(--secondary);
+      color: var(--foreground);
+    }
+
+    .rule-view-btn.active {
+      background: var(--primary);
+      color: var(--primary-foreground);
+      box-shadow: var(--shadow-xs);
+    }
+
+    .rule-view-btn:focus-visible {
+      box-shadow: 0 0 0 3px var(--ring);
+    }
+
+    .rule-view-btn:disabled {
+      color: #94a3b8;
+      cursor: not-allowed;
+    }
+
+    .rule-view-count {
+      min-width: 18px;
+      padding: 2px 5px;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.15);
+      font-size: 9px;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.2;
+    }
+
+    .rule-view-btn.active .rule-view-count {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
     .rule-card {
       position: relative;
       overflow: hidden;
@@ -768,6 +891,28 @@
       font-weight: 600;
       letter-spacing: -0.02em;
       word-break: break-word;
+    }
+
+    .rule-domain-heading {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1 1 auto;
+      min-width: 0;
+      flex-wrap: wrap;
+    }
+
+    .current-site-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 20px;
+      padding: 0 7px;
+      border: 1px solid #bbf7d0;
+      border-radius: 999px;
+      background: #ecfdf5;
+      color: #166534;
+      font-size: 9px;
+      font-weight: 700;
     }
 
     .rule-domain-count {
@@ -1062,14 +1207,27 @@
               <h2 class="panel-title">Inject request headers</h2>
               <p class="panel-copy">Rules apply only to the exact hostname you enter. <strong>example.com</strong> will not match <strong>api.example.com</strong>.</p>
             </div>
-            <button id="useCurrentDomainBtn" class="secondary-btn" type="button">Use current host</button>
           </div>
 
           <div class="content-stack">
+            <div class="current-site-toolbar">
+              <div class="current-site-summary">
+                <span class="current-site-dot" aria-hidden="true"></span>
+                <div class="current-site-copy">
+                  <span class="current-site-label">Active host</span>
+                  <span id="currentSiteHost" class="current-site-host" aria-live="polite">Detecting current site…</span>
+                </div>
+              </div>
+              <div class="rule-view-toggle" role="group" aria-label="Filter header rules">
+                <button id="currentSiteViewBtn" class="rule-view-btn active" type="button" data-rule-view="current" aria-pressed="true">Current site <span id="currentSiteViewCount" class="rule-view-count">0</span></button>
+                <button id="allHostsViewBtn" class="rule-view-btn" type="button" data-rule-view="all" aria-pressed="false">All hosts <span id="allHostsViewCount" class="rule-view-count">0</span></button>
+              </div>
+            </div>
+
             <div class="field">
               <label for="domain">Exact host</label>
               <input type="text" id="domain" placeholder="example.com or https://example.com/path">
-              <p class="helper-text">Only the current hostname is used. Paths are ignored.</p>
+              <p class="helper-text">Only the hostname is used. Paths are ignored.</p>
             </div>
 
             <div class="field-group">

@@ -34,6 +34,9 @@ const SCOPE_LABELS = {
 let transformerResult = null;
 let tokenLibrary = [];
 let editingRuleId = null;
+let currentHostname = '';
+let ruleView = 'current';
+let renderedRules = [];
 
 document.addEventListener('DOMContentLoaded', () => {
   bindEvents();
@@ -53,7 +56,11 @@ function bindEvents() {
   });
 
   document.getElementById('addHeaderBtn').addEventListener('click', addRule);
-  document.getElementById('useCurrentDomainBtn').addEventListener('click', () => fillCurrentDomain(true));
+  document.querySelectorAll('.rule-view-btn').forEach((button) => {
+    button.addEventListener('click', () => {
+      setRuleView(button.dataset.ruleView);
+    });
+  });
   document.getElementById('transformUrlBtn').addEventListener('click', transformUrl);
   document.getElementById('copyUrlBtn').addEventListener('click', copyTransformedUrl);
   document.getElementById('openUrlBtn').addEventListener('click', openTransformedUrl);
@@ -104,6 +111,7 @@ function setActiveTab(tabName) {
 
 async function initialize() {
   const rules = await getStoredRules();
+  await initializeCurrentSite();
   renderRules(rules);
 
   try {
@@ -226,14 +234,20 @@ function normalizeRule(rule, usedIds, getNextId) {
 
 function renderRules(rules) {
   const container = document.getElementById('ruleListContainer');
+  renderedRules = rules;
+  updateCurrentSiteControls(rules);
   container.innerHTML = '';
 
-  if (!rules.length) {
-    container.innerHTML = '<div class="empty-state">No header rules yet. Add one above to start injecting domain-bound headers.</div>';
+  const visibleRules = ruleView === 'current' && currentHostname
+    ? rules.filter((rule) => rule.domain === currentHostname)
+    : rules;
+
+  if (!visibleRules.length) {
+    container.innerHTML = getEmptyRulesMessage(rules.length);
     return;
   }
 
-  const groupedRules = groupRulesByDomain(rules);
+  const groupedRules = groupRulesByDomain(visibleRules);
 
   container.innerHTML = groupedRules.map(({ domain, rules: domainRules }) => {
     const allPaused = domainRules.every((rule) => !rule.enabled);
@@ -242,7 +256,10 @@ function renderRules(rules) {
     return `
       <article class="rule-card${allPaused && !hasEditingRule ? ' paused' : ''}">
         <div class="rule-topline">
-          <p class="rule-domain">${escapeHtml(domain)}</p>
+          <div class="rule-domain-heading">
+            <p class="rule-domain">${escapeHtml(domain)}</p>
+            ${ruleView === 'all' && domain === currentHostname ? '<span class="current-site-badge">Current site</span>' : ''}
+          </div>
           <span class="chip rule-domain-count">${domainRules.length} ${domainRules.length === 1 ? 'rule' : 'rules'}</span>
         </div>
         <div class="domain-rule-list">
@@ -319,6 +336,62 @@ function renderRules(rules) {
       renderRules(rules);
     });
   });
+}
+
+function setRuleView(nextView) {
+  if (nextView !== 'all' && nextView !== 'current') {
+    return;
+  }
+
+  if (nextView === 'current' && !currentHostname) {
+    return;
+  }
+
+  ruleView = nextView;
+  editingRuleId = null;
+
+  if (ruleView === 'current' && !document.getElementById('domain').value.trim()) {
+    document.getElementById('domain').value = currentHostname;
+  }
+
+  renderRules(renderedRules);
+}
+
+function updateCurrentSiteControls(rules) {
+  const currentSiteButton = document.getElementById('currentSiteViewBtn');
+  const allHostsButton = document.getElementById('allHostsViewBtn');
+  const currentSiteHost = document.getElementById('currentSiteHost');
+  const currentSiteToolbar = document.querySelector('.current-site-toolbar');
+  const currentSiteCount = rules.filter((rule) => rule.domain === currentHostname).length;
+
+  currentSiteHost.textContent = currentHostname || 'Unavailable on this page';
+  currentSiteHost.classList.toggle('is-unavailable', !currentHostname);
+  currentSiteToolbar.classList.toggle('is-unavailable', !currentHostname);
+
+  currentSiteButton.disabled = !currentHostname;
+  currentSiteButton.classList.toggle('active', ruleView === 'current');
+  currentSiteButton.setAttribute('aria-pressed', String(ruleView === 'current'));
+  currentSiteButton.setAttribute('aria-label', currentHostname
+    ? `Show ${currentSiteCount} rules for ${currentHostname}`
+    : 'Current site is unavailable');
+  document.getElementById('currentSiteViewCount').textContent = String(currentSiteCount);
+
+  allHostsButton.classList.toggle('active', ruleView === 'all');
+  allHostsButton.setAttribute('aria-pressed', String(ruleView === 'all'));
+  allHostsButton.setAttribute('aria-label', `Show all ${rules.length} rules`);
+  document.getElementById('allHostsViewCount').textContent = String(rules.length);
+}
+
+function getEmptyRulesMessage(totalRuleCount) {
+  if (ruleView === 'current' && currentHostname) {
+    const otherRulesMessage = totalRuleCount
+      ? ' Your rules for other hosts are available under All hosts.'
+      : '';
+
+    return `<div class="empty-state">No rules for <strong>${escapeHtml(currentHostname)}</strong> yet. Add one above to start injecting headers on this site.${otherRulesMessage}</div>`;
+  }
+
+  return '<div class="empty-state">No header rules yet. Add one above to start injecting domain-bound headers.</div>';
 }
 
 function groupRulesByDomain(rules) {
@@ -594,17 +667,20 @@ function buildDynamicRule(rule) {
   };
 }
 
-async function fillCurrentDomain(showSuccess = true) {
+async function initializeCurrentSite() {
   try {
     const tab = await getCurrentTab();
-    const parsed = parseUserUrl(tab?.url || '');
-    document.getElementById('domain').value = parsed.url.hostname;
-    if (showSuccess) {
-      showStatus('headerStatus', 'Current tab host loaded.', 'success');
+    const tabUrl = tab?.url || '';
+    if (!isHttpUrl(tabUrl)) {
+      throw new Error('No supported active tab URL');
     }
+
+    const parsed = parseUserUrl(tabUrl);
+    currentHostname = parsed.url.hostname.toLowerCase();
+    document.getElementById('domain').value = currentHostname;
   } catch (error) {
-    console.error(error);
-    showStatus('headerStatus', 'Could not read the current tab host.', 'error');
+    currentHostname = '';
+    ruleView = 'all';
   }
 }
 
@@ -1023,7 +1099,7 @@ function toggleTransformerActions(enabled) {
 }
 
 function clearHeaderForm() {
-  document.getElementById('domain').value = '';
+  document.getElementById('domain').value = ruleView === 'current' ? currentHostname : '';
   document.getElementById('headerName').value = '';
   document.getElementById('headerValue').value = '';
   document.getElementById('requestScope').value = 'all';
