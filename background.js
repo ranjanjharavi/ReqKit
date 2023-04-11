@@ -1,33 +1,30 @@
-const RULE_STORAGE_KEY = 'headerRules';
+import { commitRuleSet } from './shared/rule-commit.js';
+import {
+  getDynamicRules,
+  storageAreaGet,
+  storageAreaSet,
+  updateDynamicRules
+} from './shared/chrome-api.js';
+import { RULE_MESSAGE_COMMIT, RULE_MESSAGE_GET } from './shared/messages.js';
+import {
+  RULE_STORAGE_KEY,
+  buildDynamicRule,
+  normalizeRules
+} from './shared/rules.js';
 
-const RESOURCE_SCOPE_MAP = {
-  all: [
-    'main_frame',
-    'sub_frame',
-    'stylesheet',
-    'script',
-    'image',
-    'font',
-    'object',
-    'xmlhttprequest',
-    'ping',
-    'csp_report',
-    'media',
-    'websocket',
-    'other'
-  ],
-  pages: ['main_frame', 'sub_frame'],
-  api: ['xmlhttprequest', 'script', 'stylesheet', 'image', 'font', 'media', 'websocket', 'ping', 'other']
-};
-
-chrome.storage.onChanged.addListener((changes, area) => {
-  if (area !== 'local') return;
-
-  if (RULE_STORAGE_KEY in changes) {
-    restorePersistedRules().catch((error) => {
-      console.error('Could not update rules after state change.', error);
-    });
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.type !== RULE_MESSAGE_GET && message?.type !== RULE_MESSAGE_COMMIT) {
+    return false;
   }
+
+  handleRuleMessage(message)
+    .then((rules) => sendResponse({ ok: true, rules }))
+    .catch((error) => {
+      console.error('Could not process the header rule request.', error);
+      sendResponse({ ok: false, error: error.message || 'Could not update header rules.' });
+    });
+
+  return true;
 });
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -42,8 +39,28 @@ chrome.runtime.onStartup.addListener(() => {
   });
 });
 
+async function handleRuleMessage(message) {
+  if (message.type === RULE_MESSAGE_GET) {
+    return getStoredRules();
+  }
+
+  const rules = await commitRuleSet(message.rules, {
+    getCurrentRules: getStoredRules,
+    applyRules: applyDynamicRules,
+    storeRules
+  });
+
+  await updateBadgeSafely(rules);
+  return rules;
+}
+
 async function restorePersistedRules() {
   const rules = await getStoredRules();
+  await applyDynamicRules(rules);
+  await updateBadgeSafely(rules);
+}
+
+async function applyDynamicRules(rules) {
   const currentRules = await getDynamicRules();
   const addRules = rules.filter((rule) => rule.enabled).map(buildDynamicRule);
 
@@ -51,12 +68,18 @@ async function restorePersistedRules() {
     removeRuleIds: currentRules.map((rule) => rule.id),
     addRules
   });
+}
 
-  await updateBadge(rules);
+async function updateBadgeSafely(rules) {
+  try {
+    await updateBadge(rules);
+  } catch (error) {
+    console.error('Could not update the extension badge.', error);
+  }
 }
 
 async function updateBadge(rules) {
-  const activeCount = (rules || []).filter((rule) => rule.enabled).length;
+  const activeCount = rules.filter((rule) => rule.enabled).length;
   if (activeCount === 0) {
     await chrome.action.setBadgeText({ text: '' });
     return;
@@ -76,140 +99,12 @@ async function getStoredRules() {
   const migratedRules = normalizeRules(legacyData[RULE_STORAGE_KEY] || []);
 
   if (migratedRules.length) {
-    await storageAreaSet(chrome.storage.local, { [RULE_STORAGE_KEY]: migratedRules });
+    await storeRules(migratedRules);
   }
 
   return migratedRules;
 }
 
-function normalizeRules(rules) {
-  const usedIds = new Set();
-  let nextId = 1;
-
-  return (Array.isArray(rules) ? rules : [])
-    .map((rule) => normalizeRule(rule, usedIds, () => nextId++))
-    .filter(Boolean);
-}
-
-function normalizeRule(rule, usedIds, getNextId) {
-  if (!rule) {
-    return null;
-  }
-
-  const domain = normalizeDomain(rule.domain || '');
-  const headerName = String(rule.headerName || '').trim();
-  const headerValue = String(rule.headerValue || '').trim();
-
-  if (!domain || !headerName || !headerValue) {
-    return null;
-  }
-
-  let id = Number(rule.id);
-  if (!Number.isInteger(id) || id < 1 || usedIds.has(id)) {
-    id = getNextId();
-  }
-
-  while (usedIds.has(id)) {
-    id = getNextId();
-  }
-  usedIds.add(id);
-
-  return {
-    id,
-    domain,
-    headerName,
-    headerValue,
-    requestScope: RESOURCE_SCOPE_MAP[rule.requestScope] ? rule.requestScope : 'all',
-    enabled: rule.enabled !== false
-  };
-}
-
-function normalizeDomain(value) {
-  const cleanedValue = String(value || '').trim();
-  if (!cleanedValue) {
-    return '';
-  }
-
-  const hadProtocol = /^https?:\/\//i.test(cleanedValue);
-  const candidate = hadProtocol ? cleanedValue : `https://${cleanedValue.replace(/^\/+/, '')}`;
-
-  if (!URL.canParse(candidate)) {
-    return '';
-  }
-
-  const parsed = new URL(candidate);
-  return parsed.hostname && /^https?:\/\//i.test(parsed.href) ? parsed.hostname.toLowerCase() : '';
-}
-
-function buildDynamicRule(rule) {
-  return {
-    id: rule.id,
-    priority: 1,
-    action: {
-      type: 'modifyHeaders',
-      requestHeaders: [
-        {
-          header: rule.headerName,
-          operation: 'set',
-          value: rule.headerValue
-        }
-      ]
-    },
-    condition: {
-      resourceTypes: RESOURCE_SCOPE_MAP[rule.requestScope] || RESOURCE_SCOPE_MAP.all,
-      regexFilter: String.raw`^https?:\/\/${escapeRegex(rule.domain)}(?::\d+)?(?:[/?#]|$)`
-    }
-  };
-}
-
-function escapeRegex(value) {
-  return String(value).replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function getDynamicRules() {
-  return new Promise((resolve, reject) => {
-    chrome.declarativeNetRequest.getDynamicRules((rules) => {
-      if (chrome.runtime.lastError) {
-        reject(new Error(chrome.runtime.lastError.message));
-        return;
-      }
-      resolve(rules || []);
-    });
-  });
-}
-
-function updateDynamicRules(details) {
-  return new Promise((resolve, reject) => {
-    chrome.declarativeNetRequest.updateDynamicRules(details, () => {
-      if (chrome.runtime.lastError) {
-        reject(new Error(chrome.runtime.lastError.message));
-        return;
-      }
-      resolve();
-    });
-  });
-}
-
-function storageAreaGet(storageArea, query) {
-  return new Promise((resolve, reject) => {
-    storageArea.get(query, (result) => {
-      if (chrome.runtime.lastError) {
-        reject(new Error(chrome.runtime.lastError.message));
-        return;
-      }
-      resolve(result || {});
-    });
-  });
-}
-
-function storageAreaSet(storageArea, value) {
-  return new Promise((resolve, reject) => {
-    storageArea.set(value, () => {
-      if (chrome.runtime.lastError) {
-        reject(new Error(chrome.runtime.lastError.message));
-        return;
-      }
-      resolve();
-    });
-  });
+function storeRules(rules) {
+  return storageAreaSet(chrome.storage.local, { [RULE_STORAGE_KEY]: rules });
 }
