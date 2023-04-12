@@ -97,35 +97,53 @@
               </div>
             </div>
 
-            <div class="field">
-              <label for="domain">Exact host</label>
-              <input type="text" id="domain" placeholder="example.com or https://example.com/path">
-              <p class="helper-text">Only the hostname is used. Paths are ignored.</p>
-            </div>
+            <div id="headerComposer" class="header-composer">
+              <button id="headerComposerToggle" class="header-composer-toggle" type="button" aria-expanded="false" aria-controls="headerComposerBody">
+                <span class="header-composer-icon" aria-hidden="true">
+                  <svg viewBox="0 0 16 16"><path fill="currentColor" d="M7.25 2.5h1.5v4.75h4.75v1.5H8.75v4.75h-1.5V8.75H2.5v-1.5h4.75V2.5Z"/></svg>
+                </span>
+                <span class="header-composer-copy">
+                  <span class="header-composer-title">Add header rule</span>
+                  <span id="headerComposerHint" class="header-composer-hint">Create an exact-host rule</span>
+                </span>
+                <svg class="header-composer-chevron" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="m4.2 6.1 3.8 3.8 3.8-3.8 1.05 1.05L8 12 3.15 7.15 4.2 6.1Z"/></svg>
+              </button>
 
-            <div class="field-group">
-              <div class="field">
-                <label for="headerName">Header name</label>
-                <input type="text" id="headerName" placeholder="X-Custom-Auth">
+              <div id="headerComposerBody" class="header-composer-body" hidden>
+                <form id="headerComposerForm" class="header-composer-form">
+                  <div class="field">
+                    <label for="domain">Exact host</label>
+                    <input type="text" id="domain" placeholder="example.com or https://example.com/path">
+                    <p class="helper-text">Only the hostname is used. Paths are ignored.</p>
+                  </div>
+
+                  <div class="field-group">
+                    <div class="field">
+                      <label for="headerName">Header name</label>
+                      <input type="text" id="headerName" placeholder="X-Custom-Auth">
+                    </div>
+
+                    <div class="field">
+                      <label for="requestScope">Request scope</label>
+                      <select id="requestScope">
+                        <option value="all">All requests</option>
+                        <option value="pages">Page navigations only</option>
+                        <option value="api">API and asset calls</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="field">
+                    <label for="headerValue">Header value</label>
+                    <input type="text" id="headerValue" placeholder="token-or-static-value">
+                  </div>
+
+                  <div class="action-row header-composer-actions">
+                    <button id="addHeaderBtn" class="primary-btn" type="submit">Add rule</button>
+                    <button id="cancelHeaderComposerBtn" class="secondary-btn" type="button">Cancel</button>
+                  </div>
+                </form>
               </div>
-
-              <div class="field">
-                <label for="requestScope">Request scope</label>
-                <select id="requestScope">
-                  <option value="all">All requests</option>
-                  <option value="pages">Page navigations only</option>
-                  <option value="api">API and asset calls</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="field">
-              <label for="headerValue">Header value</label>
-              <input type="text" id="headerValue" placeholder="token-or-static-value">
-            </div>
-
-            <div class="action-row">
-              <button id="addHeaderBtn" class="primary-btn" type="button">Add rule</button>
             </div>
 
             <div id="headerStatus" class="status-msg"></div>

@@ -11,12 +11,12 @@ import { state } from './state.js';
 import { escapeHtml, showStatus } from './ui.js';
 
 export function bindHeaderEvents() {
-  document.getElementById('addHeaderBtn').addEventListener('click', addRule);
-  document.getElementById('headerValue').addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') {
-      addRule();
-    }
-  });
+  document.getElementById('headerComposerToggle').addEventListener('click', toggleHeaderComposer);
+  document.getElementById('cancelHeaderComposerBtn').addEventListener('click', cancelHeaderComposer);
+
+  const composerForm = document.getElementById('headerComposerForm');
+  composerForm.addEventListener('submit', handleComposerSubmit);
+  composerForm.addEventListener('keydown', handleComposerKeydown);
 
   document.querySelector('.rule-view-toggle').addEventListener('click', (event) => {
     const button = event.target.closest('.rule-view-btn');
@@ -101,6 +101,74 @@ function handleRuleFormKeydown(event) {
   event.preventDefault();
   state.headers.editingId = null;
   renderRules();
+}
+
+async function handleComposerSubmit(event) {
+  event.preventDefault();
+  const addButton = document.getElementById('addHeaderBtn');
+  if (addButton.disabled) {
+    return;
+  }
+
+  addButton.disabled = true;
+  addButton.textContent = 'Adding…';
+
+  try {
+    if (await addRule()) {
+      setHeaderComposerExpanded(false, { reset: true, returnFocus: true });
+    }
+  } finally {
+    addButton.disabled = false;
+    addButton.textContent = 'Add rule';
+  }
+}
+
+function handleComposerKeydown(event) {
+  if (event.key !== 'Escape') {
+    return;
+  }
+
+  event.preventDefault();
+  setHeaderComposerExpanded(false, { reset: true, returnFocus: true });
+}
+
+function toggleHeaderComposer() {
+  setHeaderComposerExpanded(!state.headers.composerOpen, {
+    focusFirstField: !state.headers.composerOpen
+  });
+}
+
+function cancelHeaderComposer() {
+  setHeaderComposerExpanded(false, { reset: true, returnFocus: true });
+}
+
+function setHeaderComposerExpanded(expanded, {
+  focusFirstField = false,
+  reset = false,
+  returnFocus = false
+} = {}) {
+  const composer = document.getElementById('headerComposer');
+  const toggle = document.getElementById('headerComposerToggle');
+  const body = document.getElementById('headerComposerBody');
+
+  state.headers.composerOpen = expanded;
+  composer.classList.toggle('is-open', expanded);
+  toggle.setAttribute('aria-expanded', String(expanded));
+  body.hidden = !expanded;
+
+  if (reset) {
+    clearHeaderForm();
+  }
+
+  if (focusFirstField && expanded) {
+    const domainInput = document.getElementById('domain');
+    const firstField = domainInput.value.trim()
+      ? document.getElementById('headerName')
+      : domainInput;
+    firstField.focus();
+  } else if (returnFocus && !expanded) {
+    toggle.focus();
+  }
 }
 
 function initializeCurrentSite(activeTab) {
@@ -264,6 +332,10 @@ function updateCurrentSiteControls() {
   allHostsButton.setAttribute('aria-pressed', String(view === 'all'));
   allHostsButton.setAttribute('aria-label', `Show all ${rules.length} rules`);
   document.getElementById('allHostsViewCount').textContent = String(rules.length);
+
+  document.getElementById('headerComposerHint').textContent = view === 'current' && currentHostname
+    ? `For ${currentHostname}`
+    : 'Choose an exact host and request scope';
 }
 
 function getEmptyRulesMessage() {
@@ -282,7 +354,7 @@ async function addRule() {
   const validation = validateRuleDraft(readCreateDraft(), state.headers.rules);
   if (!validation.ok) {
     showStatus('headerStatus', validation.error, 'error');
-    return;
+    return false;
   }
 
   const updatedRules = [
@@ -296,11 +368,12 @@ async function addRule() {
 
   try {
     await persistRules(updatedRules);
-    clearHeaderForm();
     showStatus('headerStatus', 'Header rule added.', 'success');
+    return true;
   } catch (error) {
     console.error(error);
     showStatus('headerStatus', error.message || 'Chrome rejected the new rule.', 'error');
+    return false;
   }
 }
 

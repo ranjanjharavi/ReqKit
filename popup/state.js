@@ -3,6 +3,7 @@ export const state = {
   headers: {
     rules: [],
     editingId: null,
+    composerOpen: false,
     currentHostname: '',
     view: 'current'
   },

@@ -672,6 +672,113 @@ button:disabled {
   color: var(--danger);
 }
 
+.header-composer {
+  overflow: hidden;
+  border: 1px solid rgba(191, 219, 254, 0.95);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+  box-shadow: var(--shadow-xs);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.header-composer.is-open {
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08), var(--shadow-sm);
+}
+
+.header-composer-toggle {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  min-height: 58px;
+  padding: 10px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--foreground);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.18s ease;
+}
+
+.header-composer-toggle:hover {
+  background: rgba(239, 246, 255, 0.72);
+}
+
+.header-composer-toggle:focus-visible {
+  box-shadow: inset 0 0 0 3px var(--ring);
+}
+
+.header-composer-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.2);
+}
+
+.header-composer-icon svg,
+.header-composer-chevron {
+  width: 16px;
+  height: 16px;
+}
+
+.header-composer-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.header-composer-title {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.header-composer-hint {
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-composer-chevron {
+  flex: 0 0 auto;
+  color: #64748b;
+  transition: transform 0.18s ease;
+}
+
+.header-composer.is-open .header-composer-chevron {
+  transform: rotate(180deg);
+}
+
+.header-composer-body {
+  padding: 16px;
+  border-top: 1px solid rgba(219, 234, 254, 0.9);
+  background: rgba(255, 255, 255, 0.72);
+  animation: panel-in 0.18s ease;
+}
+
+.header-composer-body[hidden] {
+  display: none;
+}
+
+.header-composer-form {
+  display: grid;
+  gap: 14px;
+}
+
+.header-composer-actions {
+  margin-top: 0;
+}
+
 .rule-list {
   display: grid;
   gap: 12px;
