@@ -1,4 +1,4 @@
-import { normalizeRules } from './rules.js';
+import { getActiveRuleConflicts, normalizeRules } from './rules.js';
 
 export async function commitRuleSet(nextRules, {
   getCurrentRules,
@@ -12,6 +12,13 @@ export async function commitRuleSet(nextRules, {
   const normalizedRules = normalizeRules(nextRules);
   if (normalizedRules.length !== nextRules.length) {
     throw new Error('One or more header rules are invalid.');
+  }
+
+  const [conflict] = getActiveRuleConflicts(normalizedRules);
+  if (conflict) {
+    throw new Error(
+      `Active ${conflict.leftRule.headerName} rules for ${conflict.leftRule.domain} conflict because their request scopes overlap.`
+    );
   }
 
   const previousRules = await getCurrentRules();

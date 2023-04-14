@@ -77,3 +77,26 @@ test('commitRuleSet rejects malformed rule collections before applying them', as
 
   assert.equal(applied, false);
 });
+
+test('commitRuleSet rejects conflicting active rules before applying them', async () => {
+  let applied = false;
+  const conflictingRules = [
+    nextRules[0],
+    {
+      ...nextRules[0],
+      id: 3,
+      headerValue: 'different',
+      requestScope: 'all'
+    }
+  ];
+
+  await assert.rejects(commitRuleSet(conflictingRules, {
+    getCurrentRules: async () => previousRules,
+    applyRules: async () => {
+      applied = true;
+    },
+    storeRules: async () => {}
+  }), /Active X-New rules.*conflict/);
+
+  assert.equal(applied, false);
+});

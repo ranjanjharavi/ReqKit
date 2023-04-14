@@ -89,7 +89,10 @@ export function normalizeDomain(value) {
   return parsed.hostname && /^https?:\/\//i.test(parsed.href) ? parsed.hostname.toLowerCase() : '';
 }
 
-export function validateRuleDraft(draft, existingRules, { excludeId = null } = {}) {
+export function validateRuleDraft(draft, existingRules, {
+  excludeId = null,
+  enabled = true
+} = {}) {
   const rule = {
     domain: normalizeDomain(draft?.domain),
     headerName: String(draft?.headerName || '').trim(),
@@ -121,6 +124,19 @@ export function validateRuleDraft(draft, existingRules, { excludeId = null } = {
     return { ok: false, error: 'That rule already exists.' };
   }
 
+  const conflictingRule = findActiveRuleConflict(
+    { ...rule, enabled },
+    existingRules,
+    { excludeId }
+  );
+  if (conflictingRule) {
+    return {
+      ok: false,
+      error: getRuleConflictMessage(conflictingRule),
+      conflictId: conflictingRule.id
+    };
+  }
+
   return { ok: true, rule };
 }
 
@@ -139,6 +155,59 @@ export function getNextRuleId(rules) {
     .filter((id) => Number.isInteger(id) && id > 0);
 
   return ids.length ? Math.max(...ids) + 1 : 1;
+}
+
+export function findActiveRuleConflict(candidate, rules, {
+  excludeId = candidate?.id ?? null
+} = {}) {
+  if (!candidate || candidate.enabled === false) {
+    return null;
+  }
+
+  return (Array.isArray(rules) ? rules : []).find((existingRule) => (
+    existingRule?.id !== excludeId && areRulesConflicting(candidate, existingRule)
+  )) || null;
+}
+
+export function getActiveRuleConflicts(rules) {
+  const normalizedRules = Array.isArray(rules) ? rules : [];
+  const conflicts = [];
+
+  for (let leftIndex = 0; leftIndex < normalizedRules.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < normalizedRules.length; rightIndex += 1) {
+      const leftRule = normalizedRules[leftIndex];
+      const rightRule = normalizedRules[rightIndex];
+      if (areRulesConflicting(leftRule, rightRule)) {
+        conflicts.push({ leftRule, rightRule });
+      }
+    }
+  }
+
+  return conflicts;
+}
+
+export function areRulesConflicting(leftRule, rightRule) {
+  if (!leftRule || !rightRule || leftRule.enabled === false || rightRule.enabled === false) {
+    return false;
+  }
+
+  const sameTarget = leftRule.domain === rightRule.domain
+    && String(leftRule.headerName).toLowerCase() === String(rightRule.headerName).toLowerCase();
+  if (!sameTarget || leftRule.headerValue === rightRule.headerValue) {
+    return false;
+  }
+
+  return requestScopesOverlap(leftRule.requestScope, rightRule.requestScope);
+}
+
+export function requestScopesOverlap(leftScope, rightScope) {
+  const leftResources = RESOURCE_SCOPE_MAP[leftScope] || RESOURCE_SCOPE_MAP.all;
+  const rightResources = new Set(RESOURCE_SCOPE_MAP[rightScope] || RESOURCE_SCOPE_MAP.all);
+  return leftResources.some((resourceType) => rightResources.has(resourceType));
+}
+
+export function getRuleConflictMessage(conflictingRule) {
+  return `Conflicts with the active ${conflictingRule.headerName} rule for ${conflictingRule.domain} because their request scopes overlap.`;
 }
 
 export function filterRulesByHost(rules, hostname) {

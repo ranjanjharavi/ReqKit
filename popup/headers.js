@@ -1,7 +1,10 @@
 import {
   SCOPE_LABELS,
   filterRulesByHost,
+  findActiveRuleConflict,
+  getActiveRuleConflicts,
   getNextRuleId,
+  getRuleConflictMessage,
   groupRulesByDomain,
   validateRuleDraft
 } from '../shared/rules.js';
@@ -187,6 +190,9 @@ function initializeCurrentSite(activeTab) {
 function renderRules() {
   const { rules, currentHostname, view, editingId } = state.headers;
   const container = document.getElementById('ruleListContainer');
+  const conflictingIds = new Set(getActiveRuleConflicts(rules).flatMap((conflict) => (
+    [conflict.leftRule.id, conflict.rightRule.id]
+  )));
   updateCurrentSiteControls();
 
   const visibleRules = view === 'current' && currentHostname
@@ -201,9 +207,10 @@ function renderRules() {
   container.innerHTML = groupRulesByDomain(visibleRules).map(({ domain, rules: domainRules }) => {
     const allPaused = domainRules.every((rule) => !rule.enabled);
     const hasEditingRule = domainRules.some((rule) => rule.id === editingId);
+    const hasConflict = domainRules.some((rule) => conflictingIds.has(rule.id));
 
     return `
-      <article class="rule-card${allPaused && !hasEditingRule ? ' paused' : ''}">
+      <article class="rule-card${allPaused && !hasEditingRule ? ' paused' : ''}${hasConflict ? ' has-conflict' : ''}">
         <div class="rule-topline">
           <div class="rule-domain-heading">
             <p class="rule-domain">${escapeHtml(domain)}</p>
@@ -212,14 +219,14 @@ function renderRules() {
           <span class="chip rule-domain-count">${domainRules.length} ${domainRules.length === 1 ? 'rule' : 'rules'}</span>
         </div>
         <div class="domain-rule-list">
-          ${domainRules.map(renderRuleRow).join('')}
+          ${domainRules.map((rule) => renderRuleRow(rule, conflictingIds.has(rule.id))).join('')}
         </div>
       </article>
     `;
   }).join('');
 }
 
-function renderRuleRow(rule) {
+function renderRuleRow(rule, hasConflict) {
   if (rule.id === state.headers.editingId) {
     return renderRuleEditForm(rule);
   }
@@ -230,7 +237,7 @@ function renderRuleRow(rule) {
     : '<svg class="rule-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.75v10.5c0 .6.65.98 1.18.69l7.88-5.25a.79.79 0 0 0 0-1.38L5.18 2.06A.79.79 0 0 0 4 2.75Z" fill="currentColor"></path></svg>';
 
   return `
-    <div class="domain-rule-row${rule.enabled ? '' : ' is-paused'}">
+    <div class="domain-rule-row${rule.enabled ? '' : ' is-paused'}${hasConflict ? ' has-conflict' : ''}">
       <div class="domain-rule-content">
         <div class="rule-header-line">
           <span class="rule-header-name">${escapeHtml(rule.headerName)}</span>
@@ -240,6 +247,7 @@ function renderRuleRow(rule) {
           <div class="chip-row">
             <span class="chip">${escapeHtml(SCOPE_LABELS[rule.requestScope] || SCOPE_LABELS.all)}</span>
             <span class="status-pill${rule.enabled ? '' : ' is-off'}">${rule.enabled ? 'Active' : 'Paused'}</span>
+            ${hasConflict ? '<span class="conflict-pill" title="Different values target overlapping requests">Conflict</span>' : ''}
           </div>
           <div class="rule-actions">
             <button class="small-btn rule-icon-btn" type="button" data-rule-action="edit" data-id="${rule.id}" aria-label="Edit rule" title="Edit rule"><svg class="rule-icon" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="m11.85 1.65 2.5 2.5a1.2 1.2 0 0 1 0 1.7l-7.8 7.8-4.05.85.85-4.05 7.8-7.8a1.2 1.2 0 0 1 1.7 0ZM4.7 11.2l-.35 1.45 1.45-.35 7.45-7.45-2.5-2.5L4.7 11.2Z"/></svg></button>
@@ -378,6 +386,23 @@ async function addRule() {
 }
 
 async function toggleRule(id) {
+  const currentRule = state.headers.rules.find((rule) => rule.id === id);
+  if (!currentRule) {
+    return;
+  }
+
+  if (!currentRule.enabled) {
+    const conflictingRule = findActiveRuleConflict(
+      { ...currentRule, enabled: true },
+      state.headers.rules,
+      { excludeId: id }
+    );
+    if (conflictingRule) {
+      showStatus('headerStatus', getRuleConflictMessage(conflictingRule), 'error');
+      return;
+    }
+  }
+
   const updatedRules = state.headers.rules.map((rule) => (
     rule.id === id ? { ...rule, enabled: !rule.enabled } : rule
   ));
@@ -404,16 +429,20 @@ async function deleteRule(id) {
 
 async function saveEditedRule(id) {
   const statusId = `ruleEditStatus-${id}`;
-  const validation = validateRuleDraft(readEditDraft(id), state.headers.rules, { excludeId: id });
-  if (!validation.ok) {
-    showStatus(statusId, validation.error, 'error');
-    return;
-  }
-
-  if (!state.headers.rules.some((rule) => rule.id === id)) {
+  const currentRule = state.headers.rules.find((rule) => rule.id === id);
+  if (!currentRule) {
     state.headers.editingId = null;
     renderRules();
     showStatus('headerStatus', 'That rule no longer exists.', 'error');
+    return;
+  }
+
+  const validation = validateRuleDraft(readEditDraft(id), state.headers.rules, {
+    excludeId: id,
+    enabled: currentRule.enabled
+  });
+  if (!validation.ok) {
+    showStatus(statusId, validation.error, 'error');
     return;
   }
 

@@ -2,12 +2,16 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  areRulesConflicting,
   buildDynamicRule,
   filterRulesByHost,
+  findActiveRuleConflict,
+  getActiveRuleConflicts,
   getNextRuleId,
   groupRulesByDomain,
   normalizeDomain,
   normalizeRules,
+  requestScopesOverlap,
   validateRuleDraft
 } from '../shared/rules.js';
 
@@ -90,6 +94,46 @@ test('validateRuleDraft rejects invalid and duplicate rules', () => {
   }, []).error, 'Header values cannot contain line breaks.');
   assert.equal(validateRuleDraft(sampleRules[0], sampleRules).error, 'That rule already exists.');
   assert.equal(validateRuleDraft(sampleRules[0], sampleRules, { excludeId: 1 }).ok, true);
+});
+
+test('conflict detection finds different values on overlapping active scopes', () => {
+  const conflictingRule = {
+    id: 3,
+    domain: 'api.example.com',
+    headerName: 'x-auth',
+    headerValue: 'different',
+    requestScope: 'api',
+    enabled: true
+  };
+  const pagesRule = { ...sampleRules[0], id: 4, requestScope: 'pages' };
+  const sameValueRule = { ...conflictingRule, id: 5, headerValue: 'one' };
+  const pausedRule = { ...conflictingRule, id: 6, enabled: false };
+
+  assert.equal(requestScopesOverlap('all', 'pages'), true);
+  assert.equal(requestScopesOverlap('pages', 'api'), false);
+  assert.equal(areRulesConflicting(sampleRules[0], conflictingRule), true);
+  assert.equal(areRulesConflicting(pagesRule, conflictingRule), false);
+  assert.equal(areRulesConflicting(sampleRules[0], sameValueRule), false);
+  assert.equal(areRulesConflicting(sampleRules[0], pausedRule), false);
+  assert.equal(findActiveRuleConflict(conflictingRule, sampleRules)?.id, 1);
+  assert.deepEqual(getActiveRuleConflicts([sampleRules[0], conflictingRule]), [{
+    leftRule: sampleRules[0],
+    rightRule: conflictingRule
+  }]);
+});
+
+test('validateRuleDraft rejects active conflicts but permits paused drafts', () => {
+  const draft = {
+    domain: 'api.example.com',
+    headerName: 'x-auth',
+    headerValue: 'different',
+    requestScope: 'pages'
+  };
+
+  const activeResult = validateRuleDraft(draft, sampleRules);
+  assert.equal(activeResult.conflictId, 1);
+  assert.match(activeResult.error, /Conflicts with the active X-Auth rule/);
+  assert.equal(validateRuleDraft(draft, sampleRules, { enabled: false }).ok, true);
 });
 
 test('rule collection helpers preserve exact-host behavior', () => {

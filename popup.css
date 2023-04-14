@@ -931,6 +931,15 @@ button:disabled {
   opacity: 0.72;
 }
 
+.rule-card.has-conflict {
+  border-color: #fcd34d;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.08), var(--shadow-sm);
+}
+
+.rule-card.has-conflict::before {
+  background: linear-gradient(90deg, #f59e0b 0%, transparent 100%);
+}
+
 .domain-rule-content {
   display: grid;
   gap: 8px;
@@ -1021,6 +1030,11 @@ button:disabled {
 
 .domain-rule-row.is-paused {
   opacity: 0.72;
+}
+
+.domain-rule-row.has-conflict .rule-header-value {
+  border-color: #fcd34d;
+  background: linear-gradient(180deg, #fffbeb 0%, #fff7d6 100%);
 }
 
 .rule-edit-form {
@@ -1154,6 +1168,19 @@ button:disabled {
   background: #f1f5f9;
   border: 1px solid #e2e8f0;
   color: #475569;
+}
+
+.conflict-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 0 8px;
+  border: 1px solid #fcd34d;
+  border-radius: 999px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 10px;
+  font-weight: 700;
 }
 
 .chip {
