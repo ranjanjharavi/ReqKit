@@ -347,15 +347,12 @@ function updateCurrentSiteControls() {
 }
 
 function getEmptyRulesMessage() {
-  const { rules, currentHostname, view } = state.headers;
+  const { currentHostname, view } = state.headers;
   if (view === 'current' && currentHostname) {
-    const otherRulesMessage = rules.length
-      ? ' Your rules for other hosts are available under All hosts.'
-      : '';
-    return `<div class="empty-state">No rules for <strong>${escapeHtml(currentHostname)}</strong> yet. Add one above to start injecting headers on this site.${otherRulesMessage}</div>`;
+    return `<div class="empty-state">No rules for <code>${escapeHtml(currentHostname)}</code> yet.</div>`;
   }
 
-  return '<div class="empty-state">No header rules yet. Add one above to start injecting domain-bound headers.</div>';
+  return '<div class="empty-state">No header rules yet.</div>';
 }
 
 async function addRule() {

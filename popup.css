@@ -183,32 +183,11 @@ h1 {
   z-index: 1;
 }
 
-.panel-kicker {
-  margin-bottom: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #2563eb;
-}
-
 .panel-title {
   font-size: 19px;
+  font-weight: 700;
   line-height: 1.2;
   letter-spacing: -0.02em;
-}
-
-.panel-copy {
-  margin-top: 6px;
-  font-size: 13px;
-  line-height: 1.55;
-  color: var(--muted-foreground);
-  max-width: 320px;
-}
-
-.panel-copy strong,
-.helper-text strong {
-  color: var(--foreground);
 }
 
 .content-stack,
@@ -737,13 +716,14 @@ button:disabled {
 
 .header-composer-title {
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .header-composer-hint {
   overflow: hidden;
   color: var(--muted-foreground);
   font-size: 11px;
+  font-weight: 400;
   line-height: 1.4;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -826,7 +806,7 @@ button:disabled {
 .current-site-label {
   color: #64748b;
   font-size: 9px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -1196,8 +1176,16 @@ button:disabled {
   background: linear-gradient(180deg, rgba(239, 246, 255, 0.86) 0%, rgba(245, 250, 255, 0.92) 100%);
   text-align: center;
   font-size: 13px;
+  font-weight: 400;
   line-height: 1.55;
   color: var(--muted-foreground);
+}
+
+.empty-state code {
+  color: var(--foreground);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.95em;
+  font-weight: 500;
 }
 
 @keyframes panel-in {
