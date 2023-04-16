@@ -32,6 +32,7 @@ function transformUrl() {
   const authToken = document.getElementById('authToken').value.trim();
 
   if (!sourceValue || !authToken) {
+    clearTransformerResult();
     showStatus('transformerStatus', 'Source URL and auth token are required.', 'error');
     return;
   }
@@ -43,11 +44,15 @@ function transformUrl() {
     showStatus('transformerStatus', 'URL transformed.', 'success');
   } catch (error) {
     console.error(error);
-    state.transformer.result = null;
-    setTransformerOutput('');
-    toggleTransformerActions(false);
+    clearTransformerResult();
     showStatus('transformerStatus', 'Enter a valid URL or hostname/path combination.', 'error');
   }
+}
+
+function clearTransformerResult() {
+  state.transformer.result = null;
+  setTransformerOutput('');
+  toggleTransformerActions(false);
 }
 
 async function copyTransformedUrl() {
@@ -103,7 +108,9 @@ async function getExistingIncognitoWindow() {
 }
 
 function setTransformerOutput(value) {
-  document.getElementById('transformedUrl').value = value;
+  const outputValue = String(value || '');
+  document.getElementById('transformedUrl').value = outputValue;
+  document.getElementById('transformedUrlField').hidden = !outputValue;
 }
 
 function toggleTransformerActions(enabled) {
