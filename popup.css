@@ -207,6 +207,67 @@ h1 {
   display: none;
 }
 
+.transformer-output {
+  padding: 12px;
+  border: 1px solid rgba(191, 219, 254, 0.95);
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, #ffffff 0%, #f6faff 100%);
+  box-shadow: var(--shadow-xs);
+}
+
+.transformer-output-head,
+.transformer-output-actions {
+  display: flex;
+  align-items: center;
+}
+
+.transformer-output-head {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.transformer-output-actions {
+  gap: 6px;
+}
+
+.transformer-output-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1e40af;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.transformer-output-action:hover:not(:disabled) {
+  border-color: #93c5fd;
+  background: #dbeafe;
+  transform: translateY(-1px);
+}
+
+.transformer-output-action:focus-visible {
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.transformer-output-action svg {
+  width: 14px;
+  height: 14px;
+}
+
+.transformer-output input {
+  overflow: hidden;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .field-group {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
@@ -230,6 +291,18 @@ label,
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
+}
+
+.transformer-source-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.primary-btn.transformer-inline-action {
+  min-height: 42px;
+  padding-inline: 12px;
 }
 
 .token-library-head {
@@ -574,6 +647,10 @@ textarea {
   font-weight: 600;
   transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
   cursor: pointer;
+}
+
+#transformUrlBtn {
+  font-size: 12px;
 }
 
 .primary-btn,

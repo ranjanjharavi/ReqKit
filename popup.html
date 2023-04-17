@@ -31,7 +31,10 @@
           <div class="content-stack">
             <div class="field">
               <label for="sourceUrl">Source URL</label>
-              <input type="text" id="sourceUrl" placeholder="https://example.com/path or example.com/path" autocapitalize="off" autocorrect="off" spellcheck="false">
+              <div class="transformer-source-row">
+                <input type="text" id="sourceUrl" placeholder="https://example.com/path or example.com/path" autocapitalize="off" autocorrect="off" spellcheck="false">
+                <button id="transformUrlBtn" class="primary-btn transformer-inline-action" type="button">Transform</button>
+              </div>
             </div>
 
             <div class="field">
@@ -46,15 +49,19 @@
               <p class="helper-text">Paste a token, save it locally, and keep one active token selected below.</p>
             </div>
 
-            <div class="action-row">
-              <button id="transformUrlBtn" class="primary-btn" type="button">Transform URL</button>
-              <button id="copyUrlBtn" class="secondary-btn" type="button" disabled>Copy</button>
-              <button id="openUrlBtn" class="secondary-btn" type="button" disabled>Open in Incognito</button>
-            </div>
-
             <div id="transformedUrlField" class="field transformer-output" hidden>
-              <label for="transformedUrl">Transformed URL</label>
-              <textarea id="transformedUrl" readonly></textarea>
+              <div class="transformer-output-head">
+                <label for="transformedUrl">Transformed URL</label>
+                <div class="transformer-output-actions" role="group" aria-label="Transformed URL actions">
+                  <button id="copyUrlBtn" class="transformer-output-action" type="button" aria-label="Copy transformed URL" title="Copy URL" disabled>
+                    <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M5.5 2A1.5 1.5 0 0 0 4 3.5v7A1.5 1.5 0 0 0 5.5 12h5A1.5 1.5 0 0 0 12 10.5v-7A1.5 1.5 0 0 0 10.5 2h-5ZM3 3.5A2.5 2.5 0 0 1 5.5 1h5A2.5 2.5 0 0 1 13 3.5v7a2.5 2.5 0 0 1-2.5 2.5h-5A2.5 2.5 0 0 1 3 10.5v-7Z"/><path fill="currentColor" d="M1 5.5A2.5 2.5 0 0 1 3.5 3H4v1h-.5A1.5 1.5 0 0 0 2 5.5v7A1.5 1.5 0 0 0 3.5 14h5A1.5 1.5 0 0 0 10 12.5V12h1v.5A2.5 2.5 0 0 1 8.5 15h-5A2.5 2.5 0 0 1 1 12.5v-7Z"/></svg>
+                  </button>
+                  <button id="openUrlBtn" class="transformer-output-action" type="button" aria-label="Open transformed URL in Incognito" title="Open in Incognito" disabled>
+                    <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M9 2h5v5h-1.5V4.56L7.03 10.03 5.97 8.97l5.47-5.47H9V2Z"/><path fill="currentColor" d="M3.5 3h4v1.5h-4v8h8v-4H13v4a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 2 12.5v-8A1.5 1.5 0 0 1 3.5 3Z"/></svg>
+                  </button>
+                </div>
+              </div>
+              <input type="text" id="transformedUrl" readonly>
             </div>
 
             <div id="transformerStatus" class="status-msg"></div>
