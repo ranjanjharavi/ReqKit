@@ -28,11 +28,17 @@
   box-sizing: border-box;
 }
 
+html,
+body {
+  width: 480px;
+  height: 500px;
+}
+
 body {
   -webkit-font-smoothing: antialiased;
-  width: 480px;
   margin: 0;
-  font-family: 'Inter', sans-serif;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   color: var(--foreground);
   background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
   position: relative;
@@ -65,6 +71,7 @@ body::after {
 .shell {
   position: relative;
   z-index: 1;
+  height: 100%;
   padding: 20px;
 }
 
@@ -83,7 +90,9 @@ h1 {
 
 .tabs-shell {
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 14px;
+  height: 100%;
 }
 
 .tabs-list {
@@ -123,16 +132,22 @@ h1 {
 
 .tab-panel {
   display: none;
+  min-height: 0;
 }
 
 .tab-panel.active {
   display: block;
+  min-height: 0;
   animation: panel-in 0.22s ease;
 }
 
 .panel {
   position: relative;
-  overflow: hidden;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   padding: 20px;
   border: 1px solid rgba(191, 219, 254, 0.95);
   border-radius: var(--radius-lg);
@@ -714,11 +729,16 @@ button:disabled {
 }
 
 .status-msg {
-  min-height: 18px;
+  display: none;
   font-size: 12px;
   line-height: 1.4;
   color: transparent;
   transition: color 0.18s ease;
+}
+
+.status-msg.visible {
+  display: block;
+  min-height: 18px;
 }
 
 .status-msg.visible.success {
