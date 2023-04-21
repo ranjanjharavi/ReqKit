@@ -272,12 +272,14 @@ h1 {
   height: 14px;
 }
 
-.transformer-output input {
-  overflow: hidden;
+.transformer-output textarea {
+  min-height: 96px;
+  resize: none;
+  overflow-wrap: anywhere;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.5;
+  white-space: pre-wrap;
 }
 
 .field-group {
