@@ -112,20 +112,9 @@
                     <p class="helper-text">Only the hostname is used. Paths are ignored.</p>
                   </div>
 
-                  <div class="field-group">
-                    <div class="field">
-                      <label for="headerName">Header name</label>
-                      <input type="text" id="headerName" placeholder="X-Custom-Auth">
-                    </div>
-
-                    <div class="field">
-                      <label for="requestScope">Request scope</label>
-                      <select id="requestScope">
-                        <option value="all">All requests</option>
-                        <option value="pages">Page navigations only</option>
-                        <option value="api">API and asset calls</option>
-                      </select>
-                    </div>
+                  <div class="field">
+                    <label for="headerName">Header name</label>
+                    <input type="text" id="headerName" placeholder="X-Custom-Auth">
                   </div>
 
                   <div class="field">
@@ -142,6 +131,11 @@
             </div>
 
             <div id="headerStatus" class="status-msg"></div>
+            <div id="ruleSearchContainer" class="rule-search" hidden>
+              <label class="sr-only" for="ruleSearchInput">Search header rules</label>
+              <svg class="rule-search-icon" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M7 2a5 5 0 1 0 3.16 8.87l2.98 2.98 1.06-1.06-2.98-2.98A5 5 0 0 0 7 2Zm-3.5 5a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0Z"/></svg>
+              <input id="ruleSearchInput" type="search" placeholder="Search hosts and headers" autocomplete="off" spellcheck="false">
+            </div>
             <div id="ruleListContainer" class="rule-list"></div>
           </div>
         </article>

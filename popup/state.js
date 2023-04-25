@@ -5,7 +5,10 @@ export const state = {
     editingId: null,
     composerOpen: false,
     currentHostname: '',
-    view: 'current'
+    view: 'current',
+    collapsedDomains: new Set(),
+    revealedRuleIds: new Set(),
+    searchQuery: ''
   },
   tokens: {
     items: [],

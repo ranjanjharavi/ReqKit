@@ -15,15 +15,7 @@ export const RESOURCE_SCOPE_MAP = {
     'media',
     'websocket',
     'other'
-  ],
-  pages: ['main_frame', 'sub_frame'],
-  api: ['xmlhttprequest', 'script', 'stylesheet', 'image', 'font', 'media', 'websocket', 'ping', 'other']
-};
-
-export const SCOPE_LABELS = {
-  all: 'All requests',
-  pages: 'Pages only',
-  api: 'API and assets'
+  ]
 };
 
 export function normalizeRules(rules) {
@@ -63,7 +55,7 @@ export function normalizeRule(rule, usedIds = new Set(), getNextId = createSeque
     domain,
     headerName,
     headerValue,
-    requestScope: RESOURCE_SCOPE_MAP[rule.requestScope] ? rule.requestScope : 'all',
+    requestScope: 'all',
     enabled: rule.enabled !== false
   };
 }
@@ -97,7 +89,7 @@ export function validateRuleDraft(draft, existingRules, {
     domain: normalizeDomain(draft?.domain),
     headerName: String(draft?.headerName || '').trim(),
     headerValue: String(draft?.headerValue || '').trim(),
-    requestScope: RESOURCE_SCOPE_MAP[draft?.requestScope] ? draft.requestScope : 'all'
+    requestScope: 'all'
   };
 
   if (!rule.domain || !rule.headerName || !rule.headerValue) {
@@ -117,7 +109,6 @@ export function validateRuleDraft(draft, existingRules, {
     && existingRule.domain === rule.domain
     && existingRule.headerName.toLowerCase() === rule.headerName.toLowerCase()
     && existingRule.headerValue === rule.headerValue
-    && existingRule.requestScope === rule.requestScope
   ));
 
   if (duplicateRule) {
@@ -197,17 +188,11 @@ export function areRulesConflicting(leftRule, rightRule) {
     return false;
   }
 
-  return requestScopesOverlap(leftRule.requestScope, rightRule.requestScope);
-}
-
-export function requestScopesOverlap(leftScope, rightScope) {
-  const leftResources = RESOURCE_SCOPE_MAP[leftScope] || RESOURCE_SCOPE_MAP.all;
-  const rightResources = new Set(RESOURCE_SCOPE_MAP[rightScope] || RESOURCE_SCOPE_MAP.all);
-  return leftResources.some((resourceType) => rightResources.has(resourceType));
+  return true;
 }
 
 export function getRuleConflictMessage(conflictingRule) {
-  return `Conflicts with the active ${conflictingRule.headerName} rule for ${conflictingRule.domain} because their request scopes overlap.`;
+  return `Conflicts with the active ${conflictingRule.headerName} rule for ${conflictingRule.domain} because they use different values.`;
 }
 
 export function filterRulesByHost(rules, hostname) {
@@ -249,7 +234,7 @@ export function buildDynamicRule(rule) {
       ]
     },
     condition: {
-      resourceTypes: RESOURCE_SCOPE_MAP[rule.requestScope] || RESOURCE_SCOPE_MAP.all,
+      resourceTypes: RESOURCE_SCOPE_MAP.all,
       regexFilter: String.raw`^https?:\/\/${escapeRegex(rule.domain)}(?::\d+)?(?:[/?#]|$)`
     }
   };

@@ -21,6 +21,11 @@ const nextRules = [{
   enabled: true
 }];
 
+const normalizedNextRules = [{
+  ...nextRules[0],
+  requestScope: 'all'
+}];
+
 test('commitRuleSet applies and stores normalized rules', async () => {
   const applied = [];
   const stored = [];
@@ -31,9 +36,9 @@ test('commitRuleSet applies and stores normalized rules', async () => {
     storeRules: async (rules) => stored.push(rules)
   });
 
-  assert.deepEqual(result, nextRules);
-  assert.deepEqual(applied, [nextRules]);
-  assert.deepEqual(stored, [nextRules]);
+  assert.deepEqual(result, normalizedNextRules);
+  assert.deepEqual(applied, [normalizedNextRules]);
+  assert.deepEqual(stored, [normalizedNextRules]);
 });
 
 test('commitRuleSet restores dynamic rules when storage fails', async () => {
@@ -48,7 +53,7 @@ test('commitRuleSet restores dynamic rules when storage fails', async () => {
     }
   }), storageError);
 
-  assert.deepEqual(applied, [nextRules, previousRules]);
+  assert.deepEqual(applied, [normalizedNextRules, previousRules]);
 });
 
 test('commitRuleSet rejects malformed rule collections before applying them', async () => {

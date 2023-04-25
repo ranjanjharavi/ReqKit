@@ -11,7 +11,6 @@ import {
   groupRulesByDomain,
   normalizeDomain,
   normalizeRules,
-  requestScopesOverlap,
   validateRuleDraft
 } from '../shared/rules.js';
 
@@ -49,7 +48,7 @@ test('normalizeDomain rejects unsupported protocols and empty values', () => {
 test('normalizeRules repairs identifiers and normalizes fields', () => {
   const normalized = normalizeRules([
     { ...sampleRules[0], domain: 'HTTPS://API.EXAMPLE.COM/path' },
-    { ...sampleRules[1], id: 1, requestScope: 'unknown' },
+    { ...sampleRules[1], id: 1 },
     { id: 3, domain: '', headerName: 'X-Missing', headerValue: 'value' },
     { id: 4, domain: 'example.com', headerName: 'Bad Header', headerValue: 'value' }
   ]);
@@ -75,7 +74,7 @@ test('validateRuleDraft normalizes valid input', () => {
       domain: 'api.example.com',
       headerName: 'X-Test',
       headerValue: 'value',
-      requestScope: 'pages'
+      requestScope: 'all'
     }
   });
 });
@@ -96,7 +95,7 @@ test('validateRuleDraft rejects invalid and duplicate rules', () => {
   assert.equal(validateRuleDraft(sampleRules[0], sampleRules, { excludeId: 1 }).ok, true);
 });
 
-test('conflict detection finds different values on overlapping active scopes', () => {
+test('conflict detection finds different active values for the same header and host', () => {
   const conflictingRule = {
     id: 3,
     domain: 'api.example.com',
@@ -109,10 +108,8 @@ test('conflict detection finds different values on overlapping active scopes', (
   const sameValueRule = { ...conflictingRule, id: 5, headerValue: 'one' };
   const pausedRule = { ...conflictingRule, id: 6, enabled: false };
 
-  assert.equal(requestScopesOverlap('all', 'pages'), true);
-  assert.equal(requestScopesOverlap('pages', 'api'), false);
   assert.equal(areRulesConflicting(sampleRules[0], conflictingRule), true);
-  assert.equal(areRulesConflicting(pagesRule, conflictingRule), false);
+  assert.equal(areRulesConflicting(pagesRule, conflictingRule), true);
   assert.equal(areRulesConflicting(sampleRules[0], sameValueRule), false);
   assert.equal(areRulesConflicting(sampleRules[0], pausedRule), false);
   assert.equal(findActiveRuleConflict(conflictingRule, sampleRules)?.id, 1);

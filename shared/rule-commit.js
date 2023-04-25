@@ -17,7 +17,7 @@ export async function commitRuleSet(nextRules, {
   const [conflict] = getActiveRuleConflicts(normalizedRules);
   if (conflict) {
     throw new Error(
-      `Active ${conflict.leftRule.headerName} rules for ${conflict.leftRule.domain} conflict because their request scopes overlap.`
+      `Active ${conflict.leftRule.headerName} rules for ${conflict.leftRule.domain} conflict because they use different values.`
     );
   }
 
