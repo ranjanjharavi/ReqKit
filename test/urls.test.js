@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { buildAuthRedirectUrl } from '../shared/transformer.js';
+import { buildAuthRedirectUrl, buildTransformedUrl } from '../shared/transformer.js';
 import { parseUserUrl } from '../shared/urls.js';
 
 test('parseUserUrl accepts HTTP URLs and hostname/path input', () => {
@@ -24,4 +24,49 @@ test('buildAuthRedirectUrl preserves the redirect path and display protocol choi
     buildAuthRedirectUrl('example.com/path', 'token').displayUrl,
     'example.com/?auth_token=token&redirect=/path'
   );
+});
+
+test('buildTransformedUrl applies query presets without requiring auth', () => {
+  assert.deepEqual(buildTransformedUrl('https://example.com/page?x=1#section', {
+    queryPresets: ['disableCustomCode']
+  }), {
+    browserUrl: 'https://example.com/page?x=1&disableCustomJs=true&disableCustomCss=true#section',
+    displayUrl: 'https://example.com/page?x=1&disableCustomJs=true&disableCustomCss=true#section'
+  });
+});
+
+test('buildTransformedUrl applies query presets before wrapping with auth', () => {
+  assert.deepEqual(buildTransformedUrl('https://example.com/page?x=1#section', {
+    authRedirect: true,
+    authToken: 'abc 123',
+    queryPresets: ['disableCustomCode']
+  }), {
+    browserUrl: 'https://example.com/?auth_token=abc%20123&redirect=/page%3Fx%3D1%26disableCustomJs%3Dtrue%26disableCustomCss%3Dtrue%23section',
+    displayUrl: 'https://example.com/?auth_token=abc%20123&redirect=/page%3Fx%3D1%26disableCustomJs%3Dtrue%26disableCustomCss%3Dtrue%23section'
+  });
+});
+
+test('query presets overwrite existing flags and retain protocol display behavior', () => {
+  const result = buildTransformedUrl('example.com/page?disableCustomJs=false', {
+    queryPresets: ['disableCustomCode', 'disableCustomCode']
+  });
+
+  assert.equal(
+    result.browserUrl,
+    'https://example.com/page?disableCustomJs=true&disableCustomCss=true'
+  );
+  assert.equal(
+    result.displayUrl,
+    'example.com/page?disableCustomJs=true&disableCustomCss=true'
+  );
+});
+
+test('buildTransformedUrl rejects missing or unknown transform options', () => {
+  assert.throws(() => buildTransformedUrl('example.com/page'), /Missing transformation option/);
+  assert.throws(() => buildTransformedUrl('example.com/page', {
+    queryPresets: ['unknown']
+  }), /Unknown query preset/);
+  assert.throws(() => buildTransformedUrl('example.com/page', {
+    authRedirect: true
+  }), /Missing auth token/);
 });

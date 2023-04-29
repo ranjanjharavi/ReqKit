@@ -15,6 +15,10 @@ export const state = {
     activeToken: ''
   },
   transformer: {
-    result: null
+    result: null,
+    options: {
+      authRedirect: true,
+      disableCustomCode: false
+    }
   }
 };
