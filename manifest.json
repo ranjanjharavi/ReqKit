@@ -9,11 +9,19 @@
     "service_worker": "background.js",
     "type": "module"
   },
+  "icons": {
+    "16": "images/reqkit-16.png",
+    "32": "images/reqkit-32.png",
+    "48": "images/reqkit-48.png",
+    "128": "images/reqkit-128.png"
+  },
   "action": {
     "default_popup": "popup.html",
     "default_title": "ReqKit",
     "default_icon": {
-      "16": "images/plug.png"
+      "16": "images/reqkit-16.png",
+      "32": "images/reqkit-32.png",
+      "48": "images/reqkit-48.png"
     }
   }
 }
