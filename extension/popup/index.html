@@ -3,10 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ReqKit</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <div class="shell">
+  <section id="privacyGate" class="privacy-gate" aria-labelledby="privacyGateTitle">
+    <img class="privacy-gate-icon" src="../icons/reqkit-128.png" width="72" height="72" alt="ReqKit">
+    <span class="privacy-gate-kicker">Before you begin</span>
+    <h1 id="privacyGateTitle">Choose when ReqKit handles your data</h1>
+    <p>ReqKit reads the active tab URL locally and stores your default URL recipe and header rules in this Chrome profile. Query values are added only when you transform a URL; header values are sent only to exact HTTPS sites you approve.</p>
+    <p>ReqKit has no analytics or developer server. Query values may be visible in browser and destination logs.</p>
+    <a class="privacy-policy-link" href="../privacy/index.html" target="_blank" rel="noreferrer">Read the privacy policy</a>
+    <button id="privacyConsentBtn" class="primary-btn privacy-consent-btn" type="button">Accept and continue</button>
+    <div id="privacyConsentStatus" class="status-msg privacy-consent-status" role="status" aria-live="polite"></div>
+  </section>
+
+  <div id="appShell" class="shell" hidden>
     <main class="tabs-shell">
       <div class="tabs-list" role="tablist" aria-label="Utility features">
         <button id="transformer-tab" class="tab-btn active" type="button" role="tab" aria-selected="true" aria-controls="transformer-panel" data-tab="transformer">URL transform</button>
@@ -24,36 +36,42 @@
             <div class="field">
               <label for="sourceUrl">Source URL</label>
               <div class="transformer-source-row">
-                <input type="text" id="sourceUrl" placeholder="https://example.com/path or example.com/path" autocapitalize="off" autocorrect="off" spellcheck="false">
+                <input type="text" id="sourceUrl" placeholder="https://example.com/path or http://localhost:3000/path" autocapitalize="off" autocorrect="off" spellcheck="false">
                 <button id="transformUrlBtn" class="primary-btn transformer-inline-action" type="button">Transform</button>
               </div>
+              <p class="helper-text">HTTPS is required, except HTTP on localhost and loopback addresses.</p>
             </div>
 
-            <div class="transformer-options" aria-labelledby="transformOptionsLabel">
-              <span id="transformOptionsLabel" class="transformer-options-label">Options</span>
-              <div class="transformer-option-list">
-                <button id="authRedirectOption" class="transformer-option-btn active" type="button" role="switch" aria-checked="true" aria-controls="authTokenSection tokenLibrarySection" data-transform-option="authRedirect" title="Wrap the target URL with the selected auth token">
-                  <span class="transformer-option-mark" aria-hidden="true"><svg viewBox="0 0 16 16"><path fill="currentColor" d="m3.2 8.2 3 3 6.6-6.6 1.05 1.05-7.65 7.65-4.05-4.05L3.2 8.2Z"/></svg></span>
-                  Auth redirect
-                </button>
-                <button id="disableCustomCodeOption" class="transformer-option-btn" type="button" role="switch" aria-checked="false" data-transform-option="disableCustomCode" title="Add disableCustomJs and disableCustomCss query parameters">
-                  <span class="transformer-option-mark" aria-hidden="true"><svg viewBox="0 0 16 16"><path fill="currentColor" d="m3.2 8.2 3 3 6.6-6.6 1.05 1.05-7.65 7.65-4.05-4.05L3.2 8.2Z"/></svg></span>
-                  Disable custom code
-                </button>
+            <div class="default-recipe-toolbar">
+              <div class="default-recipe-title">
+                <span class="default-recipe-icon" aria-hidden="true"><svg viewBox="0 0 16 16"><path fill="currentColor" d="M3 2h1.5v3H3V2Zm0 6h1.5v6H3V8Zm4.25-6h1.5v7h-1.5V2Zm0 10h1.5v2h-1.5v-2ZM11.5 2H13v1.5h-1.5V2Zm0 4.5H13V14h-1.5V6.5ZM1.5 5h4.5v3H1.5V5Zm4.25 4h4.5v3h-4.5V9ZM10 3.5h4.5v3H10v-3Z"/></svg></span>
+                <span><small>URL recipe</small><strong>Default</strong></span>
+              </div>
+              <div class="icon-actions" role="group" aria-label="Recipe actions">
+                <button id="editRecipeBtn" class="icon-btn" type="button" aria-label="Edit default recipe" title="Edit default recipe"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="m11.7 1.3 3 3-8.9 8.9-3.8.8.8-3.8 8.9-8.9ZM4.15 10.95l-.27 1.17 1.17-.27 7.53-7.53-.9-.9-7.53 7.53Z"/></svg></button>
+                <button id="resetRecipeBtn" class="icon-btn" type="button" aria-label="Reset default recipe" title="Reset default recipe"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M3.1 4.3A6 6 0 1 1 2 9.5h1.55a4.5 4.5 0 1 0 .75-4.1L6 7H1V2l2.1 2.3Z"/></svg></button>
               </div>
             </div>
 
-            <div id="authTokenSection" class="field">
-              <label for="authToken">Auth token</label>
-              <div class="token-entry-row">
-                <div class="input-icon-wrapper">
-                  <input type="password" id="authToken" placeholder="Stored locally on this browser" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
-                  <button id="toggleTokenVisibility" class="input-eye-btn" type="button" aria-label="Show token" title="Show token"><svg class="eye-icon" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M1.5 8C3 5 5.3 3.5 8 3.5S13 5 14.5 8C13 11 10.7 12.5 8 12.5S3 11 1.5 8Zm6.5 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm0-1.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Z"/></svg></button>
+            <div id="recipeSummary" class="recipe-summary" aria-live="polite"></div>
+            <div id="sensitiveWarning" class="inline-warning" hidden><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1 15 14H1L8 1Zm-.75 4v5h1.5V5h-1.5Zm0 6.5V13h1.5v-1.5h-1.5Z"/></svg>Query values may appear in browser and server logs.</div>
+
+            <section id="recipeEditor" class="recipe-editor" aria-labelledby="recipeEditorTitle" hidden>
+              <div class="subpanel-head">
+                <h3 id="recipeEditorTitle">Edit default recipe</h3>
+                <button id="cancelRecipeBtn" class="icon-btn" type="button" aria-label="Close recipe editor" title="Close"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="m3.2 2.15 4.8 4.8 4.8-4.8 1.05 1.05L9.05 8l4.8 4.8-1.05 1.05L8 9.05l-4.8 4.8-1.05-1.05L6.95 8l-4.8-4.8L3.2 2.15Z"/></svg></button>
+              </div>
+              <form id="recipeForm">
+                <div class="capture-editor-row">
+                  <label class="switch-row" for="capturePathToggle"><input id="capturePathToggle" type="checkbox"><span class="switch-control" aria-hidden="true"></span><span>Move source path into a query parameter</span></label>
+                  <div id="capturePathKeyField" class="field compact-field" hidden><label for="capturePathKey">Path query key</label><input id="capturePathKey" type="text" placeholder="redirect" autocomplete="off"></div>
                 </div>
-                <button id="saveTokenBtn" class="small-btn rule-icon-btn token-save-btn" type="button" aria-label="Save token to library" title="Save token to library"><svg class="rule-icon" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M4 2a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v11.47a.5.5 0 0 1-.78.41L8 11.58l-3.22 2.3A.5.5 0 0 1 4 13.47V2Z"/></svg></button>
-              </div>
-              <p class="helper-text">Paste a token, save it locally, and keep one active token selected below.</p>
-            </div>
+                <div class="parameter-editor-head"><span class="field-label">Query parameters</span><button id="addParameterBtn" class="small-btn" type="button">+ Add</button></div>
+                <div id="parameterEditorList" class="parameter-editor-list"></div>
+                <div id="recipeEditorStatus" class="status-msg"></div>
+                <div class="action-row"><button class="primary-btn" type="submit">Save</button></div>
+              </form>
+            </section>
 
             <div id="transformedUrlField" class="field transformer-output" hidden>
               <div class="transformer-output-head">
@@ -62,7 +80,7 @@
                   <button id="copyUrlBtn" class="transformer-output-action" type="button" aria-label="Copy transformed URL" title="Copy URL" disabled>
                     <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M5.5 2A1.5 1.5 0 0 0 4 3.5v7A1.5 1.5 0 0 0 5.5 12h5A1.5 1.5 0 0 0 12 10.5v-7A1.5 1.5 0 0 0 10.5 2h-5ZM3 3.5A2.5 2.5 0 0 1 5.5 1h5A2.5 2.5 0 0 1 13 3.5v7a2.5 2.5 0 0 1-2.5 2.5h-5A2.5 2.5 0 0 1 3 10.5v-7Z"/><path fill="currentColor" d="M1 5.5A2.5 2.5 0 0 1 3.5 3H4v1h-.5A1.5 1.5 0 0 0 2 5.5v7A1.5 1.5 0 0 0 3.5 14h5A1.5 1.5 0 0 0 10 12.5V12h1v.5A2.5 2.5 0 0 1 8.5 15h-5A2.5 2.5 0 0 1 1 12.5v-7Z"/></svg>
                   </button>
-                  <button id="openUrlBtn" class="transformer-output-action" type="button" aria-label="Open transformed URL in Incognito" title="Open in Incognito" disabled>
+                  <button id="openUrlBtn" class="transformer-output-action" type="button" aria-label="Open transformed URL in a new tab" title="Open in new tab" disabled>
                     <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M9 2h5v5h-1.5V4.56L7.03 10.03 5.97 8.97l5.47-5.47H9V2Z"/><path fill="currentColor" d="M3.5 3h4v1.5h-4v8h8v-4H13v4a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 2 12.5v-8A1.5 1.5 0 0 1 3.5 3Z"/></svg>
                   </button>
                 </div>
@@ -71,15 +89,6 @@
             </div>
 
             <div id="transformerStatus" class="status-msg"></div>
-
-            <div id="tokenLibrarySection" class="field">
-              <div class="token-library-head">
-                <div class="field-label">Saved tokens</div>
-                <span id="tokenLibraryCount" class="token-count-pill">0 saved</span>
-              </div>
-              <div id="tokenListContainer" class="token-list"></div>
-            </div>
-
           </div>
         </article>
       </section>
@@ -121,19 +130,20 @@
               <div id="headerComposerBody" class="header-composer-body" hidden>
                 <form id="headerComposerForm" class="header-composer-form">
                   <div class="field">
-                    <label for="domain">Exact host</label>
-                    <input type="text" id="domain" placeholder="example.com or https://example.com/path">
-                    <p class="helper-text">Only the hostname is used. Paths are ignored.</p>
+                    <label for="domain">Exact HTTPS host</label>
+                    <input type="text" id="domain" placeholder="https://api.example.com">
+                    <p class="helper-text">HTTPS is required. Only the exact hostname is used; paths are ignored.</p>
                   </div>
 
                   <div class="field">
                     <label for="headerName">Header name</label>
-                    <input type="text" id="headerName" placeholder="X-Custom-Auth">
+                    <input type="text" id="headerName" placeholder="X-ReqKit-Debug">
                   </div>
 
                   <div class="field">
                     <label for="headerValue">Header value</label>
-                    <input type="text" id="headerValue" placeholder="token-or-static-value">
+                    <input type="text" id="headerValue" placeholder="enabled">
+                    <p class="helper-text disclosure-text">Stored in this Chrome profile and sent only to the exact HTTPS host you approve. Use only authorized systems.</p>
                   </div>
 
                   <div class="action-row header-composer-actions">
@@ -158,6 +168,6 @@
     </main>
   </div>
 
-  <script type="module" src="popup/main.js"></script>
+  <script type="module" src="main.js"></script>
 </body>
 </html>

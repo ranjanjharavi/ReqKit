@@ -91,18 +91,7 @@ async function updateBadge(rules) {
 
 async function getStoredRules() {
   const localData = await storageAreaGet(chrome.storage.local, [RULE_STORAGE_KEY]);
-  if (Object.prototype.hasOwnProperty.call(localData, RULE_STORAGE_KEY)) {
-    return normalizeRules(localData[RULE_STORAGE_KEY] || []);
-  }
-
-  const legacyData = await storageAreaGet(chrome.storage.sync, [RULE_STORAGE_KEY]);
-  const migratedRules = normalizeRules(legacyData[RULE_STORAGE_KEY] || []);
-
-  if (migratedRules.length) {
-    await storeRules(migratedRules);
-  }
-
-  return migratedRules;
+  return normalizeRules(localData[RULE_STORAGE_KEY] || []);
 }
 
 function storeRules(rules) {

@@ -4,13 +4,15 @@ import {
   getActiveRuleConflicts,
   getNextRuleId,
   getRuleConflictMessage,
+  getRuleOriginPattern,
   groupRulesByDomain,
   validateRuleDraft
-} from '../shared/rules.js';
-import { isHttpUrl, parseUserUrl } from '../shared/urls.js';
-import { commitRules, getStoredRules } from './rules-api.js';
-import { state } from './state.js';
-import { escapeHtml, showStatus } from './ui.js';
+} from '../../shared/rules.js';
+import { removeOriginPermission, requestOriginPermission } from '../../shared/chrome-api.js';
+import { parseUserUrl } from '../../shared/urls.js';
+import { commitRules, getStoredRules } from './api.js';
+import { state } from '../state.js';
+import { escapeHtml, showStatus } from '../ui.js';
 
 export function bindHeaderEvents() {
   document.getElementById('headerComposerToggle').addEventListener('click', toggleHeaderComposer);
@@ -190,7 +192,7 @@ function setHeaderComposerExpanded(expanded, {
 
 function initializeCurrentSite(activeTab) {
   const tabUrl = activeTab?.url || '';
-  if (!isHttpUrl(tabUrl)) {
+  if (!/^https:\/\//i.test(tabUrl)) {
     state.headers.currentHostname = '';
     state.headers.view = 'all';
     return;
@@ -378,18 +380,18 @@ export function isSensitiveHeaderName(headerName) {
 
 function renderRuleEditForm(rule) {
   return `
-    <div class="domain-rule-row is-editing">
+    <div class="domain-rule-row">
       <form class="rule-edit-form" data-id="${rule.id}">
         <div class="rule-edit-grid">
-          <div class="rule-edit-field rule-edit-domain">
-            <label for="editDomain-${rule.id}">Exact host</label>
+          <div class="rule-edit-field">
+            <label for="editDomain-${rule.id}">Exact HTTPS host</label>
             <input id="editDomain-${rule.id}" type="text" value="${escapeHtml(rule.domain)}" autocapitalize="off" autocorrect="off" spellcheck="false">
           </div>
           <div class="rule-edit-field">
             <label for="editHeaderName-${rule.id}">Header name</label>
             <input id="editHeaderName-${rule.id}" type="text" value="${escapeHtml(rule.headerName)}" autocapitalize="off" autocorrect="off" spellcheck="false">
           </div>
-          <div class="rule-edit-field rule-edit-value">
+          <div class="rule-edit-field">
             <label for="editHeaderValue-${rule.id}">Header value</label>
             <input id="editHeaderValue-${rule.id}" type="text" value="${escapeHtml(rule.headerValue)}" autocapitalize="off" autocorrect="off" spellcheck="false">
           </div>
@@ -536,7 +538,7 @@ function getEmptyRulesMessage() {
       <div class="empty-state">
         <div class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 16 16"><path fill="currentColor" d="M7.25 2.5h1.5v4.75h4.75v1.5H8.75v4.75h-1.5V8.75H2.5v-1.5h4.75V2.5Z"/></svg></div>
         <p class="empty-state-title">No rules for <code>${escapeHtml(currentHostname)}</code></p>
-        <p>Add a rule to modify requests from this site.</p>
+        <p>Add a rule to modify requests sent to this HTTPS host.</p>
         <button class="primary-btn empty-state-action" type="button" data-rule-action="open-composer">Add rule for this site</button>
       </div>
     `;
@@ -559,16 +561,18 @@ async function addRule() {
     return false;
   }
 
+  const newRule = {
+    id: getNextRuleId(state.headers.rules),
+    ...validation.rule,
+    enabled: true
+  };
   const updatedRules = [
     ...state.headers.rules,
-    {
-      id: getNextRuleId(state.headers.rules),
-      ...validation.rule,
-      enabled: true
-    }
+    newRule
   ];
 
   try {
+    await ensureRulePermission(newRule);
     await persistRules(updatedRules);
     showStatus('headerStatus', 'Header rule added.', 'success');
     return true;
@@ -595,6 +599,14 @@ async function toggleRule(id) {
       showStatus('headerStatus', getRuleConflictMessage(conflictingRule), 'error');
       return;
     }
+
+    try {
+      await ensureRulePermission(currentRule);
+    } catch (error) {
+      console.error(error);
+      showStatus('headerStatus', error.message, 'error');
+      return;
+    }
   }
 
   const updatedRules = state.headers.rules.map((rule) => (
@@ -612,8 +624,15 @@ async function toggleRule(id) {
 }
 
 async function deleteRule(id) {
+  const ruleToDelete = state.headers.rules.find((rule) => rule.id === id);
+  if (!ruleToDelete) {
+    return;
+  }
+
   try {
-    await persistRules(state.headers.rules.filter((rule) => rule.id !== id));
+    const updatedRules = state.headers.rules.filter((rule) => rule.id !== id);
+    await persistRules(updatedRules);
+    await releaseUnusedPermission(ruleToDelete, updatedRules);
     state.headers.revealedRuleIds.delete(id);
     showStatus('headerStatus', 'Rule removed.', 'success');
   } catch (error) {
@@ -644,16 +663,42 @@ async function saveEditedRule(id) {
   const updatedRules = state.headers.rules.map((rule) => (
     rule.id === id ? { ...rule, ...validation.rule } : rule
   ));
+  const updatedRule = updatedRules.find((rule) => rule.id === id);
 
   try {
+    if (updatedRule.enabled) {
+      await ensureRulePermission(updatedRule);
+    }
     state.headers.editingId = null;
     state.headers.revealedRuleIds.delete(id);
     await persistRules(updatedRules);
+    if (currentRule.domain !== updatedRule.domain) {
+      await releaseUnusedPermission(currentRule, updatedRules);
+    }
     showStatus('headerStatus', 'Header rule updated.', 'success');
   } catch (error) {
     state.headers.editingId = id;
     console.error(error);
     showStatus(statusId, error.message || 'Could not update that rule.', 'error');
+  }
+}
+
+async function ensureRulePermission(rule) {
+  const granted = await requestOriginPermission(getRuleOriginPattern(rule));
+  if (!granted) {
+    throw new Error(`Site access to https://${rule.domain} is required to enable this rule.`);
+  }
+}
+
+async function releaseUnusedPermission(rule, remainingRules) {
+  if (remainingRules.some((candidate) => candidate.domain === rule.domain)) {
+    return;
+  }
+
+  try {
+    await removeOriginPermission(getRuleOriginPattern(rule));
+  } catch (error) {
+    console.error(`Could not release site access for ${rule.domain}.`, error);
   }
 }
 
@@ -666,8 +711,7 @@ function readCreateDraft() {
   return {
     domain: document.getElementById('domain').value,
     headerName: document.getElementById('headerName').value,
-    headerValue: document.getElementById('headerValue').value,
-    requestScope: 'all'
+    headerValue: document.getElementById('headerValue').value
   };
 }
 
@@ -675,8 +719,7 @@ function readEditDraft(id) {
   return {
     domain: document.getElementById(`editDomain-${id}`).value,
     headerName: document.getElementById(`editHeaderName-${id}`).value,
-    headerValue: document.getElementById(`editHeaderValue-${id}`).value,
-    requestScope: 'all'
+    headerValue: document.getElementById(`editHeaderValue-${id}`).value
   };
 }
 

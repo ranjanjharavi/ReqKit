@@ -2,10 +2,14 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  createTab,
   getCurrentTab,
+  removeOriginPermission,
+  requestOriginPermission,
   sendRuntimeMessage,
-  storageLocalGet
-} from '../shared/chrome-api.js';
+  storageLocalGet,
+  storageLocalSet
+} from '../extension/shared/chrome-api.js';
 
 function createChromeApi() {
   return {
@@ -19,12 +23,30 @@ function createChromeApi() {
       local: {
         get(query, callback) {
           callback({ query });
+        },
+        set(value, callback) {
+          this.value = value;
+          callback();
         }
+      }
+    },
+    permissions: {
+      request(details, callback) {
+        this.requested = details;
+        callback(true);
+      },
+      remove(details, callback) {
+        this.removed = details;
+        callback(true);
       }
     },
     tabs: {
       query(query, callback) {
         callback([{ id: 7, url: 'https://example.com' }]);
+      },
+      create(details, callback) {
+        this.created = details;
+        callback({ id: 8, ...details });
       }
     }
   };
@@ -34,7 +56,18 @@ test('Chrome API wrappers resolve callback results', async () => {
   const chromeApi = createChromeApi();
 
   assert.deepEqual(await storageLocalGet(['key'], chromeApi), { query: ['key'] });
+  await storageLocalSet({ recipe: 'saved' }, chromeApi);
+  assert.deepEqual(chromeApi.storage.local.value, { recipe: 'saved' });
+  assert.equal(await requestOriginPermission('https://example.com/*', chromeApi), true);
+  assert.deepEqual(chromeApi.permissions.requested, { origins: ['https://example.com/*'] });
+  assert.equal(await removeOriginPermission('https://example.com/*', chromeApi), true);
+  assert.deepEqual(chromeApi.permissions.removed, { origins: ['https://example.com/*'] });
   assert.deepEqual(await getCurrentTab(chromeApi), { id: 7, url: 'https://example.com' });
+  assert.deepEqual(await createTab({ url: 'https://example.com', active: true }, chromeApi), {
+    id: 8,
+    url: 'https://example.com',
+    active: true
+  });
   assert.deepEqual(await sendRuntimeMessage({ type: 'test' }, chromeApi), {
     ok: true,
     echo: { type: 'test' }

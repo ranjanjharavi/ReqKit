@@ -1,4 +1,4 @@
-export function isHttpUrl(value) {
+function isHttpUrl(value) {
   return /^https?:\/\//i.test(String(value || ''));
 }
 
@@ -24,7 +24,23 @@ export function parseUserUrl(value) {
     throw new Error('Unsupported URL');
   }
 
-  return { url: parsed, hadProtocol: hadHttpProtocol };
+  if (parsed.username || parsed.password) {
+    throw new Error('Credentials in URLs are not supported');
+  }
+
+  if (parsed.protocol === 'http:' && !isLoopbackHostname(parsed.hostname)) {
+    throw new Error('HTTP is supported only for local development');
+  }
+
+  return { url: parsed };
+}
+
+function isLoopbackHostname(hostname) {
+  const normalized = String(hostname || '').toLowerCase();
+  return normalized === 'localhost'
+    || normalized === '127.0.0.1'
+    || normalized === '[::1]'
+    || normalized === '::1';
 }
 
 export function encodeRedirectPath(value) {

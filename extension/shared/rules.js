@@ -1,22 +1,19 @@
 export const RULE_STORAGE_KEY = 'headerRules';
 
-export const RESOURCE_SCOPE_MAP = {
-  all: [
-    'main_frame',
-    'sub_frame',
-    'stylesheet',
-    'script',
-    'image',
-    'font',
-    'object',
-    'xmlhttprequest',
-    'ping',
-    'csp_report',
-    'media',
-    'websocket',
-    'other'
-  ]
-};
+const REQUEST_RESOURCE_TYPES = [
+  'main_frame',
+  'sub_frame',
+  'stylesheet',
+  'script',
+  'image',
+  'font',
+  'object',
+  'xmlhttprequest',
+  'ping',
+  'csp_report',
+  'media',
+  'other'
+];
 
 export function normalizeRules(rules) {
   const usedIds = new Set();
@@ -27,7 +24,7 @@ export function normalizeRules(rules) {
     .filter(Boolean);
 }
 
-export function normalizeRule(rule, usedIds = new Set(), getNextId = createSequentialIdFactory()) {
+function normalizeRule(rule, usedIds = new Set(), getNextId = createSequentialIdFactory()) {
   if (!rule) {
     return null;
   }
@@ -55,7 +52,6 @@ export function normalizeRule(rule, usedIds = new Set(), getNextId = createSeque
     domain,
     headerName,
     headerValue,
-    requestScope: 'all',
     enabled: rule.enabled !== false
   };
 }
@@ -66,19 +62,19 @@ export function normalizeDomain(value) {
     return '';
   }
 
-  const hadHttpProtocol = /^https?:\/\//i.test(cleanedValue);
-  const hadOtherProtocol = /^[a-z][a-z\d+.-]*:\/\//i.test(cleanedValue) && !hadHttpProtocol;
+  const hadHttpsProtocol = /^https:\/\//i.test(cleanedValue);
+  const hadOtherProtocol = /^[a-z][a-z\d+.-]*:\/\//i.test(cleanedValue) && !hadHttpsProtocol;
   if (hadOtherProtocol) {
     return '';
   }
 
-  const candidate = hadHttpProtocol ? cleanedValue : `https://${cleanedValue.replace(/^\/+/, '')}`;
+  const candidate = hadHttpsProtocol ? cleanedValue : `https://${cleanedValue.replace(/^\/+/, '')}`;
   if (!URL.canParse(candidate)) {
     return '';
   }
 
   const parsed = new URL(candidate);
-  return parsed.hostname && /^https?:\/\//i.test(parsed.href) ? parsed.hostname.toLowerCase() : '';
+  return parsed.hostname && parsed.protocol === 'https:' ? parsed.hostname.toLowerCase() : '';
 }
 
 export function validateRuleDraft(draft, existingRules, {
@@ -88,12 +84,11 @@ export function validateRuleDraft(draft, existingRules, {
   const rule = {
     domain: normalizeDomain(draft?.domain),
     headerName: String(draft?.headerName || '').trim(),
-    headerValue: String(draft?.headerValue || '').trim(),
-    requestScope: 'all'
+    headerValue: String(draft?.headerValue || '').trim()
   };
 
   if (!rule.domain || !rule.headerName || !rule.headerValue) {
-    return { ok: false, error: 'Host, header name, and header value are required.' };
+    return { ok: false, error: 'A valid HTTPS host, header name, and header value are required.' };
   }
 
   if (!isValidHeaderName(rule.headerName)) {
@@ -131,11 +126,11 @@ export function validateRuleDraft(draft, existingRules, {
   return { ok: true, rule };
 }
 
-export function isValidHeaderName(value) {
+function isValidHeaderName(value) {
   return /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/.test(String(value || ''));
 }
 
-export function isValidHeaderValue(value) {
+function isValidHeaderValue(value) {
   const normalizedValue = String(value || '');
   return Boolean(normalizedValue) && !/[\r\n]/.test(normalizedValue);
 }
@@ -234,13 +229,17 @@ export function buildDynamicRule(rule) {
       ]
     },
     condition: {
-      resourceTypes: RESOURCE_SCOPE_MAP.all,
-      regexFilter: String.raw`^https?:\/\/${escapeRegex(rule.domain)}(?::\d+)?(?:[/?#]|$)`
+      resourceTypes: REQUEST_RESOURCE_TYPES,
+      regexFilter: String.raw`^https:\/\/${escapeRegex(rule.domain)}(?::\d+)?(?:[/?#]|$)`
     }
   };
 }
 
-export function escapeRegex(value) {
+export function getRuleOriginPattern(rule) {
+  return `https://${rule.domain}/*`;
+}
+
+function escapeRegex(value) {
   return String(value).replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 

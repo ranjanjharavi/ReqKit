@@ -1,5 +1,4 @@
 export const state = {
-  currentTab: null,
   headers: {
     rules: [],
     editingId: null,
@@ -10,15 +9,9 @@ export const state = {
     revealedRuleIds: new Set(),
     searchQuery: ''
   },
-  tokens: {
-    items: [],
-    activeToken: ''
-  },
   transformer: {
     result: null,
-    options: {
-      authRedirect: true,
-      disableCustomCode: false
-    }
+    recipe: null,
+    editor: { open: false, draft: null }
   }
 };

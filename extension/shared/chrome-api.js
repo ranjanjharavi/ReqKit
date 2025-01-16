@@ -32,6 +32,32 @@ export function storageLocalSet(value, chromeApi = globalThis.chrome) {
   return storageAreaSet(chromeApi.storage.local, value, chromeApi);
 }
 
+export function requestOriginPermission(origin, chromeApi = globalThis.chrome) {
+  return new Promise((resolve, reject) => {
+    chromeApi.permissions.request({ origins: [origin] }, (granted) => {
+      const error = getRuntimeError(chromeApi);
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve(Boolean(granted));
+    });
+  });
+}
+
+export function removeOriginPermission(origin, chromeApi = globalThis.chrome) {
+  return new Promise((resolve, reject) => {
+    chromeApi.permissions.remove({ origins: [origin] }, (removed) => {
+      const error = getRuntimeError(chromeApi);
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve(Boolean(removed));
+    });
+  });
+}
+
 export function getDynamicRules(chromeApi = globalThis.chrome) {
   return new Promise((resolve, reject) => {
     chromeApi.declarativeNetRequest.getDynamicRules((rules) => {
@@ -84,32 +110,6 @@ export function getCurrentTab(chromeApi = globalThis.chrome) {
   });
 }
 
-export function isAllowedIncognitoAccess(chromeApi = globalThis.chrome) {
-  return new Promise((resolve, reject) => {
-    chromeApi.extension.isAllowedIncognitoAccess((isAllowed) => {
-      const error = getRuntimeError(chromeApi);
-      if (error) {
-        reject(error);
-        return;
-      }
-      resolve(Boolean(isAllowed));
-    });
-  });
-}
-
-export function getAllWindows(query, chromeApi = globalThis.chrome) {
-  return new Promise((resolve, reject) => {
-    chromeApi.windows.getAll(query || { populate: false }, (windows) => {
-      const error = getRuntimeError(chromeApi);
-      if (error) {
-        reject(error);
-        return;
-      }
-      resolve(windows || []);
-    });
-  });
-}
-
 export function createTab(details, chromeApi = globalThis.chrome) {
   return new Promise((resolve, reject) => {
     chromeApi.tabs.create(details, (tab) => {
@@ -119,19 +119,6 @@ export function createTab(details, chromeApi = globalThis.chrome) {
         return;
       }
       resolve(tab || null);
-    });
-  });
-}
-
-export function createWindow(details, chromeApi = globalThis.chrome) {
-  return new Promise((resolve, reject) => {
-    chromeApi.windows.create(details, (windowInfo) => {
-      const error = getRuntimeError(chromeApi);
-      if (error) {
-        reject(error);
-        return;
-      }
-      resolve(windowInfo || null);
     });
   });
 }

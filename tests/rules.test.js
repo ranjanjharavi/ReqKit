@@ -9,10 +9,11 @@ import {
   getActiveRuleConflicts,
   getNextRuleId,
   groupRulesByDomain,
+  getRuleOriginPattern,
   normalizeDomain,
   normalizeRules,
   validateRuleDraft
-} from '../shared/rules.js';
+} from '../extension/shared/rules.js';
 
 const sampleRules = [
   {
@@ -20,7 +21,6 @@ const sampleRules = [
     domain: 'api.example.com',
     headerName: 'X-Auth',
     headerValue: 'one',
-    requestScope: 'all',
     enabled: true
   },
   {
@@ -28,15 +28,14 @@ const sampleRules = [
     domain: 'other.example.com',
     headerName: 'X-Debug',
     headerValue: 'two',
-    requestScope: 'api',
     enabled: false
   }
 ];
 
-test('normalizeDomain accepts hosts and HTTP URLs', () => {
+test('normalizeDomain accepts HTTPS hosts and rejects HTTP', () => {
   assert.equal(normalizeDomain('API.Example.com/path'), 'api.example.com');
   assert.equal(normalizeDomain('https://api.example.com:8443/path'), 'api.example.com');
-  assert.equal(normalizeDomain('http://localhost:3000'), 'localhost');
+  assert.equal(normalizeDomain('http://localhost:3000'), '');
 });
 
 test('normalizeDomain rejects unsupported protocols and empty values', () => {
@@ -56,7 +55,6 @@ test('normalizeRules repairs identifiers and normalizes fields', () => {
   assert.equal(normalized.length, 2);
   assert.deepEqual(normalized.map((rule) => rule.id), [1, 2]);
   assert.equal(normalized[0].domain, 'api.example.com');
-  assert.equal(normalized[1].requestScope, 'all');
   assert.equal(normalized[1].enabled, false);
 });
 
@@ -64,8 +62,7 @@ test('validateRuleDraft normalizes valid input', () => {
   const result = validateRuleDraft({
     domain: 'https://API.example.com/path',
     headerName: ' X-Test ',
-    headerValue: ' value ',
-    requestScope: 'pages'
+    headerValue: ' value '
   }, []);
 
   assert.deepEqual(result, {
@@ -73,8 +70,7 @@ test('validateRuleDraft normalizes valid input', () => {
     rule: {
       domain: 'api.example.com',
       headerName: 'X-Test',
-      headerValue: 'value',
-      requestScope: 'all'
+      headerValue: 'value'
     }
   });
 });
@@ -101,15 +97,14 @@ test('conflict detection finds different active values for the same header and h
     domain: 'api.example.com',
     headerName: 'x-auth',
     headerValue: 'different',
-    requestScope: 'api',
     enabled: true
   };
-  const pagesRule = { ...sampleRules[0], id: 4, requestScope: 'pages' };
+  const matchingRule = { ...sampleRules[0], id: 4 };
   const sameValueRule = { ...conflictingRule, id: 5, headerValue: 'one' };
   const pausedRule = { ...conflictingRule, id: 6, enabled: false };
 
   assert.equal(areRulesConflicting(sampleRules[0], conflictingRule), true);
-  assert.equal(areRulesConflicting(pagesRule, conflictingRule), true);
+  assert.equal(areRulesConflicting(matchingRule, conflictingRule), true);
   assert.equal(areRulesConflicting(sampleRules[0], sameValueRule), false);
   assert.equal(areRulesConflicting(sampleRules[0], pausedRule), false);
   assert.equal(findActiveRuleConflict(conflictingRule, sampleRules)?.id, 1);
@@ -123,8 +118,7 @@ test('validateRuleDraft rejects active conflicts but permits paused drafts', () 
   const draft = {
     domain: 'api.example.com',
     headerName: 'x-auth',
-    headerValue: 'different',
-    requestScope: 'pages'
+    headerValue: 'different'
   };
 
   const activeResult = validateRuleDraft(draft, sampleRules);
@@ -148,5 +142,7 @@ test('buildDynamicRule produces an exact-host DNR rule', () => {
   assert.equal(dynamicRule.id, 1);
   assert.equal(dynamicRule.action.requestHeaders[0].header, 'X-Auth');
   assert.match('https://api.example.com/path', new RegExp(dynamicRule.condition.regexFilter));
+  assert.doesNotMatch('http://api.example.com/path', new RegExp(dynamicRule.condition.regexFilter));
   assert.doesNotMatch('https://sub.api.example.com/path', new RegExp(dynamicRule.condition.regexFilter));
+  assert.equal(getRuleOriginPattern(sampleRules[0]), 'https://api.example.com/*');
 });

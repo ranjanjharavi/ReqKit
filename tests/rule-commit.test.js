@@ -1,14 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { commitRuleSet } from '../shared/rule-commit.js';
+import { commitRuleSet } from '../extension/shared/rule-commit.js';
 
 const previousRules = [{
   id: 1,
   domain: 'old.example.com',
   headerName: 'X-Old',
   headerValue: 'old',
-  requestScope: 'all',
   enabled: true
 }];
 
@@ -17,14 +16,10 @@ const nextRules = [{
   domain: 'new.example.com',
   headerName: 'X-New',
   headerValue: 'new',
-  requestScope: 'api',
   enabled: true
 }];
 
-const normalizedNextRules = [{
-  ...nextRules[0],
-  requestScope: 'all'
-}];
+const normalizedNextRules = [{ ...nextRules[0] }];
 
 test('commitRuleSet applies and stores normalized rules', async () => {
   const applied = [];
@@ -90,8 +85,7 @@ test('commitRuleSet rejects conflicting active rules before applying them', asyn
     {
       ...nextRules[0],
       id: 3,
-      headerValue: 'different',
-      requestScope: 'all'
+      headerValue: 'different'
     }
   ];
 

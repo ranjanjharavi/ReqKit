@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { isSensitiveHeaderName, sortRulesForDisplay } from '../popup/headers.js';
+import { isSensitiveHeaderName, sortRulesForDisplay } from '../extension/popup/headers/controller.js';
 
 test('rule display sorting prioritizes conflicts, then active rules', () => {
   const rules = [
