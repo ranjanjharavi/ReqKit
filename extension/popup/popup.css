@@ -39,7 +39,7 @@
 html,
 body {
   width: 480px;
-  height: 500px;
+  height: 560px;
 }
 
 body {
@@ -361,8 +361,8 @@ label,
 }
 
 .helper-text {
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: 10px;
+  line-height: 1.2;
   color: var(--muted-foreground);
 }
 
@@ -505,17 +505,12 @@ label,
 }
 
 .recipe-capture-row {
-  border-bottom: 1px solid #dbeafe;
   background: rgba(239, 246, 255, 0.6);
 }
 
+.recipe-capture-row + .recipe-parameter-row,
 .recipe-parameter-row + .recipe-parameter-row {
   border-top: 1px solid #edf4fb;
-}
-
-.recipe-capture-row.muted,
-.recipe-parameter-row.muted {
-  color: #94a3b8;
 }
 
 .recipe-parameter-row code,

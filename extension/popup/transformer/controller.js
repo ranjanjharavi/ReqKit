@@ -73,20 +73,22 @@ function renderRecipe() {
 
 function buildRecipeSummary(recipe) {
   const capture = recipe.capturePath;
-  const parameterRows = recipe.parameters.length
-    ? recipe.parameters.map((parameter) => `
-      <div class="recipe-parameter-row${parameter.enabled ? '' : ' muted'}">
-        <button class="mini-switch${parameter.enabled ? ' active' : ''}" type="button" role="switch" aria-checked="${parameter.enabled}" data-summary-action="toggle-parameter" data-parameter-id="${escapeHtml(parameter.id)}" aria-label="${parameter.enabled ? 'Disable' : 'Enable'} ${escapeHtml(parameter.key)}"></button>
+  const rows = [
+    ...(capture.enabled ? [`
+      <div class="recipe-capture-row">
+        <button class="mini-switch active" type="button" role="switch" aria-checked="true" data-summary-action="toggle-capture" aria-label="Disable path capture"></button>
+        <span>Path → <code>${escapeHtml(capture.key)}</code></span>
+      </div>`] : []),
+    ...recipe.parameters.filter((parameter) => parameter.enabled).map((parameter) => `
+      <div class="recipe-parameter-row">
+        <button class="mini-switch active" type="button" role="switch" aria-checked="true" data-summary-action="toggle-parameter" data-parameter-id="${escapeHtml(parameter.id)}" aria-label="Disable ${escapeHtml(parameter.key)}"></button>
         <code>${escapeHtml(parameter.key)}</code><span>=</span><code>${escapeHtml(parameter.value)}</code>
-      </div>`).join('')
-    : '<div class="recipe-empty-row">No additional query parameters</div>';
+      </div>`)
+  ];
 
-  return `
-    <div class="recipe-capture-row${capture.enabled ? '' : ' muted'}">
-      <button class="mini-switch${capture.enabled ? ' active' : ''}" type="button" role="switch" aria-checked="${capture.enabled}" data-summary-action="toggle-capture" aria-label="${capture.enabled ? 'Disable' : 'Enable'} path capture"></button>
-      <span>Path → <code>${escapeHtml(capture.key || 'query key')}</code></span>
-    </div>
-    <div>${parameterRows}</div>`;
+  return rows.length
+    ? rows.join('')
+    : '<div class="recipe-empty-row">No active transformations</div>';
 }
 
 function renderOutput() {
