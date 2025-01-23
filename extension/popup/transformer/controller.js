@@ -64,10 +64,10 @@ function renderRecipe() {
   const recipe = state.transformer.recipe || createDefaultRecipe();
   const editorOpen = state.transformer.editor.open;
   const summary = document.getElementById('recipeSummary');
+  document.getElementById('recipeCard').classList.toggle('is-editing', editorOpen);
+  document.getElementById('recipeViewActions').hidden = editorOpen;
   summary.hidden = editorOpen;
   summary.innerHTML = buildRecipeSummary(recipe);
-  document.getElementById('editRecipeBtn').disabled = editorOpen;
-  document.getElementById('resetRecipeBtn').disabled = editorOpen;
   document.getElementById('sensitiveWarning').hidden = editorOpen || !recipeHasSensitiveValues(recipe);
 }
 
@@ -174,6 +174,10 @@ function openRecipeEditor() {
     open: true,
     draft: structuredClone(state.transformer.recipe)
   };
+  const editorStatus = document.getElementById('recipeEditorStatus');
+  globalThis.clearTimeout(editorStatus._statusTimer);
+  editorStatus.textContent = '';
+  editorStatus.className = 'status-msg';
   renderRecipe();
   renderRecipeEditor();
   document.getElementById('capturePathToggle').focus();
