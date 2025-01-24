@@ -3,6 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test"
+    "build:privacy": "node scripts/build-privacy.mjs",
+    "test": "node --test",
+    "package": "./scripts/package-extension.sh"
   }
 }

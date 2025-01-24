@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>ReqKit popup harness</title></head>
+<body>
+  <script>
+    (async () => {
+      const previewParameters = new URLSearchParams(location.search);
+      const storage = previewParameters.has('store')
+        ? { privacyConsentVersion: 1 }
+        : {};
+      let runtimeRules = [];
+      window.__REQKIT_CHROME_STUB__ = {
+        runtime: {
+          lastError: null,
+          sendMessage(message, callback) {
+            if (message.type === 'reqkit:rules:commit') {
+              runtimeRules = message.rules;
+            }
+            callback({ ok: true, rules: runtimeRules });
+          }
+        },
+        storage: {
+          local: {
+            get(query, callback) {
+              if (Array.isArray(query)) {
+                callback(Object.fromEntries(query.filter((key) => key in storage).map((key) => [key, storage[key]])));
+                return;
+              }
+              callback({ ...query, ...storage });
+            },
+            set(value, callback) {
+              Object.assign(storage, value);
+              callback();
+            }
+          }
+        },
+        permissions: {
+          request(_details, callback) { callback(true); },
+          remove(_details, callback) { callback(true); }
+        },
+        tabs: {
+          query(_details, callback) { callback([{ id: 1, url: 'https://example.com/app?view=list#details' }]); },
+          create(details, callback) { callback({ id: 2, ...details }); }
+        }
+      };
+      if (parent !== window) {
+        parent.__REQKIT_CHROME_STUB__ = window.__REQKIT_CHROME_STUB__;
+      }
+      window.chrome = window.__REQKIT_CHROME_STUB__;
+
+      const markup = await fetch('/extension/popup/index.html').then((response) => response.text());
+      const previewAutomation = previewParameters.has('output')
+        ? `<script>addEventListener('DOMContentLoaded', () => setTimeout(() => {
+            document.getElementById('transformUrlBtn')?.click();
+            setTimeout(() => {
+              document.querySelector('.recipe-card')?.scrollIntoView({ block: 'start' });
+            }, 100);
+          }, 250));</` + `script>`
+        : '';
+      document.open();
+      document.write(markup
+        .replace('<head>', '<head><base href="/extension/popup/">')
+        .replace('<script type="module" src="main.js"></' + 'script>', '<script>window.chrome = window.__REQKIT_CHROME_STUB__ || parent.__REQKIT_CHROME_STUB__;</' + 'script><script type="module" src="main.js"></' + 'script>')
+        .replace('</body>', previewAutomation + '</body>'));
+      document.close();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,249 @@
+export const RULE_STORAGE_KEY = 'headerRules';
+
+const REQUEST_RESOURCE_TYPES = [
+  'main_frame',
+  'sub_frame',
+  'stylesheet',
+  'script',
+  'image',
+  'font',
+  'object',
+  'xmlhttprequest',
+  'ping',
+  'csp_report',
+  'media',
+  'other'
+];
+
+export function normalizeRules(rules) {
+  const usedIds = new Set();
+  let nextId = 1;
+
+  return (Array.isArray(rules) ? rules : [])
+    .map((rule) => normalizeRule(rule, usedIds, () => nextId++))
+    .filter(Boolean);
+}
+
+function normalizeRule(rule, usedIds = new Set(), getNextId = createSequentialIdFactory()) {
+  if (!rule) {
+    return null;
+  }
+
+  const domain = normalizeDomain(rule.domain || '');
+  const headerName = String(rule.headerName || '').trim();
+  const headerValue = String(rule.headerValue || '').trim();
+
+  if (!domain || !isValidHeaderName(headerName) || !isValidHeaderValue(headerValue)) {
+    return null;
+  }
+
+  let id = Number(rule.id);
+  if (!Number.isInteger(id) || id < 1 || usedIds.has(id)) {
+    id = getNextId();
+  }
+
+  while (usedIds.has(id)) {
+    id = getNextId();
+  }
+  usedIds.add(id);
+
+  return {
+    id,
+    domain,
+    headerName,
+    headerValue,
+    enabled: rule.enabled !== false
+  };
+}
+
+export function normalizeDomain(value) {
+  const cleanedValue = String(value || '').trim();
+  if (!cleanedValue) {
+    return '';
+  }
+
+  const hadHttpsProtocol = /^https:\/\//i.test(cleanedValue);
+  const hadOtherProtocol = /^[a-z][a-z\d+.-]*:\/\//i.test(cleanedValue) && !hadHttpsProtocol;
+  if (hadOtherProtocol) {
+    return '';
+  }
+
+  const candidate = hadHttpsProtocol ? cleanedValue : `https://${cleanedValue.replace(/^\/+/, '')}`;
+  if (!URL.canParse(candidate)) {
+    return '';
+  }
+
+  const parsed = new URL(candidate);
+  return parsed.hostname && parsed.protocol === 'https:' ? parsed.hostname.toLowerCase() : '';
+}
+
+export function validateRuleDraft(draft, existingRules, {
+  excludeId = null,
+  enabled = true
+} = {}) {
+  const rule = {
+    domain: normalizeDomain(draft?.domain),
+    headerName: String(draft?.headerName || '').trim(),
+    headerValue: String(draft?.headerValue || '').trim()
+  };
+
+  if (!rule.domain || !rule.headerName || !rule.headerValue) {
+    return { ok: false, error: 'A valid HTTPS host, header name, and header value are required.' };
+  }
+
+  if (!isValidHeaderName(rule.headerName)) {
+    return { ok: false, error: 'Enter a valid HTTP header name.' };
+  }
+
+  if (!isValidHeaderValue(rule.headerValue)) {
+    return { ok: false, error: 'Header values cannot contain line breaks.' };
+  }
+
+  const duplicateRule = (Array.isArray(existingRules) ? existingRules : []).some((existingRule) => (
+    existingRule.id !== excludeId
+    && existingRule.domain === rule.domain
+    && existingRule.headerName.toLowerCase() === rule.headerName.toLowerCase()
+    && existingRule.headerValue === rule.headerValue
+  ));
+
+  if (duplicateRule) {
+    return { ok: false, error: 'That rule already exists.' };
+  }
+
+  const conflictingRule = findActiveRuleConflict(
+    { ...rule, enabled },
+    existingRules,
+    { excludeId }
+  );
+  if (conflictingRule) {
+    return {
+      ok: false,
+      error: getRuleConflictMessage(conflictingRule),
+      conflictId: conflictingRule.id
+    };
+  }
+
+  return { ok: true, rule };
+}
+
+function isValidHeaderName(value) {
+  return /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/.test(String(value || ''));
+}
+
+function isValidHeaderValue(value) {
+  const normalizedValue = String(value || '');
+  return Boolean(normalizedValue) && !/[\r\n]/.test(normalizedValue);
+}
+
+export function getNextRuleId(rules) {
+  const ids = (Array.isArray(rules) ? rules : [])
+    .map((rule) => Number(rule?.id))
+    .filter((id) => Number.isInteger(id) && id > 0);
+
+  return ids.length ? Math.max(...ids) + 1 : 1;
+}
+
+export function findActiveRuleConflict(candidate, rules, {
+  excludeId = candidate?.id ?? null
+} = {}) {
+  if (!candidate || candidate.enabled === false) {
+    return null;
+  }
+
+  return (Array.isArray(rules) ? rules : []).find((existingRule) => (
+    existingRule?.id !== excludeId && areRulesConflicting(candidate, existingRule)
+  )) || null;
+}
+
+export function getActiveRuleConflicts(rules) {
+  const normalizedRules = Array.isArray(rules) ? rules : [];
+  const conflicts = [];
+
+  for (let leftIndex = 0; leftIndex < normalizedRules.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < normalizedRules.length; rightIndex += 1) {
+      const leftRule = normalizedRules[leftIndex];
+      const rightRule = normalizedRules[rightIndex];
+      if (areRulesConflicting(leftRule, rightRule)) {
+        conflicts.push({ leftRule, rightRule });
+      }
+    }
+  }
+
+  return conflicts;
+}
+
+export function areRulesConflicting(leftRule, rightRule) {
+  if (!leftRule || !rightRule || leftRule.enabled === false || rightRule.enabled === false) {
+    return false;
+  }
+
+  const sameTarget = leftRule.domain === rightRule.domain
+    && String(leftRule.headerName).toLowerCase() === String(rightRule.headerName).toLowerCase();
+  if (!sameTarget || leftRule.headerValue === rightRule.headerValue) {
+    return false;
+  }
+
+  return true;
+}
+
+export function getRuleConflictMessage(conflictingRule) {
+  return `Conflicts with the active ${conflictingRule.headerName} rule for ${conflictingRule.domain} because they use different values.`;
+}
+
+export function filterRulesByHost(rules, hostname) {
+  const normalizedHostname = normalizeDomain(hostname);
+  if (!normalizedHostname) {
+    return Array.isArray(rules) ? rules : [];
+  }
+
+  return (Array.isArray(rules) ? rules : []).filter((rule) => rule.domain === normalizedHostname);
+}
+
+export function groupRulesByDomain(rules) {
+  const grouped = new Map();
+
+  (Array.isArray(rules) ? rules : []).forEach((rule) => {
+    const domainRules = grouped.get(rule.domain) || [];
+    domainRules.push(rule);
+    grouped.set(rule.domain, domainRules);
+  });
+
+  return Array.from(grouped, ([domain, groupedDomainRules]) => ({
+    domain,
+    rules: groupedDomainRules
+  }));
+}
+
+export function buildDynamicRule(rule) {
+  return {
+    id: rule.id,
+    priority: 1,
+    action: {
+      type: 'modifyHeaders',
+      requestHeaders: [
+        {
+          header: rule.headerName,
+          operation: 'set',
+          value: rule.headerValue
+        }
+      ]
+    },
+    condition: {
+      resourceTypes: REQUEST_RESOURCE_TYPES,
+      regexFilter: String.raw`^https:\/\/${escapeRegex(rule.domain)}(?::\d+)?(?:[/?#]|$)`
+    }
+  };
+}
+
+export function getRuleOriginPattern(rule) {
+  return `https://${rule.domain}/*`;
+}
+
+function escapeRegex(value) {
+  return String(value).replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function createSequentialIdFactory() {
+  let nextId = 1;
+  return () => nextId++;
+}
