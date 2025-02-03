@@ -10,28 +10,109 @@ const markdown = await readFile(sourcePath, 'utf8');
 const body = renderMarkdown(markdown);
 
 await Promise.all([
-  writePrivacyPage(extensionTarget, body, '../icons/reqkit-128.png'),
-  writePrivacyPage(docsTarget, body, null)
+  writeExtensionPrivacyPage(extensionTarget, body),
+  writeDocsPrivacyPage(docsTarget, body)
 ]);
 
-async function writePrivacyPage(target, renderedBody, iconPath) {
+async function writeExtensionPrivacyPage(target, renderedBody) {
   await mkdir(dirname(target), { recursive: true });
-  const icon = iconPath
-    ? `<img src="${iconPath}" width="64" height="64" alt="ReqKit">`
-    : '';
   await writeFile(target, `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ReqKit Privacy Policy</title>
-  <style>${getStyles()}</style>
+  <style>${getExtensionStyles()}</style>
 </head>
 <body>
   <main>
-    <header>${icon}<div><span class="eyebrow">ReqKit</span><span>Privacy and data use</span></div></header>
+    <header><img src="../icons/reqkit-128.png" width="64" height="64" alt="ReqKit"><div><span class="eyebrow">ReqKit</span><span>Privacy and data use</span></div></header>
     ${renderedBody}
   </main>
+</body>
+</html>
+`, 'utf8');
+}
+
+async function writeDocsPrivacyPage(target, renderedBody) {
+  await mkdir(dirname(target), { recursive: true });
+  const articleBody = renderedBody.replace(/^\s*<h1[^>]*>.*?<\/h1>\s*/, '');
+  await writeFile(target, `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Learn how ReqKit handles URLs, request headers, Chrome permissions, and locally stored settings.">
+  <meta name="theme-color" content="#eff6ff">
+  <meta property="og:title" content="ReqKit Privacy Policy">
+  <meta property="og:description" content="A clear account of ReqKit's local storage, permissions, and data handling.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://ranjanjharavi.github.io/ReqKit/privacy-policy.html">
+  <link rel="canonical" href="https://ranjanjharavi.github.io/ReqKit/privacy-policy.html">
+  <link rel="icon" type="image/png" href="assets/reqkit-128.png">
+  <link rel="stylesheet" href="assets/site.css">
+  <title>Privacy Policy — ReqKit</title>
+</head>
+<body>
+  <header class="site-header">
+    <nav class="nav-shell" aria-label="Primary navigation">
+      <a class="brand" href="./" aria-label="ReqKit home">
+        <img src="assets/reqkit-128.png" width="38" height="38" alt="">
+        <span>ReqKit</span>
+      </a>
+      <div class="nav-links">
+        <a href="./">Home</a>
+        <a href="index.html#features">Features</a>
+        <a aria-current="page" href="privacy-policy.html">Privacy</a>
+        <a class="nav-github" href="https://github.com/ranjanjharavi/ReqKit">GitHub <span aria-hidden="true">↗</span></a>
+      </div>
+    </nav>
+  </header>
+
+  <main class="privacy-main section-shell">
+    <section class="privacy-hero">
+      <div class="privacy-hero-copy">
+        <span class="section-kicker">Privacy &amp; data use</span>
+        <h1>Clear, local, user-controlled.</h1>
+        <p>ReqKit does not send data to its developer. Settings stay in Chrome, while URLs and headers reach destinations only through features you intentionally use.</p>
+      </div>
+      <div class="privacy-hero-mark" aria-hidden="true">
+        <svg viewBox="0 0 64 64"><path d="M32 7 13 15v14c0 13 7.5 22.5 19 28 11.5-5.5 19-15 19-28V15L32 7Z"/><path d="m23 32 6 6 13-15"/></svg>
+      </div>
+    </section>
+
+    <section class="privacy-highlights" aria-label="Privacy highlights">
+      <article class="privacy-highlight"><strong>No analytics</strong><span>No telemetry, advertising, account system, or developer-operated API.</span></article>
+      <article class="privacy-highlight"><strong>Local Chrome storage</strong><span>Your URL recipe, header rules, and privacy choice stay in <code>chrome.storage.local</code>.</span></article>
+      <article class="privacy-highlight"><strong>On-demand site access</strong><span>Header permissions are requested for exact HTTPS hosts that you choose.</span></article>
+    </section>
+
+    <div class="privacy-layout">
+      <aside class="privacy-toc">
+        <strong>On this page</strong>
+        <nav aria-label="Privacy policy sections">
+          <a href="#data-reqkit-handles">Data handled</a>
+          <a href="#how-data-is-used-and-transmitted">Use &amp; transmission</a>
+          <a href="#retention-and-deletion">Retention</a>
+          <a href="#permissions">Permissions</a>
+          <a href="#security-and-responsible-use">Security</a>
+          <a href="#data-sharing-and-sale">Sharing &amp; sale</a>
+          <a href="#contact">Contact</a>
+        </nav>
+      </aside>
+      <article class="privacy-prose">
+        ${articleBody}
+      </article>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-shell">
+      <a class="brand" href="./"><img src="assets/reqkit-128.png" width="32" height="32" alt=""><span>ReqKit</span></a>
+      <p>Developer request tools with a deliberately small footprint.</p>
+      <div class="footer-links"><a href="privacy-policy.html">Privacy</a><a href="https://github.com/ranjanjharavi/ReqKit/issues">Support</a><a href="https://github.com/ranjanjharavi/ReqKit">Source</a></div>
+    </div>
+  </footer>
 </body>
 </html>
 `, 'utf8');
@@ -63,7 +144,8 @@ function renderMarkdown(source) {
       flushParagraph();
       closeList();
       const level = heading[1].length;
-      output.push(`<h${level}>${renderInline(heading[2])}</h${level}>`);
+      const id = level === 2 ? ` id="${slugify(heading[2])}"` : '';
+      output.push(`<h${level}${id}>${renderInline(heading[2])}</h${level}>`);
     } else if (listItem) {
       flushParagraph();
       if (listType !== 'ul') {
@@ -100,7 +182,14 @@ function escapeHtml(value) {
     .replaceAll("'", '&#039;');
 }
 
-function getStyles() {
+function slugify(value) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+function getExtensionStyles() {
   return `
 :root{color-scheme:light;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#0f172a;background:#eff6ff}
 *{box-sizing:border-box}body{margin:0;padding:40px 20px;background:linear-gradient(145deg,#eaf3ff,#f8fbff 48%,#eaf2ff)}
