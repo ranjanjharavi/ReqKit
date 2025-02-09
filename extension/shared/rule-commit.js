@@ -1,6 +1,9 @@
+import { createDefaultActivation } from './activation.js';
 import { getActiveRuleConflicts, normalizeRules } from './rules.js';
 
 export async function commitRuleSet(nextRules, {
+  activation = createDefaultActivation(),
+  profileIds = null,
   getCurrentRules,
   applyRules,
   storeRules
@@ -9,12 +12,12 @@ export async function commitRuleSet(nextRules, {
     throw new Error('Header rules must be an array.');
   }
 
-  const normalizedRules = normalizeRules(nextRules);
+  const normalizedRules = normalizeRules(nextRules, { profileIds });
   if (normalizedRules.length !== nextRules.length) {
     throw new Error('One or more header rules are invalid.');
   }
 
-  const [conflict] = getActiveRuleConflicts(normalizedRules);
+  const [conflict] = getActiveRuleConflicts(normalizedRules, activation);
   if (conflict) {
     throw new Error(
       `Active ${conflict.leftRule.headerName} rules for ${conflict.leftRule.domain} conflict because they use different values.`

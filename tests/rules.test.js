@@ -5,7 +5,9 @@ import {
   areRulesConflicting,
   buildDynamicRule,
   filterRulesByHost,
+  filterRulesByProfile,
   findActiveRuleConflict,
+  findRulesInOtherProfiles,
   getActiveRuleConflicts,
   getNextRuleId,
   groupRulesByDomain,
@@ -134,6 +136,67 @@ test('rule collection helpers preserve exact-host behavior', () => {
     { domain: 'api.example.com', rules: [sampleRules[0]] },
     { domain: 'other.example.com', rules: [sampleRules[1]] }
   ]);
+});
+
+test('normalizeRules assigns the default profile and repairs unknown ones', () => {
+  const normalized = normalizeRules([
+    sampleRules[0],
+    { ...sampleRules[1], profileId: 'staging' },
+    { ...sampleRules[0], id: 7, profileId: 'deleted-profile' }
+  ], { profileIds: new Set(['default', 'staging']) });
+
+  assert.deepEqual(normalized.map((rule) => rule.profileId), ['default', 'staging', 'default']);
+});
+
+test('the same header with different values is allowed across profiles', () => {
+  const stagingRule = { ...sampleRules[0], profileId: 'staging' };
+  const prodRule = { ...sampleRules[0], id: 9, headerValue: 'different', profileId: 'prod' };
+  const activation = { masterEnabled: true, profileId: 'staging' };
+
+  assert.equal(areRulesConflicting(stagingRule, prodRule, activation), false);
+  assert.deepEqual(getActiveRuleConflicts([stagingRule, prodRule], activation), []);
+  assert.equal(findActiveRuleConflict(prodRule, [stagingRule], { activation }), null);
+});
+
+test('conflicts inside the active profile are still caught', () => {
+  const stagingRule = { ...sampleRules[0], profileId: 'staging' };
+  const clashingRule = { ...sampleRules[0], id: 9, headerValue: 'different', profileId: 'staging' };
+  const activation = { masterEnabled: true, profileId: 'staging' };
+
+  assert.equal(areRulesConflicting(stagingRule, clashingRule, activation), true);
+  assert.equal(findActiveRuleConflict(clashingRule, [stagingRule], { activation })?.id, 1);
+});
+
+test('a paused master switch means nothing conflicts', () => {
+  const clashingRule = { ...sampleRules[0], id: 9, headerValue: 'different' };
+  const activation = { masterEnabled: false, profileId: 'default' };
+
+  assert.deepEqual(getActiveRuleConflicts([sampleRules[0], clashingRule], activation), []);
+});
+
+test('an identical rule in another profile is not a duplicate', () => {
+  const stagingRules = [{ ...sampleRules[0], profileId: 'staging' }];
+
+  assert.equal(validateRuleDraft(sampleRules[0], stagingRules, {
+    activation: { masterEnabled: true, profileId: 'prod' },
+    profileId: 'prod'
+  }).ok, true);
+
+  assert.equal(validateRuleDraft(sampleRules[0], stagingRules, {
+    activation: { masterEnabled: true, profileId: 'staging' },
+    profileId: 'staging'
+  }).error, 'That rule already exists.');
+});
+
+test('profile helpers group and cross-reference rules', () => {
+  const stagingRule = { ...sampleRules[0], profileId: 'staging' };
+  const prodRule = { ...sampleRules[0], id: 9, headerValue: 'different', profileId: 'prod' };
+  const rules = [stagingRule, prodRule, sampleRules[1]];
+
+  assert.deepEqual(filterRulesByProfile(rules, 'staging'), [stagingRule]);
+  assert.deepEqual(filterRulesByProfile([sampleRules[1]], 'default'), [sampleRules[1]]);
+  assert.deepEqual(findRulesInOtherProfiles(stagingRule, rules), [prodRule]);
+  assert.deepEqual(findRulesInOtherProfiles(sampleRules[1], rules), []);
 });
 
 test('buildDynamicRule produces an exact-host DNR rule', () => {

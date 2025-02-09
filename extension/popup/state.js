@@ -1,6 +1,8 @@
 export const state = {
   headers: {
     rules: [],
+    profiles: [],
+    activation: null,
     editingId: null,
     composerOpen: false,
     currentHostname: '',

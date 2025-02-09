@@ -11,6 +11,16 @@ import {
   buildDynamicRule,
   normalizeRules
 } from './shared/rules.js';
+import {
+  ACTIVATION_STORAGE_KEY,
+  countLiveRules,
+  getLiveRules,
+  normalizeActivation,
+  resolveActivation,
+  startBrowserSession
+} from './shared/activation.js';
+import { PROFILE_STORAGE_KEY, getProfileIds, normalizeProfiles } from './shared/profiles.js';
+import { MIGRATED_KEYS, ensureMigrated } from './shared/migrate.js';
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type !== RULE_MESSAGE_GET && message?.type !== RULE_MESSAGE_COMMIT) {
@@ -28,41 +38,74 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 });
 
 chrome.runtime.onInstalled.addListener(() => {
-  restorePersistedRules().catch((error) => {
+  initialize().catch((error) => {
     console.error('Could not restore saved header rules after install/update.', error);
   });
 });
 
 chrome.runtime.onStartup.addListener(() => {
-  restorePersistedRules().catch((error) => {
+  initialize({ newBrowserSession: true }).catch((error) => {
     console.error('Could not restore saved header rules on browser startup.', error);
   });
 });
 
+async function initialize({ newBrowserSession = false } = {}) {
+  await ensureMigrated({
+    get: (keys) => storageAreaGet(chrome.storage.local, keys),
+    set: (value) => storageAreaSet(chrome.storage.local, value)
+  });
+
+  const state = await loadState({ newBrowserSession });
+  await applyDynamicRules(state.rules, state.activation);
+  await updateBadgeSafely(state.rules, state.activation);
+}
+
 async function handleRuleMessage(message) {
+  const state = await loadState();
+
   if (message.type === RULE_MESSAGE_GET) {
-    return getStoredRules();
+    return state.rules;
   }
 
   const rules = await commitRuleSet(message.rules, {
-    getCurrentRules: getStoredRules,
-    applyRules: applyDynamicRules,
+    activation: state.activation,
+    profileIds: state.profileIds,
+    getCurrentRules: async () => state.rules,
+    applyRules: (nextRules) => applyDynamicRules(nextRules, state.activation),
     storeRules
   });
 
-  await updateBadgeSafely(rules);
+  await updateBadgeSafely(rules, state.activation);
   return rules;
 }
 
-async function restorePersistedRules() {
-  const rules = await getStoredRules();
-  await applyDynamicRules(rules);
-  await updateBadgeSafely(rules);
+/**
+ * Single read path for everything the worker needs. Expiry is resolved here so
+ * a timer that elapsed while the worker was asleep takes effect on the next
+ * wake, and the resolved activation is written back before it is used.
+ */
+async function loadState({ newBrowserSession = false } = {}) {
+  const stored = await storageAreaGet(chrome.storage.local, MIGRATED_KEYS);
+  const profiles = normalizeProfiles(stored[PROFILE_STORAGE_KEY]);
+  const profileIds = getProfileIds(profiles);
+  const rules = normalizeRules(stored[RULE_STORAGE_KEY] || [], { profileIds });
+
+  const storedActivation = normalizeActivation(stored[ACTIVATION_STORAGE_KEY], { profileIds });
+  const sessionResult = newBrowserSession
+    ? startBrowserSession(storedActivation)
+    : { activation: storedActivation, changed: false };
+  const expiryResult = resolveActivation(sessionResult.activation);
+
+  if (sessionResult.changed || expiryResult.changed) {
+    await storeActivation(expiryResult.activation);
+  }
+
+  return { profiles, profileIds, rules, activation: expiryResult.activation };
 }
 
-async function applyDynamicRules(rules) {
+async function applyDynamicRules(rules, activation) {
   const currentRules = await getDynamicRules();
-  const addRules = rules.filter((rule) => rule.enabled).map(buildDynamicRule);
+  const addRules = getLiveRules(rules, activation).map(buildDynamicRule);
 
   await updateDynamicRules({
     removeRuleIds: currentRules.map((rule) => rule.id),
@@ -70,16 +113,16 @@ async function applyDynamicRules(rules) {
   });
 }
 
-async function updateBadgeSafely(rules) {
+async function updateBadgeSafely(rules, activation) {
   try {
-    await updateBadge(rules);
+    await updateBadge(rules, activation);
   } catch (error) {
     console.error('Could not update the extension badge.', error);
   }
 }
 
-async function updateBadge(rules) {
-  const activeCount = rules.filter((rule) => rule.enabled).length;
+async function updateBadge(rules, activation) {
+  const activeCount = countLiveRules(rules, activation);
   if (activeCount === 0) {
     await chrome.action.setBadgeText({ text: '' });
     return;
@@ -89,11 +132,10 @@ async function updateBadge(rules) {
   await chrome.action.setBadgeText({ text: String(activeCount) });
 }
 
-async function getStoredRules() {
-  const localData = await storageAreaGet(chrome.storage.local, [RULE_STORAGE_KEY]);
-  return normalizeRules(localData[RULE_STORAGE_KEY] || []);
-}
-
 function storeRules(rules) {
   return storageAreaSet(chrome.storage.local, { [RULE_STORAGE_KEY]: rules });
+}
+
+function storeActivation(activation) {
+  return storageAreaSet(chrome.storage.local, { [ACTIVATION_STORAGE_KEY]: activation });
 }

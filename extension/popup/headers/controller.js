@@ -8,7 +8,23 @@ import {
   groupRulesByDomain,
   validateRuleDraft
 } from '../../shared/rules.js';
-import { removeOriginPermission, requestOriginPermission } from '../../shared/chrome-api.js';
+import {
+  removeOriginPermission,
+  requestOriginPermission,
+  storageLocalGet
+} from '../../shared/chrome-api.js';
+import {
+  ACTIVATION_STORAGE_KEY,
+  createDefaultActivation,
+  getTargetProfileId,
+  normalizeActivation
+} from '../../shared/activation.js';
+import {
+  PROFILE_STORAGE_KEY,
+  createDefaultProfiles,
+  getProfileIds,
+  normalizeProfiles
+} from '../../shared/profiles.js';
 import { parseUserUrl } from '../../shared/urls.js';
 import { commitRules, getStoredRules } from './api.js';
 import { state } from '../state.js';
@@ -38,8 +54,28 @@ export function bindHeaderEvents() {
 
 export async function initializeHeaders(activeTab) {
   initializeCurrentSite(activeTab);
+  await loadActivation();
   state.headers.rules = await getStoredRules();
   renderRules();
+}
+
+async function loadActivation() {
+  try {
+    const stored = await storageLocalGet([PROFILE_STORAGE_KEY, ACTIVATION_STORAGE_KEY]);
+    const profiles = normalizeProfiles(stored[PROFILE_STORAGE_KEY]);
+    state.headers.profiles = profiles;
+    state.headers.activation = normalizeActivation(stored[ACTIVATION_STORAGE_KEY], {
+      profileIds: getProfileIds(profiles)
+    });
+  } catch (error) {
+    console.error('Could not read the activation state.', error);
+    state.headers.profiles = createDefaultProfiles();
+    state.headers.activation = createDefaultActivation();
+  }
+}
+
+function getActivation() {
+  return state.headers.activation || createDefaultActivation();
 }
 
 function handleRuleListClick(event) {
@@ -206,7 +242,7 @@ function initializeCurrentSite(activeTab) {
 function renderRules() {
   const { rules, currentHostname, view, editingId } = state.headers;
   const container = document.getElementById('ruleListContainer');
-  const conflictMap = createConflictMap(getActiveRuleConflicts(rules));
+  const conflictMap = createConflictMap(getActiveRuleConflicts(rules, getActivation()));
   const conflictingIds = new Set(conflictMap.keys());
   updateCurrentSiteControls();
 
@@ -555,7 +591,12 @@ function getEmptyRulesMessage() {
 }
 
 async function addRule() {
-  const validation = validateRuleDraft(readCreateDraft(), state.headers.rules);
+  const activation = getActivation();
+  const profileId = getTargetProfileId(activation);
+  const validation = validateRuleDraft(readCreateDraft(), state.headers.rules, {
+    activation,
+    profileId
+  });
   if (!validation.ok) {
     showStatus('headerStatus', validation.error, 'error');
     return false;
@@ -564,7 +605,8 @@ async function addRule() {
   const newRule = {
     id: getNextRuleId(state.headers.rules),
     ...validation.rule,
-    enabled: true
+    enabled: true,
+    profileId
   };
   const updatedRules = [
     ...state.headers.rules,
@@ -593,7 +635,7 @@ async function toggleRule(id) {
     const conflictingRule = findActiveRuleConflict(
       { ...currentRule, enabled: true },
       state.headers.rules,
-      { excludeId: id }
+      { excludeId: id, activation: getActivation() }
     );
     if (conflictingRule) {
       showStatus('headerStatus', getRuleConflictMessage(conflictingRule), 'error');
@@ -653,7 +695,9 @@ async function saveEditedRule(id) {
 
   const validation = validateRuleDraft(readEditDraft(id), state.headers.rules, {
     excludeId: id,
-    enabled: currentRule.enabled
+    enabled: currentRule.enabled,
+    activation: getActivation(),
+    profileId: currentRule.profileId
   });
   if (!validation.ok) {
     showStatus(statusId, validation.error, 'error');
