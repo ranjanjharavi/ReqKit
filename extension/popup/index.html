@@ -108,10 +108,22 @@
         <article class="panel">
           <div class="panel-head">
             <h2 class="panel-title">Manage request headers</h2>
-            <span class="panel-brand">ReqKit</span>
+            <button id="masterSwitch" class="master-switch" type="button" role="switch" aria-checked="true" aria-label="Pause all header rules">
+              <span class="master-switch-track" aria-hidden="true"><span class="master-switch-thumb"></span></span>
+              <span id="masterSwitchLabel" class="master-switch-label">On</span>
+            </button>
           </div>
 
           <div class="content-stack">
+            <div id="masterPausedBanner" class="master-paused-banner" role="status" hidden>
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1a7 7 0 1 1 0 14A7 7 0 0 1 8 1Zm0 1.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM6.5 5.5h1.25v5H6.5v-5Zm1.75 0h1.25v5H8.25v-5Z"/></svg>
+              <div class="master-paused-copy">
+                <strong>All header rules are paused</strong>
+                <span>No headers are being applied to any site.</span>
+              </div>
+              <button id="resumeMasterBtn" class="master-resume-btn" type="button">Resume</button>
+            </div>
+
             <div class="current-site-toolbar">
               <div class="current-site-summary">
                 <span class="current-site-dot" aria-hidden="true"></span>

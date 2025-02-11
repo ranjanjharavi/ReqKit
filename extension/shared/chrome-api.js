@@ -110,6 +110,19 @@ export function getCurrentTab(chromeApi = globalThis.chrome) {
   });
 }
 
+export function queryTabs(query, chromeApi = globalThis.chrome) {
+  return new Promise((resolve, reject) => {
+    chromeApi.tabs.query(query, (tabs) => {
+      const error = getRuntimeError(chromeApi);
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve(tabs || []);
+    });
+  });
+}
+
 export function createTab(details, chromeApi = globalThis.chrome) {
   return new Promise((resolve, reject) => {
     chromeApi.tabs.create(details, (tab) => {

@@ -18,8 +18,10 @@ import {
   ACTIVATION_STORAGE_KEY,
   createDefaultActivation,
   getTargetProfileId,
-  normalizeActivation
+  normalizeActivation,
+  setMasterEnabled
 } from '../../shared/activation.js';
+import { setActivationState } from '../../shared/activation-api.js';
 import {
   PROFILE_STORAGE_KEY,
   createDefaultProfiles,
@@ -50,6 +52,8 @@ export function bindRuleEvents() {
   ruleList.addEventListener('submit', handleRuleFormSubmit);
   ruleList.addEventListener('keydown', handleRuleFormKeydown);
   document.getElementById('ruleSearchInput').addEventListener('input', handleRuleSearchInput);
+  document.getElementById('masterSwitch').addEventListener('click', () => toggleMaster());
+  document.getElementById('resumeMasterBtn').addEventListener('click', () => toggleMaster(true));
 
   onStorageChanged((changes) => {
     const touchesRules = RULE_STORAGE_KEY in changes
@@ -96,6 +100,54 @@ async function loadActivation() {
 
 function getActivation() {
   return state.activation || createDefaultActivation();
+}
+
+async function toggleMaster(forceOn = false) {
+  const activation = getActivation();
+  const nextEnabled = forceOn || !activation.masterEnabled;
+  const controls = [
+    document.getElementById('masterSwitch'),
+    document.getElementById('resumeMasterBtn')
+  ];
+
+  controls.forEach((control) => {
+    control.disabled = true;
+  });
+
+  state.syncPaused = true;
+  try {
+    state.activation = await setActivationState(setMasterEnabled(activation, nextEnabled));
+    renderRules();
+    showStatus(
+      'headerStatus',
+      nextEnabled ? 'Header rules resumed.' : 'All header rules paused.',
+      'success'
+    );
+  } catch (error) {
+    console.error(error);
+    showStatus('headerStatus', error.message || 'Could not change the ReqKit switch.', 'error');
+  } finally {
+    state.syncPaused = false;
+    controls.forEach((control) => {
+      control.disabled = false;
+    });
+  }
+}
+
+function renderMasterSwitch() {
+  const { masterEnabled } = getActivation();
+  const masterSwitch = document.getElementById('masterSwitch');
+
+  masterSwitch.setAttribute('aria-checked', String(masterEnabled));
+  masterSwitch.setAttribute(
+    'aria-label',
+    masterEnabled ? 'Pause all header rules' : 'Resume all header rules'
+  );
+  document.getElementById('masterSwitchLabel').textContent = masterEnabled ? 'On' : 'Paused';
+
+  document.getElementById('masterPausedBanner').hidden = masterEnabled;
+  document.querySelector('.options-panel .content-stack')
+    .classList.toggle('is-master-paused', !masterEnabled);
 }
 
 function handleRuleListClick(event) {
@@ -244,6 +296,7 @@ function renderRules() {
   const container = document.getElementById('ruleListContainer');
   const conflictMap = createConflictMap(getActiveRuleConflicts(state.rules, getActivation()));
   const conflictingIds = new Set(conflictMap.keys());
+  renderMasterSwitch();
   updateSummary();
 
   const visibleRules = filterRulesBySearch(state.rules, state.searchQuery);

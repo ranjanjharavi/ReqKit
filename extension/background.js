@@ -1,11 +1,17 @@
 import { commitRuleSet } from './shared/rule-commit.js';
 import {
   getDynamicRules,
+  queryTabs,
   storageAreaGet,
   storageAreaSet,
   updateDynamicRules
 } from './shared/chrome-api.js';
-import { RULE_MESSAGE_COMMIT, RULE_MESSAGE_GET } from './shared/messages.js';
+import {
+  ACTIVATION_MESSAGE_GET,
+  ACTIVATION_MESSAGE_SET,
+  RULE_MESSAGE_COMMIT,
+  RULE_MESSAGE_GET
+} from './shared/messages.js';
 import {
   RULE_STORAGE_KEY,
   buildDynamicRule,
@@ -13,9 +19,7 @@ import {
 } from './shared/rules.js';
 import {
   ACTIVATION_STORAGE_KEY,
-  countLiveRules,
   getLiveRules,
-  getTargetProfileId,
   normalizeActivation,
   resolveActivation,
   setMasterEnabled,
@@ -23,20 +27,33 @@ import {
 } from './shared/activation.js';
 import { PROFILE_STORAGE_KEY, getProfileIds, normalizeProfiles } from './shared/profiles.js';
 import { MIGRATED_KEYS, ensureMigrated } from './shared/migrate.js';
+import { resolveBadge } from './shared/badge.js';
+
+const RULE_MESSAGES = new Set([RULE_MESSAGE_GET, RULE_MESSAGE_COMMIT]);
+const ACTIVATION_MESSAGES = new Set([ACTIVATION_MESSAGE_GET, ACTIVATION_MESSAGE_SET]);
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message?.type !== RULE_MESSAGE_GET && message?.type !== RULE_MESSAGE_COMMIT) {
-    return false;
+  if (RULE_MESSAGES.has(message?.type)) {
+    handleRuleMessage(message)
+      .then((rules) => sendResponse({ ok: true, rules }))
+      .catch((error) => {
+        console.error('Could not process the header rule request.', error);
+        sendResponse({ ok: false, error: error.message || 'Could not update header rules.' });
+      });
+    return true;
   }
 
-  handleRuleMessage(message)
-    .then((rules) => sendResponse({ ok: true, rules }))
-    .catch((error) => {
-      console.error('Could not process the header rule request.', error);
-      sendResponse({ ok: false, error: error.message || 'Could not update header rules.' });
-    });
+  if (ACTIVATION_MESSAGES.has(message?.type)) {
+    handleActivationMessage(message)
+      .then((activation) => sendResponse({ ok: true, activation }))
+      .catch((error) => {
+        console.error('Could not process the activation request.', error);
+        sendResponse({ ok: false, error: error.message || 'Could not update the ReqKit switch.' });
+      });
+    return true;
+  }
 
-  return true;
+  return false;
 });
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -61,17 +78,30 @@ chrome.commands.onCommand.addListener((command) => {
   });
 });
 
+// A navigation changes which rules apply to the tab, so its badge is recomputed.
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (!changeInfo.url && changeInfo.status !== 'complete') {
+    return;
+  }
+
+  refreshTabBadge(tabId, tab).catch((error) => {
+    console.error('Could not update the badge for that tab.', error);
+  });
+});
+
+chrome.tabs.onActivated.addListener(({ tabId }) => {
+  refreshTabBadge(tabId).catch((error) => {
+    console.error('Could not update the badge for the active tab.', error);
+  });
+});
+
 /**
  * Deliberately does not open the popup: flip off, reload the page, confirm the
  * bug is real, flip back. The badge is the only feedback needed.
  */
 async function toggleMasterSwitch() {
   const { rules, activation } = await loadState();
-  const nextActivation = setMasterEnabled(activation, !activation.masterEnabled);
-
-  await storeActivation(nextActivation);
-  await applyDynamicRules(rules, nextActivation);
-  await updateBadgeSafely(rules, nextActivation);
+  await commitActivation(setMasterEnabled(activation, !activation.masterEnabled), rules);
 }
 
 async function initialize({ newBrowserSession = false } = {}) {
@@ -82,7 +112,7 @@ async function initialize({ newBrowserSession = false } = {}) {
 
   const state = await loadState({ newBrowserSession });
   await applyDynamicRules(state.rules, state.activation);
-  await updateBadgeSafely(state.rules, state.activation);
+  await refreshBadgesSafely(state.rules, state.activation);
 }
 
 async function handleRuleMessage(message) {
@@ -100,8 +130,30 @@ async function handleRuleMessage(message) {
     storeRules
   });
 
-  await updateBadgeSafely(rules, state.activation);
+  await refreshBadgesSafely(rules, state.activation);
   return rules;
+}
+
+async function handleActivationMessage(message) {
+  const state = await loadState();
+
+  if (message.type === ACTIVATION_MESSAGE_GET) {
+    return state.activation;
+  }
+
+  const nextActivation = normalizeActivation(message.activation, { profileIds: state.profileIds });
+  return commitActivation(nextActivation, state.rules);
+}
+
+/**
+ * The worker owns the dynamic rule set and the badges, so every activation
+ * change lands here rather than being written to storage by a page.
+ */
+async function commitActivation(activation, rules) {
+  await storeActivation(activation);
+  await applyDynamicRules(rules, activation);
+  await refreshBadgesSafely(rules, activation);
+  return activation;
 }
 
 /**
@@ -138,36 +190,51 @@ async function applyDynamicRules(rules, activation) {
   });
 }
 
-async function updateBadgeSafely(rules, activation) {
+async function refreshBadgesSafely(rules, activation) {
   try {
-    await updateBadge(rules, activation);
+    await refreshBadges(rules, activation);
   } catch (error) {
     console.error('Could not update the extension badge.', error);
   }
 }
 
-async function updateBadge(rules, activation) {
-  const activeCount = countLiveRules(rules, activation);
-  if (activeCount > 0) {
-    await chrome.action.setBadgeBackgroundColor({ color: '#2563eb' });
-    await chrome.action.setBadgeText({ text: String(activeCount) });
-    return;
+/**
+ * The default badge covers tabs whose address ReqKit cannot read; every tab it
+ * can read gets an exact per-host count on top.
+ */
+async function refreshBadges(rules, activation) {
+  await paintBadge(resolveBadge(rules, activation));
+
+  const tabs = await queryTabs({});
+  await Promise.all(tabs.map((tab) => (
+    paintBadge(resolveBadge(rules, activation, { url: tab.url }), tab.id)
+  )));
+}
+
+async function refreshTabBadge(tabId, knownTab = null) {
+  const { rules, activation } = await loadState();
+  const tab = knownTab || await getTabSafely(tabId);
+
+  await paintBadge(resolveBadge(rules, activation, { url: tab?.url }), tabId);
+}
+
+async function getTabSafely(tabId) {
+  try {
+    const tabs = await queryTabs({});
+    return tabs.find((tab) => tab.id === tabId) || null;
+  } catch (error) {
+    console.error('Could not read that tab.', error);
+    return null;
   }
+}
 
-  // Only say "off" when something is actually being held back — by the master
-  // switch or by an elapsed timer — so a profile with no rules stays quiet.
-  const heldBack = countLiveRules(rules, {
-    masterEnabled: true,
-    profileId: getTargetProfileId(activation)
-  });
+async function paintBadge({ text, color }, tabId = null) {
+  const target = tabId === null ? {} : { tabId };
 
-  if (heldBack > 0) {
-    await chrome.action.setBadgeBackgroundColor({ color: '#64748b' });
-    await chrome.action.setBadgeText({ text: 'off' });
-    return;
+  if (color) {
+    await chrome.action.setBadgeBackgroundColor({ ...target, color });
   }
-
-  await chrome.action.setBadgeText({ text: '' });
+  await chrome.action.setBadgeText({ ...target, text });
 }
 
 function storeRules(rules) {

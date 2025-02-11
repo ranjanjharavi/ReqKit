@@ -61,6 +61,17 @@ https://example.com/?redirect=/app%3Fview%3Dlist%23details&disableCustomJs=true&
 
 Use header modification only with systems you are authorized to test.
 
+### Pausing everything
+
+A single switch pauses every header rule without deleting anything or changing any rule's
+own on/off state. Resuming restores exactly what was there before.
+
+While rules are paused the toolbar badge reads `off`, and both the popup and the rule
+manager show a banner. The badge stays blank when there was nothing to apply anyway.
+
+The badge otherwise counts the rules active on the site you are looking at, falling back to
+the profile-wide count on pages whose address ReqKit has no access to read.
+
 ### Popup and rule manager
 
 The popup answers one question: what ReqKit is doing to the current site. It lists that
