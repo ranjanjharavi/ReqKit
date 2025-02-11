@@ -120,10 +120,7 @@
                   <span id="currentSiteHost" class="current-site-host" aria-live="polite">Detecting current site…</span>
                 </div>
               </div>
-              <div class="rule-view-toggle" role="group" aria-label="Filter header rules">
-                <button id="currentSiteViewBtn" class="rule-view-btn active" type="button" data-rule-view="current" aria-pressed="true">Current site <span id="currentSiteViewCount" class="rule-view-count">0</span></button>
-                <button id="allHostsViewBtn" class="rule-view-btn" type="button" data-rule-view="all" aria-pressed="false">All hosts <span id="allHostsViewCount" class="rule-view-count">0</span></button>
-              </div>
+              <span id="currentSiteRuleCount" class="current-site-count" aria-live="polite">0 rules</span>
             </div>
 
             <div id="headerComposer" class="header-composer">
@@ -166,12 +163,10 @@
             </div>
 
             <div id="headerStatus" class="status-msg"></div>
-            <div id="ruleSearchContainer" class="rule-search" hidden>
-              <label class="sr-only" for="ruleSearchInput">Search header rules</label>
-              <svg class="rule-search-icon" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M7 2a5 5 0 1 0 3.16 8.87l2.98 2.98 1.06-1.06-2.98-2.98A5 5 0 0 0 7 2Zm-3.5 5a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0Z"/></svg>
-              <input id="ruleSearchInput" type="search" placeholder="Search hosts and headers" autocomplete="off" spellcheck="false">
-            </div>
             <div id="ruleListContainer" class="rule-list"></div>
+            <footer class="panel-footer">
+              <a id="manageRulesLink" class="manage-rules-link" href="#" role="button">Manage all rules →</a>
+            </footer>
           </div>
         </article>
       </section>

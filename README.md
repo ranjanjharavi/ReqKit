@@ -58,9 +58,26 @@ https://example.com/?redirect=/app%3Fview%3Dlist%23details&disableCustomJs=true&
 - Detects conflicting active rules for the same host and header name.
 - Masks sensitive-looking header values in the popup until explicitly revealed.
 - Removes site access after the final rule for a hostname is deleted.
-- Provides current-host and all-host views, grouping and search for larger rule collections.
 
 Use header modification only with systems you are authorized to test.
+
+### Popup and rule manager
+
+The popup answers one question: what ReqKit is doing to the current site. It lists that
+host's rules, adds new ones, and links to the rule manager.
+
+The rule manager is a full page, opened from the popup or from **Extension options** in
+`chrome://extensions`. It holds everything that is not about the current tab: all hosts
+grouped and searchable, and the rule create and edit forms.
+
+### Keyboard shortcuts
+
+| Shortcut | Action |
+|---|---|
+| `Alt+Shift+R` | Open the ReqKit popup. |
+| `Alt+Shift+X` | Pause or resume every header rule without opening the popup. The badge shows `off` while rules are paused. |
+
+Both are editable at `chrome://extensions/shortcuts`.
 
 ## Install locally
 

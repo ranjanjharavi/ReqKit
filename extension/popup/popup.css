@@ -1053,65 +1053,55 @@ button:disabled {
   font-weight: 500;
 }
 
-.rule-view-toggle {
-  display: inline-grid;
-  grid-auto-flow: column;
-  gap: 3px;
-  padding: 3px;
+.current-site-count {
+  flex: none;
+  padding: 4px 9px;
   border: 1px solid rgba(191, 219, 254, 0.9);
-  border-radius: var(--radius-sm);
+  border-radius: 999px;
   background: #ffffff;
-}
-
-.rule-view-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 30px;
-  padding: 0 9px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
   color: var(--muted-foreground);
   font-size: 11px;
   font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
-}
-
-.rule-view-btn:hover:not(:disabled) {
-  background: var(--secondary);
-  color: var(--foreground);
-}
-
-.rule-view-btn.active {
-  background: var(--primary);
-  color: var(--primary-foreground);
-  box-shadow: var(--shadow-xs);
-}
-
-.rule-view-btn:focus-visible {
-  box-shadow: 0 0 0 3px var(--ring);
-}
-
-.rule-view-btn:disabled {
-  color: #94a3b8;
-  cursor: not-allowed;
-}
-
-.rule-view-count {
-  min-width: 18px;
-  padding: 2px 5px;
-  border-radius: 999px;
-  background: rgba(148, 163, 184, 0.15);
-  font-size: 9px;
   font-variant-numeric: tabular-nums;
-  line-height: 1.2;
+  white-space: nowrap;
 }
 
-.rule-view-btn.active .rule-view-count {
-  background: rgba(255, 255, 255, 0.2);
+.current-site-count[hidden] {
+  display: none;
+}
+
+/*
+ * Pinned to the bottom of the scrolling panel: the way out of the popup should
+ * not sit below every rule the user has for this host.
+ */
+.panel-footer {
+  position: sticky;
+  bottom: -20px;
+  z-index: 2;
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 -20px -20px;
+  padding: 8px 20px 10px;
+  border-top: 1px solid var(--border);
+  background: #f9fbff;
+}
+
+.manage-rules-link {
+  padding: 5px 2px;
+  border-radius: var(--radius-sm);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.manage-rules-link:hover {
+  text-decoration: underline;
+}
+
+.manage-rules-link:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px var(--ring);
 }
 
 .current-rule-list,

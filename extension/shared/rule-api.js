@@ -1,5 +1,5 @@
-import { sendRuntimeMessage } from '../../shared/chrome-api.js';
-import { RULE_MESSAGE_COMMIT, RULE_MESSAGE_GET } from '../../shared/messages.js';
+import { sendRuntimeMessage } from './chrome-api.js';
+import { RULE_MESSAGE_COMMIT, RULE_MESSAGE_GET } from './messages.js';
 
 export function getStoredRules() {
   return sendRuleMessage({ type: RULE_MESSAGE_GET });

@@ -15,8 +15,10 @@ import {
   ACTIVATION_STORAGE_KEY,
   countLiveRules,
   getLiveRules,
+  getTargetProfileId,
   normalizeActivation,
   resolveActivation,
+  setMasterEnabled,
   startBrowserSession
 } from './shared/activation.js';
 import { PROFILE_STORAGE_KEY, getProfileIds, normalizeProfiles } from './shared/profiles.js';
@@ -48,6 +50,29 @@ chrome.runtime.onStartup.addListener(() => {
     console.error('Could not restore saved header rules on browser startup.', error);
   });
 });
+
+chrome.commands.onCommand.addListener((command) => {
+  if (command !== 'toggle-master') {
+    return;
+  }
+
+  toggleMasterSwitch().catch((error) => {
+    console.error('Could not toggle the ReqKit master switch.', error);
+  });
+});
+
+/**
+ * Deliberately does not open the popup: flip off, reload the page, confirm the
+ * bug is real, flip back. The badge is the only feedback needed.
+ */
+async function toggleMasterSwitch() {
+  const { rules, activation } = await loadState();
+  const nextActivation = setMasterEnabled(activation, !activation.masterEnabled);
+
+  await storeActivation(nextActivation);
+  await applyDynamicRules(rules, nextActivation);
+  await updateBadgeSafely(rules, nextActivation);
+}
 
 async function initialize({ newBrowserSession = false } = {}) {
   await ensureMigrated({
@@ -123,13 +148,26 @@ async function updateBadgeSafely(rules, activation) {
 
 async function updateBadge(rules, activation) {
   const activeCount = countLiveRules(rules, activation);
-  if (activeCount === 0) {
-    await chrome.action.setBadgeText({ text: '' });
+  if (activeCount > 0) {
+    await chrome.action.setBadgeBackgroundColor({ color: '#2563eb' });
+    await chrome.action.setBadgeText({ text: String(activeCount) });
     return;
   }
 
-  await chrome.action.setBadgeBackgroundColor({ color: '#2563eb' });
-  await chrome.action.setBadgeText({ text: String(activeCount) });
+  // Only say "off" when something is actually being held back — by the master
+  // switch or by an elapsed timer — so a profile with no rules stays quiet.
+  const heldBack = countLiveRules(rules, {
+    masterEnabled: true,
+    profileId: getTargetProfileId(activation)
+  });
+
+  if (heldBack > 0) {
+    await chrome.action.setBadgeBackgroundColor({ color: '#64748b' });
+    await chrome.action.setBadgeText({ text: 'off' });
+    return;
+  }
+
+  await chrome.action.setBadgeText({ text: '' });
 }
 
 function storeRules(rules) {

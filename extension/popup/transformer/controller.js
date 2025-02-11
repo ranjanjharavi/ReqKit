@@ -10,7 +10,7 @@ import {
 import { buildTransformedUrl } from '../../shared/transformer.js';
 import { parseUserUrl } from '../../shared/urls.js';
 import { state } from '../state.js';
-import { copyToClipboard, escapeHtml, showStatus } from '../ui.js';
+import { copyToClipboard, escapeHtml, showStatus } from '../../shared/ui.js';
 
 export function bindTransformerEvents() {
   const sourceInput = document.getElementById('sourceUrl');

@@ -1,0 +1,11 @@
+export const state = {
+  rules: [],
+  profiles: [],
+  activation: null,
+  editingId: null,
+  composerOpen: false,
+  collapsedDomains: new Set(),
+  revealedRuleIds: new Set(),
+  searchQuery: '',
+  syncPaused: false
+};

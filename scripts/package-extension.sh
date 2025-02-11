@@ -16,6 +16,7 @@ RUNTIME_FILES=(
   "manifest.json"
   "background.js"
   "popup"
+  "options"
   "privacy"
   "shared"
   "icons/reqkit-16.png"

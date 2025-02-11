@@ -3,13 +3,10 @@ export const state = {
     rules: [],
     profiles: [],
     activation: null,
-    editingId: null,
     composerOpen: false,
     currentHostname: '',
-    view: 'current',
-    collapsedDomains: new Set(),
     revealedRuleIds: new Set(),
-    searchQuery: ''
+    syncPaused: false
   },
   transformer: {
     result: null,

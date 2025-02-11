@@ -123,6 +123,31 @@ export function createTab(details, chromeApi = globalThis.chrome) {
   });
 }
 
+export function openOptionsPage(chromeApi = globalThis.chrome) {
+  return new Promise((resolve, reject) => {
+    chromeApi.runtime.openOptionsPage(() => {
+      const error = getRuntimeError(chromeApi);
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve();
+    });
+  });
+}
+
+export function getExtensionUrl(path, chromeApi = globalThis.chrome) {
+  return chromeApi.runtime.getURL(path);
+}
+
+export function onStorageChanged(handler, chromeApi = globalThis.chrome) {
+  chromeApi.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === 'local') {
+      handler(changes);
+    }
+  });
+}
+
 function getRuntimeError(chromeApi) {
   const message = chromeApi?.runtime?.lastError?.message;
   return message ? new Error(message) : null;

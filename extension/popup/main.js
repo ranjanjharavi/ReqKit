@@ -1,9 +1,9 @@
 import { getCurrentTab } from '../shared/chrome-api.js';
 import { bindHeaderEvents, initializeHeaders } from './headers/controller.js';
-import { requirePrivacyConsent } from './privacy.js';
+import { requirePrivacyConsent } from '../shared/privacy.js';
 import { bindTabEvents, setActiveTab } from './tabs.js';
 import { bindTransformerEvents, initializeTransformer } from './transformer/controller.js';
-import { showStatus } from './ui.js';
+import { showStatus } from '../shared/ui.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   start().catch((error) => {

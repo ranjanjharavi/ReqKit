@@ -1,0 +1,123 @@
+/*
+ * The manager reuses popup.css so a rule row looks identical in both surfaces.
+ * Everything here undoes the fixed popup shell and lays the page out for a tab.
+ */
+
+html,
+body {
+  width: auto;
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+}
+
+body {
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 220px, #f7fbff 100%);
+}
+
+.privacy-gate {
+  height: auto;
+  max-width: 560px;
+  min-height: 100vh;
+  margin: 0 auto;
+}
+
+.options-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 34px 24px 72px;
+}
+
+.options-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.options-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-width: 0;
+}
+
+.options-header-brand img {
+  border-radius: 9px;
+  box-shadow: var(--shadow-xs);
+}
+
+.options-header-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.options-header-copy h1 {
+  margin: 0;
+  font-size: 21px;
+  letter-spacing: -0.01em;
+}
+
+.options-header-copy p {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 12.5px;
+}
+
+.options-header-link {
+  flex: none;
+  padding: 6px 2px;
+  border-radius: var(--radius-sm);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.options-header-link:hover {
+  text-decoration: underline;
+}
+
+.options-header-link:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.options-main {
+  display: block;
+}
+
+.options-panel {
+  padding: 20px 22px 24px;
+}
+
+/* The manager has room for the search field at all times. */
+.rule-search input {
+  min-height: 42px;
+}
+
+.options-shell .rule-edit-grid {
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+
+/* Header values are the longest field here, so give them the full row. */
+.options-shell .rule-edit-field:last-child {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 620px) {
+  .options-shell {
+    padding: 22px 14px 56px;
+  }
+
+  .options-panel {
+    padding: 16px 14px 20px;
+  }
+}
