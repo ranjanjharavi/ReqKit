@@ -45,6 +45,37 @@ export function requestOriginPermission(origin, chromeApi = globalThis.chrome) {
   });
 }
 
+export function requestOriginPermissions(origins, chromeApi = globalThis.chrome) {
+  return new Promise((resolve, reject) => {
+    chromeApi.permissions.request({ origins }, (granted) => {
+      const error = getRuntimeError(chromeApi);
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve(Boolean(granted));
+    });
+  });
+}
+
+/**
+ * Read once when a page loads so a profile switch can work out what it needs
+ * without an await between the click and permissions.request, which would
+ * lose the user gesture Chrome requires.
+ */
+export function getGrantedOrigins(chromeApi = globalThis.chrome) {
+  return new Promise((resolve, reject) => {
+    chromeApi.permissions.getAll((permissions) => {
+      const error = getRuntimeError(chromeApi);
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve(new Set(permissions?.origins || []));
+    });
+  });
+}
+
 export function removeOriginPermission(origin, chromeApi = globalThis.chrome) {
   return new Promise((resolve, reject) => {
     chromeApi.permissions.remove({ origins: [origin] }, (removed) => {

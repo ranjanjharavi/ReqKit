@@ -79,6 +79,48 @@ export function getProfileName(profiles, id) {
   return findProfile(profiles, id)?.name || DEFAULT_PROFILE_NAME;
 }
 
+export function createProfile(name, { now = Date.now() } = {}) {
+  return {
+    id: createProfileId(),
+    name: String(name || '').trim().slice(0, MAX_PROFILE_NAME_LENGTH),
+    createdAt: now,
+    defaultDurationMs: null
+  };
+}
+
+/**
+ * Cloning a profile is the fastest route to a second environment: duplicate,
+ * then change the two values that differ.
+ */
+export function cloneRulesIntoProfile(rules, sourceProfileId, targetProfileId, nextId) {
+  const sourceId = resolveProfileId(sourceProfileId);
+  let id = nextId;
+
+  return (Array.isArray(rules) ? rules : [])
+    .filter((rule) => resolveProfileId(rule.profileId) === sourceId)
+    .map((rule) => ({ ...rule, id: id++, profileId: resolveProfileId(targetProfileId) }));
+}
+
+/**
+ * Deleting a profile never deletes rules. They move to the default profile and
+ * are paused, so nothing starts hitting the network as a side effect.
+ */
+export function reassignRulesFromProfile(rules, profileId, targetProfileId = DEFAULT_PROFILE_ID) {
+  const sourceId = resolveProfileId(profileId);
+
+  return (Array.isArray(rules) ? rules : []).map((rule) => (
+    resolveProfileId(rule.profileId) === sourceId
+      ? { ...rule, profileId: resolveProfileId(targetProfileId), enabled: false }
+      : rule
+  ));
+}
+
+export function countRulesInProfile(rules, profileId) {
+  const resolvedId = resolveProfileId(profileId);
+  return (Array.isArray(rules) ? rules : [])
+    .filter((rule) => resolveProfileId(rule.profileId) === resolvedId).length;
+}
+
 export function validateProfileDraft(draft, existingProfiles, { excludeId = null } = {}) {
   const name = String(draft?.name || '').trim();
 

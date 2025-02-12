@@ -1182,6 +1182,130 @@ button:disabled {
   opacity: 0.55;
 }
 
+/* Appears only once a second profile exists. */
+.profile-bar {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: #ffffff;
+}
+
+.profile-bar[hidden] {
+  display: none;
+}
+
+.profile-bar-label {
+  flex: none;
+  color: var(--muted-foreground);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.profile-select {
+  flex: 1;
+  min-width: 0;
+  min-height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: #ffffff;
+  color: var(--foreground);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.profile-select:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.profile-bar-count {
+  flex: none;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rule-profile-chip {
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--secondary);
+  color: var(--primary);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.domain-rule-row.needs-access .rule-header-name {
+  color: var(--muted-foreground);
+}
+
+.rule-access-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px solid #fcd34d;
+  border-radius: var(--radius-sm);
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.rule-access-notice svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+
+.rule-access-notice span {
+  flex: 1;
+  min-width: 0;
+}
+
+.rule-access-notice code {
+  font-size: 10.5px;
+  word-break: break-all;
+}
+
+.rule-access-btn {
+  flex: none;
+  min-height: 24px;
+  padding: 0 9px;
+  border: 1px solid #f59e0b;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #92400e;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.rule-access-btn:hover {
+  background: #fef3c7;
+}
+
+.rule-access-btn:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.3);
+}
+
+.rule-other-profiles {
+  margin: 7px 0 0;
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+
 .current-site-count {
   flex: none;
   padding: 4px 9px;

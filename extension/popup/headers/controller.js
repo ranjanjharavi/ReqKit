@@ -1,6 +1,7 @@
 import {
   RULE_STORAGE_KEY,
   filterRulesByHost,
+  filterRulesByProfile,
   findActiveRuleConflict,
   getActiveRuleConflicts,
   getNextRuleId,
@@ -11,26 +12,33 @@ import {
 import {
   createTab,
   getExtensionUrl,
+  getGrantedOrigins,
   onStorageChanged,
   openOptionsPage,
   removeOriginPermission,
   requestOriginPermission,
+  requestOriginPermissions,
   storageLocalGet
 } from '../../shared/chrome-api.js';
 import {
   ACTIVATION_STORAGE_KEY,
   createDefaultActivation,
+  getActivationStatus,
   getTargetProfileId,
   normalizeActivation,
+  setActiveProfile,
   setMasterEnabled
 } from '../../shared/activation.js';
 import { setActivationState } from '../../shared/activation-api.js';
 import {
   PROFILE_STORAGE_KEY,
+  countRulesInProfile,
   createDefaultProfiles,
   getProfileIds,
+  getProfileName,
   normalizeProfiles
 } from '../../shared/profiles.js';
+import { getMissingProfileOrigins, isRuleGranted } from '../../shared/site-access.js';
 import { createConflictMap, renderRuleRow, sortRulesForDisplay } from '../../shared/rule-render.js';
 import { parseUserUrl } from '../../shared/urls.js';
 import { commitRules, getStoredRules } from '../../shared/rule-api.js';
@@ -54,7 +62,10 @@ export function bindHeaderEvents() {
 
   document.getElementById('ruleListContainer').addEventListener('click', handleRuleListClick);
   document.getElementById('masterSwitch').addEventListener('click', () => toggleMaster());
-  document.getElementById('resumeMasterBtn').addEventListener('click', () => toggleMaster(true));
+  document.getElementById('resumeMasterBtn').addEventListener('click', resumeFromBanner);
+  document.getElementById('profileSelect').addEventListener('change', (event) => {
+    selectProfile(event.target.value);
+  });
 
   onStorageChanged((changes) => {
     const touchesRules = RULE_STORAGE_KEY in changes
@@ -93,18 +104,99 @@ async function loadActivation() {
     state.headers.profiles = createDefaultProfiles();
     state.headers.activation = createDefaultActivation();
   }
+
+  state.headers.grantedOrigins = await readGrantedOrigins();
+}
+
+/**
+ * Cached on load so a profile switch can call permissions.request in the same
+ * task as the click. An await in between loses the user gesture Chrome needs.
+ */
+async function readGrantedOrigins() {
+  try {
+    return await getGrantedOrigins();
+  } catch (error) {
+    console.error('Could not read granted site access.', error);
+    return null;
+  }
 }
 
 function getActivation() {
   return state.headers.activation || createDefaultActivation();
 }
 
+/**
+ * The popup only ever shows the profile in play. Rules parked in another
+ * profile are not applied here, so listing them would misrepresent the site.
+ */
+function getScopedRules() {
+  return filterRulesByProfile(state.headers.rules, getTargetProfileId(getActivation()));
+}
+
 async function toggleMaster(forceOn = false) {
   const activation = getActivation();
   const nextEnabled = forceOn || !activation.masterEnabled;
+
+  await commitActivation(
+    setMasterEnabled(activation, nextEnabled),
+    nextEnabled ? 'Header rules resumed.' : 'All header rules paused.'
+  );
+}
+
+/**
+ * The banner covers two different stops: the master switch, and an elapsed
+ * timer that parked the profile. Resuming has to undo whichever it is.
+ */
+async function resumeFromBanner() {
+  const activation = getActivation();
+
+  if (getActivationStatus(activation) === 'parked') {
+    await selectProfile(getTargetProfileId(activation));
+    return;
+  }
+
+  await toggleMaster(true);
+}
+
+async function selectProfile(profileId) {
+  const activation = getActivation();
+  if (profileId === activation.profileId) {
+    return;
+  }
+
+  // Computed from the cached grant list so this stays in the click's task.
+  const missingOrigins = getMissingProfileOrigins(
+    state.headers.rules,
+    profileId,
+    state.headers.grantedOrigins
+  );
+
+  let granted = true;
+  if (missingOrigins.length) {
+    try {
+      granted = await requestOriginPermissions(missingOrigins);
+    } catch (error) {
+      console.error('Could not request site access for that profile.', error);
+      granted = false;
+    }
+    state.headers.grantedOrigins = await readGrantedOrigins();
+  }
+
+  const profileName = getProfileName(state.headers.profiles, profileId);
+  await commitActivation(
+    setActiveProfile(activation, profileId),
+    granted
+      ? `Switched to ${profileName}.`
+      : `Switched to ${profileName}. Some rules still need site access.`,
+    { type: granted ? 'success' : 'error' }
+  );
+}
+
+async function commitActivation(nextActivation, message, { type = 'success' } = {}) {
   const controls = [
     document.getElementById('masterSwitch'),
-    document.getElementById('resumeMasterBtn')
+    document.getElementById('resumeMasterBtn'),
+    document.getElementById('profileSelect')
   ];
 
   controls.forEach((control) => {
@@ -113,15 +205,12 @@ async function toggleMaster(forceOn = false) {
 
   state.headers.syncPaused = true;
   try {
-    state.headers.activation = await setActivationState(setMasterEnabled(activation, nextEnabled));
+    state.headers.activation = await setActivationState(nextActivation);
     renderRules();
-    showStatus(
-      'headerStatus',
-      nextEnabled ? 'Header rules resumed.' : 'All header rules paused.',
-      'success'
-    );
+    showStatus('headerStatus', message, type);
   } catch (error) {
     console.error(error);
+    renderRules();
     showStatus('headerStatus', error.message || 'Could not change the ReqKit switch.', 'error');
   } finally {
     state.headers.syncPaused = false;
@@ -132,20 +221,68 @@ async function toggleMaster(forceOn = false) {
 }
 
 function renderMasterSwitch() {
-  const { masterEnabled } = getActivation();
+  const activation = getActivation();
+  const status = getActivationStatus(activation);
   const masterSwitch = document.getElementById('masterSwitch');
-  const label = document.getElementById('masterSwitchLabel');
 
-  masterSwitch.setAttribute('aria-checked', String(masterEnabled));
+  masterSwitch.setAttribute('aria-checked', String(activation.masterEnabled));
   masterSwitch.setAttribute(
     'aria-label',
-    masterEnabled ? 'Pause all header rules' : 'Resume all header rules'
+    activation.masterEnabled ? 'Pause all header rules' : 'Resume all header rules'
   );
-  label.textContent = masterEnabled ? 'On' : 'Paused';
+  document.getElementById('masterSwitchLabel').textContent = activation.masterEnabled ? 'On' : 'Paused';
 
-  document.getElementById('masterPausedBanner').hidden = masterEnabled;
+  const banner = document.getElementById('masterPausedBanner');
+  banner.hidden = status === 'live';
+  if (status !== 'live') {
+    const parked = status === 'parked';
+    document.getElementById('masterPausedTitle').textContent = parked
+      ? 'No profile is active'
+      : 'All header rules are paused';
+    document.getElementById('masterPausedDetail').textContent = parked
+      ? `Resume to switch back to ${getProfileName(state.headers.profiles, getTargetProfileId(activation))}.`
+      : 'No headers are being applied to any site.';
+  }
+
   document.querySelector('#headers-panel .content-stack')
-    .classList.toggle('is-master-paused', !masterEnabled);
+    .classList.toggle('is-master-paused', status !== 'live');
+}
+
+function renderProfileBar() {
+  const { profiles, rules } = state.headers;
+  const activation = getActivation();
+  const profileBar = document.getElementById('profileBar');
+
+  // A single profile is the same as no profiles at all — show nothing.
+  profileBar.hidden = profiles.length < 2;
+  if (profileBar.hidden) {
+    return;
+  }
+
+  const activeProfileId = getTargetProfileId(activation);
+  const select = document.getElementById('profileSelect');
+  const options = profiles.map((profile) => (
+    `<option value="${escapeHtml(profile.id)}"${profile.id === activeProfileId ? ' selected' : ''}>${escapeHtml(profile.name)}</option>`
+  )).join('');
+
+  if (select.dataset.renderedFor !== `${profiles.map((p) => p.id + p.name).join()}|${activeProfileId}`) {
+    select.innerHTML = options;
+    select.dataset.renderedFor = `${profiles.map((p) => p.id + p.name).join()}|${activeProfileId}`;
+  }
+
+  const ruleCount = countRulesInProfile(rules, activeProfileId);
+  document.getElementById('profileBarCount').textContent = `${ruleCount} ${ruleCount === 1 ? 'rule' : 'rules'}`;
+}
+
+/**
+ * When the grant list could not be read, say nothing rather than flagging every
+ * rule as broken.
+ */
+function describeRule(rule) {
+  const grantedOrigins = state.headers.grantedOrigins;
+  return {
+    needsAccess: Boolean(grantedOrigins) && !isRuleGranted(rule, grantedOrigins)
+  };
 }
 
 function openManager() {
@@ -175,6 +312,9 @@ function handleRuleListClick(event) {
       break;
     case 'reveal':
       toggleRuleValueVisibility(Number(button.dataset.id));
+      break;
+    case 'grant':
+      grantRuleAccess(Number(button.dataset.id));
       break;
     case 'delete':
       confirmDeleteRule(Number(button.dataset.id));
@@ -280,9 +420,10 @@ function renderRules() {
   const conflictMap = createConflictMap(getActiveRuleConflicts(rules, getActivation()));
   const conflictingIds = new Set(conflictMap.keys());
   renderMasterSwitch();
+  renderProfileBar();
   updateCurrentSiteControls();
 
-  const currentSiteRules = currentHostname ? filterRulesByHost(rules, currentHostname) : [];
+  const currentSiteRules = currentHostname ? filterRulesByHost(getScopedRules(), currentHostname) : [];
   if (!currentSiteRules.length) {
     container.innerHTML = getEmptyRulesMessage();
     return;
@@ -294,7 +435,8 @@ function renderRules() {
       ${sortedRules.map((rule) => renderRuleRow(rule, {
     conflictingRules: conflictMap.get(rule.id) || [],
     revealed: state.headers.revealedRuleIds.has(rule.id),
-    editOpensManager: true
+    editOpensManager: true,
+    ...describeRule(rule)
   })).join('')}
     </div>
   `;
@@ -304,7 +446,9 @@ function updateCurrentSiteControls() {
   const { rules, currentHostname } = state.headers;
   const currentSiteHost = document.getElementById('currentSiteHost');
   const currentSiteToolbar = document.querySelector('.current-site-toolbar');
-  const currentSiteCount = currentHostname ? filterRulesByHost(rules, currentHostname).length : 0;
+  const currentSiteCount = currentHostname
+    ? filterRulesByHost(getScopedRules(), currentHostname).length
+    : 0;
   const countLabel = document.getElementById('currentSiteRuleCount');
 
   currentSiteHost.textContent = currentHostname || 'Unavailable on this page';
@@ -458,6 +602,24 @@ function toggleRuleValueVisibility(id) {
     state.headers.revealedRuleIds.add(id);
   }
   renderRules();
+}
+
+async function grantRuleAccess(id) {
+  const rule = state.headers.rules.find((candidate) => candidate.id === id);
+  if (!rule) {
+    return;
+  }
+
+  try {
+    await ensureRulePermission(rule);
+    state.headers.grantedOrigins = await readGrantedOrigins();
+    // Re-commit so the worker rebuilds the rule set now that access exists.
+    await persistRules(state.headers.rules);
+    showStatus('headerStatus', `Site access granted for ${rule.domain}.`, 'success');
+  } catch (error) {
+    console.error(error);
+    showStatus('headerStatus', error.message || 'Chrome denied site access.', 'error');
+  }
 }
 
 async function ensureRulePermission(rule) {

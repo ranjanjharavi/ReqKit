@@ -86,6 +86,18 @@ export function getTargetProfileId(activation) {
   return activation?.profileId || activation?.lastProfileId || DEFAULT_PROFILE_ID;
 }
 
+/**
+ * Why nothing is being applied, so each surface can say the accurate thing
+ * rather than blaming the master switch for an elapsed timer.
+ */
+export function getActivationStatus(activation) {
+  if (!activation?.masterEnabled) {
+    return 'paused';
+  }
+
+  return activation.profileId ? 'live' : 'parked';
+}
+
 export function isActivationExpired(activation, now = Date.now()) {
   const expiresAt = Number(activation?.expiresAt);
   return Boolean(activation?.profileId) && Number.isFinite(expiresAt) && expiresAt > 0 && now >= expiresAt;

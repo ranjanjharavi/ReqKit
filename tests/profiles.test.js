@@ -3,7 +3,11 @@ import test from 'node:test';
 
 import {
   DEFAULT_PROFILE_ID,
+  cloneRulesIntoProfile,
+  countRulesInProfile,
   createDefaultProfiles,
+  createProfile,
+  reassignRulesFromProfile,
   findProfile,
   getProfileIds,
   getProfileName,
@@ -64,4 +68,52 @@ test('profile names must be present and unique', () => {
   assert.match(validateProfileDraft({ name: 'staging' }, profiles).error, /already exists/);
   assert.equal(validateProfileDraft({ name: 'Staging' }, profiles, { excludeId: 'staging' }).ok, true);
   assert.match(validateProfileDraft({ name: 'x'.repeat(41) }, profiles).error, /40 characters/);
+});
+
+test('creating a profile trims and caps the name', () => {
+  const profile = createProfile('  Staging  ', { now: 1234 });
+
+  assert.equal(profile.name, 'Staging');
+  assert.equal(profile.createdAt, 1234);
+  assert.equal(profile.defaultDurationMs, null);
+  assert.match(profile.id, /^profile-/);
+});
+
+test('cloning copies only the source profile and renumbers ids', () => {
+  const rules = [
+    { id: 1, domain: 'a.example.com', headerName: 'X-A', headerValue: '1', enabled: true, profileId: 'staging' },
+    { id: 2, domain: 'b.example.com', headerName: 'X-B', headerValue: '2', enabled: false, profileId: 'staging' },
+    { id: 3, domain: 'c.example.com', headerName: 'X-C', headerValue: '3', enabled: true, profileId: 'default' }
+  ];
+
+  const cloned = cloneRulesIntoProfile(rules, 'staging', 'prod', 4);
+
+  assert.deepEqual(cloned.map((rule) => rule.id), [4, 5]);
+  assert.deepEqual(cloned.map((rule) => rule.profileId), ['prod', 'prod']);
+  assert.deepEqual(cloned.map((rule) => rule.headerValue), ['1', '2']);
+  assert.deepEqual(rules.map((rule) => rule.id), [1, 2, 3], 'source rules untouched');
+});
+
+test('deleting a profile moves its rules to default and pauses them', () => {
+  const rules = [
+    { id: 1, domain: 'a.example.com', headerName: 'X-A', headerValue: '1', enabled: true, profileId: 'staging' },
+    { id: 2, domain: 'b.example.com', headerName: 'X-B', headerValue: '2', enabled: true, profileId: 'default' }
+  ];
+
+  const reassigned = reassignRulesFromProfile(rules, 'staging');
+
+  assert.deepEqual(reassigned.map((rule) => rule.profileId), ['default', 'default']);
+  assert.deepEqual(reassigned.map((rule) => rule.enabled), [false, true], 'moved rules paused, others untouched');
+  assert.equal(reassigned.length, 2, 'no rule is deleted');
+});
+
+test('rules are counted per profile, treating a missing profile as default', () => {
+  const rules = [
+    { id: 1, profileId: 'staging' },
+    { id: 2, profileId: 'default' },
+    { id: 3 }
+  ];
+
+  assert.equal(countRulesInProfile(rules, 'staging'), 1);
+  assert.equal(countRulesInProfile(rules, 'default'), 2);
 });

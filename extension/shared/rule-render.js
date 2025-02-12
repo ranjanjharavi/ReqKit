@@ -62,10 +62,14 @@ export function renderRuleRow(rule, {
   conflictingRules = [],
   revealed = false,
   editing = false,
-  editOpensManager = false
+  editOpensManager = false,
+  editProfiles = null,
+  needsAccess = false,
+  profileName = '',
+  alsoInProfiles = []
 } = {}) {
   if (editing) {
-    return renderRuleEditForm(rule);
+    return renderRuleEditForm(rule, editProfiles);
   }
 
   const toggleTitle = `${rule.enabled ? 'Pause' : 'Enable'} ${rule.headerName} rule`;
@@ -75,11 +79,12 @@ export function renderRuleRow(rule, {
   const editTitle = editOpensManager ? 'Edit rule in the manager' : 'Edit rule';
 
   return `
-    <article class="domain-rule-row${rule.enabled ? '' : ' is-paused'}${hasConflict ? ' has-conflict' : ''}">
+    <article class="domain-rule-row${rule.enabled ? '' : ' is-paused'}${hasConflict ? ' has-conflict' : ''}${needsAccess ? ' needs-access' : ''}">
       <div class="domain-rule-content">
         <div class="rule-row-head">
           <div class="rule-identification">
             <code class="rule-header-name">${escapeHtml(rule.headerName)}</code>
+            ${profileName ? `<span class="rule-profile-chip">${escapeHtml(profileName)}</span>` : ''}
           </div>
           <div class="rule-row-controls">
             <button class="rule-enable-control" type="button" role="switch" aria-checked="${String(rule.enabled)}" data-rule-action="toggle" data-id="${rule.id}" aria-label="${toggleTitle}" title="${toggleTitle}">
@@ -94,10 +99,35 @@ export function renderRuleRow(rule, {
           <code class="rule-header-value${isSensitive && !revealed ? ' is-masked' : ''}">${escapeHtml(displayValue)}</code>
           ${isSensitive ? renderRevealButton(rule, revealed) : ''}
         </div>
+        ${needsAccess ? renderAccessNotice(rule) : ''}
         ${hasConflict ? renderConflictNotice(conflictingRules) : ''}
+        ${alsoInProfiles.length ? renderOtherProfilesNote(alsoInProfiles) : ''}
       </div>
     </article>
   `;
+}
+
+/**
+ * A rule whose host was never granted, or whose access was revoked. Chrome will
+ * not apply it, so say that plainly instead of showing it as active.
+ */
+function renderAccessNotice(rule) {
+  return `
+    <div class="rule-access-notice" role="note">
+      ${ICON_WARNING}
+      <span>ReqKit has no access to <code>${escapeHtml(rule.domain)}</code>, so this rule is not being applied.</span>
+      <button class="rule-access-btn" type="button" data-rule-action="grant" data-id="${rule.id}">Grant</button>
+    </div>
+  `;
+}
+
+/**
+ * Not a conflict — different profiles never apply together — but worth seeing,
+ * because it usually means the value was edited in the wrong environment.
+ */
+function renderOtherProfilesNote(profileNames) {
+  const names = profileNames.map((name) => escapeHtml(name)).join(', ');
+  return `<p class="rule-other-profiles">Also set in ${names}.</p>`;
 }
 
 function renderRevealButton(rule, revealed) {
@@ -118,7 +148,9 @@ export function renderConflictNotice(conflictingRules) {
   `;
 }
 
-export function renderRuleEditForm(rule) {
+export function renderRuleEditForm(rule, profiles = null) {
+  const showProfileField = Array.isArray(profiles) && profiles.length > 1;
+
   return `
     <div class="domain-rule-row">
       <form class="rule-edit-form" data-id="${rule.id}">
@@ -131,6 +163,7 @@ export function renderRuleEditForm(rule) {
             <label for="editHeaderName-${rule.id}">Header name</label>
             <input id="editHeaderName-${rule.id}" type="text" value="${escapeHtml(rule.headerName)}" autocapitalize="off" autocorrect="off" spellcheck="false">
           </div>
+          ${showProfileField ? renderProfileField(rule, profiles) : ''}
           <div class="rule-edit-field">
             <label for="editHeaderValue-${rule.id}">Header value</label>
             <input id="editHeaderValue-${rule.id}" type="text" value="${escapeHtml(rule.headerValue)}" autocapitalize="off" autocorrect="off" spellcheck="false">
@@ -146,6 +179,20 @@ export function renderRuleEditForm(rule) {
   `;
 }
 
+function renderProfileField(rule, profiles) {
+  const currentProfileId = rule.profileId || 'default';
+  const options = profiles.map((profile) => (
+    `<option value="${escapeHtml(profile.id)}"${profile.id === currentProfileId ? ' selected' : ''}>${escapeHtml(profile.name)}</option>`
+  )).join('');
+
+  return `
+    <div class="rule-edit-field">
+      <label for="editProfile-${rule.id}">Profile</label>
+      <select id="editProfile-${rule.id}">${options}</select>
+    </div>
+  `;
+}
+
 export function renderDomainGroup(domain, domainRules, {
   index,
   conflictMap = new Map(),
@@ -153,7 +200,9 @@ export function renderDomainGroup(domain, domainRules, {
   currentHostname = '',
   editingId = null,
   revealedRuleIds = new Set(),
-  editOpensManager = false
+  editOpensManager = false,
+  editProfiles = null,
+  describeRule = () => ({})
 } = {}) {
   const conflictingIds = new Set(conflictMap.keys());
   const sortedRules = sortRulesForDisplay(domainRules, conflictingIds);
@@ -188,7 +237,9 @@ export function renderDomainGroup(domain, domainRules, {
           conflictingRules: conflictMap.get(rule.id) || [],
           revealed: revealedRuleIds.has(rule.id),
           editing: rule.id === editingId,
-          editOpensManager
+          editOpensManager,
+          editProfiles,
+          ...describeRule(rule)
         })).join('')}
       </div>
     </section>

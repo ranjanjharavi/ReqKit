@@ -61,6 +61,22 @@ https://example.com/?redirect=/app%3Fview%3Dlist%23details&disableCustomJs=true&
 
 Use header modification only with systems you are authorized to test.
 
+### Profiles
+
+Rules are grouped into profiles, and one profile is active at a time. Rules in the other
+profiles keep their own on/off state and are simply not applied, so the same header can hold
+a different value in each environment without the two ever colliding.
+
+- The popup shows a profile switcher once a second profile exists, and only lists rules from
+  the profile in play.
+- The rule manager creates, renames, duplicates and deletes profiles, and its edit form moves
+  a rule between them.
+- Duplicating a profile copies its rules paused, so nothing goes live by accident.
+- Deleting a profile never deletes rules. They move to Default and are paused.
+- Switching to a profile asks for any site access it still needs, in one prompt. If you
+  decline, the switch still happens and the affected rules are flagged with a Grant button
+  rather than silently doing nothing.
+
 ### Pausing everything
 
 A single switch pauses every header rule without deleting anything or changing any rule's

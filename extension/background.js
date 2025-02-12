@@ -1,11 +1,13 @@
 import { commitRuleSet } from './shared/rule-commit.js';
 import {
   getDynamicRules,
+  getGrantedOrigins,
   queryTabs,
   storageAreaGet,
   storageAreaSet,
   updateDynamicRules
 } from './shared/chrome-api.js';
+import { filterGrantedRules } from './shared/site-access.js';
 import {
   ACTIVATION_MESSAGE_GET,
   ACTIVATION_MESSAGE_SET,
@@ -100,8 +102,8 @@ chrome.tabs.onActivated.addListener(({ tabId }) => {
  * bug is real, flip back. The badge is the only feedback needed.
  */
 async function toggleMasterSwitch() {
-  const { rules, activation } = await loadState();
-  await commitActivation(setMasterEnabled(activation, !activation.masterEnabled), rules);
+  const state = await loadState();
+  await commitActivation(setMasterEnabled(state.activation, !state.activation.masterEnabled), state);
 }
 
 async function initialize({ newBrowserSession = false } = {}) {
@@ -111,8 +113,8 @@ async function initialize({ newBrowserSession = false } = {}) {
   });
 
   const state = await loadState({ newBrowserSession });
-  await applyDynamicRules(state.rules, state.activation);
-  await refreshBadgesSafely(state.rules, state.activation);
+  await applyDynamicRules(state.rules, state.activation, state.grantedOrigins);
+  await refreshBadgesSafely(state);
 }
 
 async function handleRuleMessage(message) {
@@ -126,11 +128,11 @@ async function handleRuleMessage(message) {
     activation: state.activation,
     profileIds: state.profileIds,
     getCurrentRules: async () => state.rules,
-    applyRules: (nextRules) => applyDynamicRules(nextRules, state.activation),
+    applyRules: (nextRules) => applyDynamicRules(nextRules, state.activation, state.grantedOrigins),
     storeRules
   });
 
-  await refreshBadgesSafely(rules, state.activation);
+  await refreshBadgesSafely({ ...state, rules });
   return rules;
 }
 
@@ -142,17 +144,17 @@ async function handleActivationMessage(message) {
   }
 
   const nextActivation = normalizeActivation(message.activation, { profileIds: state.profileIds });
-  return commitActivation(nextActivation, state.rules);
+  return commitActivation(nextActivation, state);
 }
 
 /**
  * The worker owns the dynamic rule set and the badges, so every activation
  * change lands here rather than being written to storage by a page.
  */
-async function commitActivation(activation, rules) {
+async function commitActivation(activation, state) {
   await storeActivation(activation);
-  await applyDynamicRules(rules, activation);
-  await refreshBadgesSafely(rules, activation);
+  await applyDynamicRules(state.rules, activation, state.grantedOrigins);
+  await refreshBadgesSafely({ ...state, activation });
   return activation;
 }
 
@@ -177,12 +179,30 @@ async function loadState({ newBrowserSession = false } = {}) {
     await storeActivation(expiryResult.activation);
   }
 
-  return { profiles, profileIds, rules, activation: expiryResult.activation };
+  const grantedOrigins = await getGrantedOriginsSafely();
+
+  return {
+    profiles,
+    profileIds,
+    rules,
+    grantedOrigins,
+    activation: expiryResult.activation
+  };
 }
 
-async function applyDynamicRules(rules, activation) {
+async function getGrantedOriginsSafely() {
+  try {
+    return await getGrantedOrigins();
+  } catch (error) {
+    console.error('Could not read granted site access.', error);
+    return null;
+  }
+}
+
+async function applyDynamicRules(rules, activation, grantedOrigins) {
   const currentRules = await getDynamicRules();
-  const addRules = getLiveRules(rules, activation).map(buildDynamicRule);
+  const applicableRules = filterGrantedRules(rules, grantedOrigins);
+  const addRules = getLiveRules(applicableRules, activation).map(buildDynamicRule);
 
   await updateDynamicRules({
     removeRuleIds: currentRules.map((rule) => rule.id),
@@ -190,9 +210,9 @@ async function applyDynamicRules(rules, activation) {
   });
 }
 
-async function refreshBadgesSafely(rules, activation) {
+async function refreshBadgesSafely(state) {
   try {
-    await refreshBadges(rules, activation);
+    await refreshBadges(state);
   } catch (error) {
     console.error('Could not update the extension badge.', error);
   }
@@ -202,20 +222,22 @@ async function refreshBadgesSafely(rules, activation) {
  * The default badge covers tabs whose address ReqKit cannot read; every tab it
  * can read gets an exact per-host count on top.
  */
-async function refreshBadges(rules, activation) {
-  await paintBadge(resolveBadge(rules, activation));
+async function refreshBadges({ rules, activation, grantedOrigins }) {
+  const applicableRules = filterGrantedRules(rules, grantedOrigins);
+  await paintBadge(resolveBadge(applicableRules, activation));
 
   const tabs = await queryTabs({});
   await Promise.all(tabs.map((tab) => (
-    paintBadge(resolveBadge(rules, activation, { url: tab.url }), tab.id)
+    paintBadge(resolveBadge(applicableRules, activation, { url: tab.url }), tab.id)
   )));
 }
 
 async function refreshTabBadge(tabId, knownTab = null) {
-  const { rules, activation } = await loadState();
+  const { rules, activation, grantedOrigins } = await loadState();
   const tab = knownTab || await getTabSafely(tabId);
+  const applicableRules = filterGrantedRules(rules, grantedOrigins);
 
-  await paintBadge(resolveBadge(rules, activation, { url: tab?.url }), tabId);
+  await paintBadge(resolveBadge(applicableRules, activation, { url: tab?.url }), tabId);
 }
 
 async function getTabSafely(tabId) {

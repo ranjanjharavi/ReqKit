@@ -43,11 +43,23 @@
           <div id="masterPausedBanner" class="master-paused-banner" role="status" hidden>
             <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1a7 7 0 1 1 0 14A7 7 0 0 1 8 1Zm0 1.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM6.5 5.5h1.25v5H6.5v-5Zm1.75 0h1.25v5H8.25v-5Z"/></svg>
             <div class="master-paused-copy">
-              <strong>All header rules are paused</strong>
-              <span>No headers are being applied to any site. Rules keep their own on/off state.</span>
+              <strong id="masterPausedTitle">All header rules are paused</strong>
+              <span id="masterPausedDetail">No headers are being applied to any site. Rules keep their own on/off state.</span>
             </div>
             <button id="resumeMasterBtn" class="master-resume-btn" type="button">Resume</button>
           </div>
+
+          <section class="profiles-section" aria-labelledby="profilesTitle">
+            <header class="profiles-head">
+              <div class="profiles-heading">
+                <h2 id="profilesTitle">Profiles</h2>
+                <p>One profile is active at a time. Rules in the others keep their own on/off state and are simply not applied.</p>
+              </div>
+              <button id="newProfileBtn" class="secondary-btn" type="button">New profile</button>
+            </header>
+            <div id="profileList" class="profile-list"></div>
+            <div id="profileStatus" class="status-msg"></div>
+          </section>
 
           <div id="headerComposer" class="header-composer">
             <button id="headerComposerToggle" class="header-composer-toggle" type="button" aria-expanded="false" aria-controls="headerComposerBody">
@@ -89,6 +101,11 @@
           </div>
 
           <div id="headerStatus" class="status-msg"></div>
+
+          <div id="profileFilter" class="profile-filter" hidden>
+            <label for="profileFilterSelect">Showing rules in</label>
+            <select id="profileFilterSelect" class="profile-select"></select>
+          </div>
 
           <div id="ruleSearchContainer" class="rule-search" hidden>
             <label class="sr-only" for="ruleSearchInput">Search header rules</label>

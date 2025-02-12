@@ -1,6 +1,8 @@
 import {
   RULE_STORAGE_KEY,
+  filterRulesByProfile,
   findActiveRuleConflict,
+  findRulesInOtherProfiles,
   getActiveRuleConflicts,
   getNextRuleId,
   getRuleConflictMessage,
@@ -17,6 +19,7 @@ import {
 import {
   ACTIVATION_STORAGE_KEY,
   createDefaultActivation,
+  getActivationStatus,
   getTargetProfileId,
   normalizeActivation,
   setMasterEnabled
@@ -26,8 +29,16 @@ import {
   PROFILE_STORAGE_KEY,
   createDefaultProfiles,
   getProfileIds,
-  normalizeProfiles
+  getProfileName,
+  normalizeProfiles,
+  resolveProfileId
 } from '../../shared/profiles.js';
+import { isRuleGranted } from '../../shared/site-access.js';
+import {
+  activateProfile,
+  readGrantedOrigins,
+  renderProfiles
+} from '../profiles/controller.js';
 import {
   createConflictMap,
   renderDomainGroup,
@@ -53,7 +64,11 @@ export function bindRuleEvents() {
   ruleList.addEventListener('keydown', handleRuleFormKeydown);
   document.getElementById('ruleSearchInput').addEventListener('input', handleRuleSearchInput);
   document.getElementById('masterSwitch').addEventListener('click', () => toggleMaster());
-  document.getElementById('resumeMasterBtn').addEventListener('click', () => toggleMaster(true));
+  document.getElementById('resumeMasterBtn').addEventListener('click', resumeFromBanner);
+  document.getElementById('profileFilterSelect').addEventListener('change', (event) => {
+    state.profileFilter = event.target.value;
+    renderRules();
+  });
 
   onStorageChanged((changes) => {
     const touchesRules = RULE_STORAGE_KEY in changes
@@ -77,7 +92,7 @@ export async function initializeRules({ editRuleId = null } = {}) {
   }
 }
 
-async function refreshFromStorage() {
+export async function refreshFromStorage() {
   await loadActivation();
   state.rules = await getStoredRules();
   renderRules();
@@ -96,6 +111,8 @@ async function loadActivation() {
     state.profiles = createDefaultProfiles();
     state.activation = createDefaultActivation();
   }
+
+  state.grantedOrigins = await readGrantedOrigins();
 }
 
 function getActivation() {
@@ -135,19 +152,118 @@ async function toggleMaster(forceOn = false) {
 }
 
 function renderMasterSwitch() {
-  const { masterEnabled } = getActivation();
+  const activation = getActivation();
+  const status = getActivationStatus(activation);
   const masterSwitch = document.getElementById('masterSwitch');
 
-  masterSwitch.setAttribute('aria-checked', String(masterEnabled));
+  masterSwitch.setAttribute('aria-checked', String(activation.masterEnabled));
   masterSwitch.setAttribute(
     'aria-label',
-    masterEnabled ? 'Pause all header rules' : 'Resume all header rules'
+    activation.masterEnabled ? 'Pause all header rules' : 'Resume all header rules'
   );
-  document.getElementById('masterSwitchLabel').textContent = masterEnabled ? 'On' : 'Paused';
+  document.getElementById('masterSwitchLabel').textContent = activation.masterEnabled ? 'On' : 'Paused';
 
-  document.getElementById('masterPausedBanner').hidden = masterEnabled;
+  const banner = document.getElementById('masterPausedBanner');
+  banner.hidden = status === 'live';
+  if (status !== 'live') {
+    const parked = status === 'parked';
+    document.getElementById('masterPausedTitle').textContent = parked
+      ? 'No profile is active'
+      : 'All header rules are paused';
+    document.getElementById('masterPausedDetail').textContent = parked
+      ? `Resume to switch back to ${getProfileName(state.profiles, getTargetProfileId(activation))}.`
+      : 'No headers are being applied to any site. Rules keep their own on/off state.';
+  }
+
   document.querySelector('.options-panel .content-stack')
-    .classList.toggle('is-master-paused', !masterEnabled);
+    .classList.toggle('is-master-paused', status !== 'live');
+}
+
+/**
+ * The banner covers two different stops: the master switch, and an elapsed
+ * timer that parked the profile. Resuming has to undo whichever it is.
+ */
+async function resumeFromBanner() {
+  const activation = getActivation();
+
+  if (getActivationStatus(activation) === 'parked') {
+    await activateProfile(getTargetProfileId(activation));
+    return;
+  }
+
+  await toggleMaster(true);
+}
+
+function renderProfileFilter() {
+  const filter = document.getElementById('profileFilter');
+  filter.hidden = state.profiles.length < 2;
+  if (filter.hidden) {
+    state.profileFilter = 'active';
+    return;
+  }
+
+  const select = document.getElementById('profileFilterSelect');
+  // Keyed on the resolved value, not the raw filter: "active" stays the same
+  // string while the profile it points at changes underneath it.
+  const signature = `${state.profiles.map((p) => p.id + p.name).join()}|${resolveFilterValue()}`;
+  if (select.dataset.renderedFor === signature) {
+    return;
+  }
+
+  const options = [
+    ...state.profiles.map((profile) => ({ value: profile.id, label: profile.name })),
+    { value: 'all', label: 'All profiles' }
+  ];
+  select.innerHTML = options.map(({ value, label }) => (
+    `<option value="${value}"${value === resolveFilterValue() ? ' selected' : ''}>${label}</option>`
+  )).join('');
+  select.dataset.renderedFor = signature;
+}
+
+function resolveFilterValue() {
+  return state.profileFilter === 'active'
+    ? getTargetProfileId(getActivation())
+    : state.profileFilter;
+}
+
+function getVisibleRules() {
+  const filterValue = resolveFilterValue();
+  return filterValue === 'all' ? state.rules : filterRulesByProfile(state.rules, filterValue);
+}
+
+/**
+ * When the grant list could not be read, say nothing rather than flagging every
+ * rule as broken.
+ */
+function describeRule(rule) {
+  const showProfile = state.profiles.length > 1 && resolveFilterValue() === 'all';
+  const otherProfiles = state.profiles.length > 1
+    ? [...new Set(findRulesInOtherProfiles(rule, state.rules)
+      .map((other) => getProfileName(state.profiles, other.profileId)))]
+    : [];
+
+  return {
+    needsAccess: Boolean(state.grantedOrigins) && !isRuleGranted(rule, state.grantedOrigins),
+    profileName: showProfile ? getProfileName(state.profiles, rule.profileId) : '',
+    alsoInProfiles: otherProfiles
+  };
+}
+
+async function grantRuleAccess(id) {
+  const rule = state.rules.find((candidate) => candidate.id === id);
+  if (!rule) {
+    return;
+  }
+
+  try {
+    await ensureRulePermission(rule);
+    state.grantedOrigins = await readGrantedOrigins();
+    await persistRules(state.rules);
+    showStatus('headerStatus', `Site access granted for ${rule.domain}.`, 'success');
+  } catch (error) {
+    console.error(error);
+    showStatus('headerStatus', error.message || 'Chrome denied site access.', 'error');
+  }
 }
 
 function handleRuleListClick(event) {
@@ -174,6 +290,9 @@ function handleRuleListClick(event) {
       break;
     case 'reveal':
       toggleRuleValueVisibility(Number(button.dataset.id));
+      break;
+    case 'grant':
+      grantRuleAccess(Number(button.dataset.id));
       break;
     case 'delete':
       confirmDeleteRule(Number(button.dataset.id));
@@ -297,9 +416,11 @@ function renderRules() {
   const conflictMap = createConflictMap(getActiveRuleConflicts(state.rules, getActivation()));
   const conflictingIds = new Set(conflictMap.keys());
   renderMasterSwitch();
+  renderProfiles();
+  renderProfileFilter();
   updateSummary();
 
-  const visibleRules = filterRulesBySearch(state.rules, state.searchQuery);
+  const visibleRules = filterRulesBySearch(getVisibleRules(), state.searchQuery);
   if (!visibleRules.length) {
     container.innerHTML = getEmptyRulesMessage();
     return;
@@ -314,15 +435,18 @@ function renderRules() {
       conflictMap,
       collapsed: state.collapsedDomains.has(domain),
       editingId: state.editingId,
-      revealedRuleIds: state.revealedRuleIds
+      revealedRuleIds: state.revealedRuleIds,
+      editProfiles: state.profiles,
+      describeRule
     }
   )).join('');
 }
 
 function updateSummary() {
-  const totalRules = state.rules.length;
-  const activeRules = state.rules.filter((rule) => rule.enabled).length;
-  const hostCount = new Set(state.rules.map((rule) => rule.domain)).size;
+  const scopedRules = getVisibleRules();
+  const totalRules = scopedRules.length;
+  const activeRules = scopedRules.filter((rule) => rule.enabled).length;
+  const hostCount = new Set(scopedRules.map((rule) => rule.domain)).size;
 
   document.getElementById('optionsSummary').textContent = totalRules
     ? `${totalRules} ${totalRules === 1 ? 'rule' : 'rules'} · ${activeRules} enabled · ${hostCount} ${hostCount === 1 ? 'host' : 'hosts'}`
@@ -412,7 +536,10 @@ function toggleRuleValueVisibility(id) {
 
 async function addRule() {
   const activation = getActivation();
-  const profileId = getTargetProfileId(activation);
+  const filterValue = resolveFilterValue();
+  // Add into the profile currently on screen, so the new rule appears where
+  // the user is looking rather than silently landing elsewhere.
+  const profileId = filterValue === 'all' ? getTargetProfileId(activation) : filterValue;
   const validation = validateRuleDraft(readCreateDraft(), state.rules, { activation, profileId });
   if (!validation.ok) {
     showStatus('headerStatus', validation.error, 'error');
@@ -488,11 +615,13 @@ async function saveEditedRule(id) {
     return;
   }
 
-  const validation = validateRuleDraft(readEditDraft(id), state.rules, {
+  const draft = readEditDraft(id);
+  const nextProfileId = resolveProfileId(draft.profileId ?? currentRule.profileId);
+  const validation = validateRuleDraft(draft, state.rules, {
     excludeId: id,
     enabled: currentRule.enabled,
     activation: getActivation(),
-    profileId: currentRule.profileId
+    profileId: nextProfileId
   });
   if (!validation.ok) {
     showStatus(statusId, validation.error, 'error');
@@ -500,7 +629,7 @@ async function saveEditedRule(id) {
   }
 
   const updatedRules = state.rules.map((rule) => (
-    rule.id === id ? { ...rule, ...validation.rule } : rule
+    rule.id === id ? { ...rule, ...validation.rule, profileId: nextProfileId } : rule
   ));
   const updatedRule = updatedRules.find((rule) => rule.id === id);
 
@@ -604,7 +733,8 @@ function readEditDraft(id) {
   return {
     domain: document.getElementById(`editDomain-${id}`).value,
     headerName: document.getElementById(`editHeaderName-${id}`).value,
-    headerValue: document.getElementById(`editHeaderValue-${id}`).value
+    headerValue: document.getElementById(`editHeaderValue-${id}`).value,
+    profileId: document.getElementById(`editProfile-${id}`)?.value
   };
 }
 
