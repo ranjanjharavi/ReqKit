@@ -8,6 +8,7 @@ export function createDefaultActivation() {
     profileId: DEFAULT_PROFILE_ID,
     lastProfileId: DEFAULT_PROFILE_ID,
     expiresAt: null,
+    durationMs: null,
     untilBrowserClose: false
   };
 }
@@ -22,12 +23,17 @@ export function normalizeActivation(rawActivation, { profileIds = null } = {}) {
   const lastProfileId = normalizeProfileReference(rawActivation.lastProfileId, profileIds, DEFAULT_PROFILE_ID)
     || DEFAULT_PROFILE_ID;
   const rawExpiresAt = Number(rawActivation.expiresAt);
+  const rawDurationMs = Number(rawActivation.durationMs);
+  const expiresAt = Number.isFinite(rawExpiresAt) && rawExpiresAt > 0 ? rawExpiresAt : null;
 
   return {
     masterEnabled: rawActivation.masterEnabled !== false,
     profileId,
     lastProfileId: profileId || lastProfileId,
-    expiresAt: Number.isFinite(rawExpiresAt) && rawExpiresAt > 0 ? rawExpiresAt : null,
+    expiresAt,
+    // Remembers which option armed the timer, so reopening a surface restores
+    // the control to what the user picked rather than guessing from the clock.
+    durationMs: expiresAt && Number.isFinite(rawDurationMs) && rawDurationMs > 0 ? rawDurationMs : null,
     untilBrowserClose: rawActivation.untilBrowserClose === true
   };
 }
@@ -112,12 +118,57 @@ export function getRemainingMs(activation, now = Date.now()) {
   return Math.max(0, expiresAt - now);
 }
 
+/**
+ * Arms or disarms the timer without touching which profile is selected.
+ * A parked activation has nothing to time, so it is left alone.
+ */
+export function setActivationDuration(activation, {
+  durationMs = null,
+  untilBrowserClose = false,
+  now = Date.now()
+} = {}) {
+  const normalizedActivation = normalizeActivation(activation);
+  if (!normalizedActivation.profileId) {
+    return normalizedActivation;
+  }
+
+  const duration = Number(durationMs);
+  const hasDuration = Number.isFinite(duration) && duration > 0;
+
+  return {
+    ...normalizedActivation,
+    expiresAt: hasDuration ? now + duration : null,
+    durationMs: hasDuration ? duration : null,
+    untilBrowserClose: Boolean(untilBrowserClose)
+  };
+}
+
+/**
+ * Deliberately coarse. A ticking countdown invites watching rather than working,
+ * and the exact second never matters here.
+ */
+export function formatRemainingTime(remainingMs) {
+  if (!Number.isFinite(remainingMs) || remainingMs <= 0) {
+    return 'less than a minute';
+  }
+
+  const totalMinutes = Math.ceil(remainingMs / 60_000);
+  if (totalMinutes < 60) {
+    return `${totalMinutes} min`;
+  }
+
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return minutes ? `${hours}h ${minutes}m` : `${hours}h`;
+}
+
 export function deactivate(activation) {
   return {
     ...activation,
     profileId: null,
     lastProfileId: activation?.profileId || activation?.lastProfileId || DEFAULT_PROFILE_ID,
     expiresAt: null,
+    durationMs: null,
     untilBrowserClose: false
   };
 }
@@ -181,6 +232,7 @@ export function setActiveProfile(activation, profileId, {
     profileId: nextProfileId,
     lastProfileId: nextProfileId || normalizedActivation.profileId || normalizedActivation.lastProfileId,
     expiresAt: hasDuration ? now + duration : null,
+    durationMs: hasDuration ? duration : null,
     untilBrowserClose: Boolean(nextProfileId && untilBrowserClose)
   };
 }

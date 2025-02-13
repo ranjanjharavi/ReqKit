@@ -1182,30 +1182,40 @@ button:disabled {
   opacity: 0.55;
 }
 
-/* Appears only once a second profile exists. */
-.profile-bar {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 8px 12px;
+/*
+ * Profile and duration: what is applied, and for how long. The profile row
+ * appears only once a second profile exists.
+ */
+.session-bar {
+  display: grid;
+  gap: 7px;
+  padding: 9px 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: #ffffff;
 }
 
-.profile-bar[hidden] {
+.session-field {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.session-field[hidden] {
   display: none;
 }
 
-.profile-bar-label {
+.session-label {
   flex: none;
+  width: 74px;
   color: var(--muted-foreground);
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
 }
 
+.session-select,
 .profile-select {
   flex: 1;
   min-width: 0;
@@ -1221,16 +1231,28 @@ button:disabled {
   cursor: pointer;
 }
 
+.session-select:focus-visible,
 .profile-select:focus-visible {
   outline: 0;
   box-shadow: 0 0 0 3px var(--ring);
 }
 
-.profile-bar-count {
+.session-count {
   flex: none;
+  min-width: 46px;
   color: var(--muted-foreground);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.session-count.is-timer {
+  color: var(--primary);
+  font-weight: 650;
+}
+
+.session-count[hidden] {
+  display: none;
 }
 
 .rule-profile-chip {

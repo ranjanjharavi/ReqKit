@@ -141,6 +141,32 @@ export function getCurrentTab(chromeApi = globalThis.chrome) {
   });
 }
 
+export function clearAlarm(name, chromeApi = globalThis.chrome) {
+  return new Promise((resolve, reject) => {
+    chromeApi.alarms.clear(name, (wasCleared) => {
+      const error = getRuntimeError(chromeApi);
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve(Boolean(wasCleared));
+    });
+  });
+}
+
+export function createAlarm(name, alarmInfo, chromeApi = globalThis.chrome) {
+  return new Promise((resolve, reject) => {
+    chromeApi.alarms.create(name, alarmInfo, () => {
+      const error = getRuntimeError(chromeApi);
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve();
+    });
+  });
+}
+
 export function queryTabs(query, chromeApi = globalThis.chrome) {
   return new Promise((resolve, reject) => {
     chromeApi.tabs.query(query, (tabs) => {

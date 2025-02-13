@@ -5,6 +5,7 @@ import {
   createDefaultActivation,
   countLiveRules,
   deactivate,
+  formatRemainingTime,
   getLiveRules,
   getRemainingMs,
   getTargetProfileId,
@@ -12,6 +13,7 @@ import {
   isRuleLive,
   normalizeActivation,
   resolveActivation,
+  setActivationDuration,
   setActiveProfile,
   setMasterEnabled,
   startBrowserSession
@@ -140,4 +142,55 @@ test('new rules target the selected profile, or the last one while paused', () =
   assert.equal(getTargetProfileId(deactivate(stagingActivation)), 'staging');
   assert.equal(getTargetProfileId(createDefaultActivation()), 'default');
   assert.equal(getTargetProfileId(null), 'default');
+});
+
+test('the chosen duration is recorded so a surface can restore the control', () => {
+  const now = 1_000_000;
+  const timed = setActivationDuration(stagingActivation, { durationMs: 3_600_000, now });
+
+  assert.equal(timed.expiresAt, now + 3_600_000);
+  assert.equal(timed.durationMs, 3_600_000);
+  assert.equal(timed.profileId, 'staging', 'the selected profile is untouched');
+  assert.equal(normalizeActivation(timed).durationMs, 3_600_000, 'survives a round trip');
+});
+
+test('clearing the duration disarms the timer', () => {
+  const timed = setActivationDuration(stagingActivation, { durationMs: 3_600_000 });
+  const cleared = setActivationDuration(timed, { durationMs: null });
+
+  assert.equal(cleared.expiresAt, null);
+  assert.equal(cleared.durationMs, null);
+  assert.equal(cleared.untilBrowserClose, false);
+});
+
+test('an until-Chrome-closes choice carries no timestamp', () => {
+  const sessionScoped = setActivationDuration(stagingActivation, { untilBrowserClose: true });
+
+  assert.equal(sessionScoped.untilBrowserClose, true);
+  assert.equal(sessionScoped.expiresAt, null);
+  assert.equal(sessionScoped.durationMs, null);
+});
+
+test('a parked activation has nothing to time', () => {
+  const parked = deactivate(stagingActivation);
+  const attempted = setActivationDuration(parked, { durationMs: 3_600_000 });
+
+  assert.equal(attempted.expiresAt, null);
+  assert.equal(attempted.profileId, null);
+});
+
+test('a stale duration without an expiry is dropped', () => {
+  assert.equal(normalizeActivation({ profileId: 'staging', durationMs: 3_600_000 }).durationMs, null);
+});
+
+test('remaining time reads coarsely, never to the second', () => {
+  assert.equal(formatRemainingTime(42 * 60_000), '42 min');
+  assert.equal(formatRemainingTime(59 * 60_000 + 30_000), '1h', 'rounds up into hours');
+  assert.equal(formatRemainingTime(60 * 60_000), '1h');
+  assert.equal(formatRemainingTime(59 * 60_000), '59 min');
+  assert.equal(formatRemainingTime(61 * 60_000), '1h 1m');
+  assert.equal(formatRemainingTime(7 * 3_600_000 + 20 * 60_000), '7h 20m');
+  assert.equal(formatRemainingTime(8 * 3_600_000), '8h');
+  assert.equal(formatRemainingTime(0), 'less than a minute');
+  assert.equal(formatRemainingTime(null), 'less than a minute');
 });

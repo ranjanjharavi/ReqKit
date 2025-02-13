@@ -58,6 +58,16 @@
               <button id="newProfileBtn" class="secondary-btn" type="button">New profile</button>
             </header>
             <div id="profileList" class="profile-list"></div>
+            <div class="session-field profile-duration">
+              <label class="session-label" for="durationSelect">Apply for</label>
+              <select id="durationSelect" class="session-select">
+                <option value="indefinite">Until I turn it off</option>
+                <option value="3600000">1 hour</option>
+                <option value="28800000">8 hours</option>
+                <option value="session">Until Chrome closes</option>
+              </select>
+              <span id="expiryChip" class="session-count is-timer" hidden></span>
+            </div>
             <div id="profileStatus" class="status-msg"></div>
           </section>
 

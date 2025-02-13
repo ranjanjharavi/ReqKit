@@ -124,10 +124,22 @@
               <button id="resumeMasterBtn" class="master-resume-btn" type="button">Resume</button>
             </div>
 
-            <div id="profileBar" class="profile-bar" hidden>
-              <label class="profile-bar-label" for="profileSelect">Profile</label>
-              <select id="profileSelect" class="profile-select"></select>
-              <span id="profileBarCount" class="profile-bar-count"></span>
+            <div class="session-bar">
+              <div id="profileField" class="session-field" hidden>
+                <label class="session-label" for="profileSelect">Profile</label>
+                <select id="profileSelect" class="session-select"></select>
+                <span id="profileBarCount" class="session-count"></span>
+              </div>
+              <div class="session-field">
+                <label class="session-label" for="durationSelect">Apply for</label>
+                <select id="durationSelect" class="session-select">
+                  <option value="indefinite">Until I turn it off</option>
+                  <option value="3600000">1 hour</option>
+                  <option value="28800000">8 hours</option>
+                  <option value="session">Until Chrome closes</option>
+                </select>
+                <span id="expiryChip" class="session-count is-timer" hidden></span>
+              </div>
             </div>
 
             <div class="current-site-toolbar">

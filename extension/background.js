@@ -1,5 +1,7 @@
 import { commitRuleSet } from './shared/rule-commit.js';
 import {
+  clearAlarm,
+  createAlarm,
   getDynamicRules,
   getGrantedOrigins,
   queryTabs,
@@ -30,6 +32,8 @@ import {
 import { PROFILE_STORAGE_KEY, getProfileIds, normalizeProfiles } from './shared/profiles.js';
 import { MIGRATED_KEYS, ensureMigrated } from './shared/migrate.js';
 import { resolveBadge } from './shared/badge.js';
+
+const EXPIRY_ALARM = 'reqkit:activation-expiry';
 
 const RULE_MESSAGES = new Set([RULE_MESSAGE_GET, RULE_MESSAGE_COMMIT]);
 const ACTIVATION_MESSAGES = new Set([ACTIVATION_MESSAGE_GET, ACTIVATION_MESSAGE_SET]);
@@ -69,6 +73,42 @@ chrome.runtime.onStartup.addListener(() => {
     console.error('Could not restore saved header rules on browser startup.', error);
   });
 });
+
+/**
+ * An alarm rather than a lazy timestamp check: a safety feature that only
+ * expires the next time you happen to open the popup is not one.
+ */
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name !== EXPIRY_ALARM) {
+    return;
+  }
+
+  applyExpiry().catch((error) => {
+    console.error('Could not apply the activation timer.', error);
+  });
+});
+
+/**
+ * loadState resolves and persists the elapsed timer, so this only has to push
+ * the result out to the rule set and the badges.
+ */
+async function applyExpiry() {
+  const state = await loadState();
+  await applyDynamicRules(state.rules, state.activation, state.grantedOrigins);
+  await refreshBadgesSafely(state);
+  await scheduleExpiryAlarm(state.activation);
+}
+
+async function scheduleExpiryAlarm(activation) {
+  try {
+    await clearAlarm(EXPIRY_ALARM);
+    if (activation?.expiresAt) {
+      await createAlarm(EXPIRY_ALARM, { when: activation.expiresAt });
+    }
+  } catch (error) {
+    console.error('Could not schedule the activation timer.', error);
+  }
+}
 
 chrome.commands.onCommand.addListener((command) => {
   if (command !== 'toggle-master') {
@@ -115,6 +155,7 @@ async function initialize({ newBrowserSession = false } = {}) {
   const state = await loadState({ newBrowserSession });
   await applyDynamicRules(state.rules, state.activation, state.grantedOrigins);
   await refreshBadgesSafely(state);
+  await scheduleExpiryAlarm(state.activation);
 }
 
 async function handleRuleMessage(message) {
@@ -155,6 +196,7 @@ async function commitActivation(activation, state) {
   await storeActivation(activation);
   await applyDynamicRules(state.rules, activation, state.grantedOrigins);
   await refreshBadgesSafely({ ...state, activation });
+  await scheduleExpiryAlarm(activation);
   return activation;
 }
 

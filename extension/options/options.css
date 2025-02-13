@@ -288,3 +288,21 @@ body {
     padding: 16px 14px 20px;
   }
 }
+
+.profile-duration {
+  padding-top: 4px;
+}
+
+.profile-duration .session-label {
+  width: auto;
+}
+
+.profile-duration .session-select {
+  flex: 0 1 240px;
+}
+
+.profile-duration .session-select:disabled {
+  background: var(--card-soft);
+  color: var(--muted-foreground);
+  cursor: not-allowed;
+}

@@ -6,6 +6,7 @@
   "description": "Transform URLs and add domain-bound request headers.",
   "permissions": [
     "activeTab",
+    "alarms",
     "declarativeNetRequestWithHostAccess",
     "storage"
   ],

@@ -19,9 +19,12 @@ import {
 import {
   ACTIVATION_STORAGE_KEY,
   createDefaultActivation,
+  formatRemainingTime,
   getActivationStatus,
+  getRemainingMs,
   getTargetProfileId,
   normalizeActivation,
+  setActivationDuration,
   setMasterEnabled
 } from '../../shared/activation.js';
 import { setActivationState } from '../../shared/activation-api.js';
@@ -49,6 +52,7 @@ import { state } from '../state.js';
 import { showStatus } from '../../shared/ui.js';
 
 const SEARCH_VISIBLE_FROM = 5;
+const DURATION_OPTIONS = [3_600_000, 28_800_000];
 
 export function bindRuleEvents() {
   document.getElementById('headerComposerToggle').addEventListener('click', toggleHeaderComposer);
@@ -68,6 +72,9 @@ export function bindRuleEvents() {
   document.getElementById('profileFilterSelect').addEventListener('change', (event) => {
     state.profileFilter = event.target.value;
     renderRules();
+  });
+  document.getElementById('durationSelect').addEventListener('change', (event) => {
+    selectDuration(event.target.value);
   });
 
   onStorageChanged((changes) => {
@@ -192,6 +199,65 @@ async function resumeFromBanner() {
   }
 
   await toggleMaster(true);
+}
+
+function renderDurationField() {
+  const activation = getActivation();
+  const select = document.getElementById('durationSelect');
+  const chip = document.getElementById('expiryChip');
+  const remainingMs = getRemainingMs(activation);
+
+  select.value = getDurationValue(activation);
+  select.disabled = getActivationStatus(activation) !== 'live';
+
+  chip.hidden = remainingMs === null;
+  if (remainingMs !== null) {
+    chip.textContent = formatRemainingTime(remainingMs);
+    chip.title = `Pauses in ${formatRemainingTime(remainingMs)}`;
+  }
+}
+
+function getDurationValue(activation) {
+  if (activation.untilBrowserClose) {
+    return 'session';
+  }
+  if (!activation.expiresAt) {
+    return 'indefinite';
+  }
+
+  return DURATION_OPTIONS.includes(activation.durationMs)
+    ? String(activation.durationMs)
+    : 'indefinite';
+}
+
+async function selectDuration(value) {
+  const activation = getActivation();
+  const next = value === 'session'
+    ? setActivationDuration(activation, { untilBrowserClose: true })
+    : setActivationDuration(activation, { durationMs: value === 'indefinite' ? null : Number(value) });
+
+  state.syncPaused = true;
+  try {
+    state.activation = await setActivationState(next);
+    renderRules();
+    showStatus('profileStatus', describeDuration(value), 'success');
+  } catch (error) {
+    console.error(error);
+    showStatus('profileStatus', error.message || 'Could not set the timer.', 'error');
+  } finally {
+    state.syncPaused = false;
+  }
+}
+
+function describeDuration(value) {
+  if (value === 'session') {
+    return 'Rules will pause when Chrome closes.';
+  }
+  if (value === 'indefinite') {
+    return 'Rules stay on until you turn them off.';
+  }
+
+  return `Rules will pause in ${formatRemainingTime(Number(value))}.`;
 }
 
 function renderProfileFilter() {
@@ -417,6 +483,7 @@ function renderRules() {
   const conflictingIds = new Set(conflictMap.keys());
   renderMasterSwitch();
   renderProfiles();
+  renderDurationField();
   renderProfileFilter();
   updateSummary();
 

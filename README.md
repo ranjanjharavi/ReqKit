@@ -77,6 +77,16 @@ a different value in each environment without the two ever colliding.
   decline, the switch still happens and the affected rules are flagged with a Grant button
   rather than silently doing nothing.
 
+### Auto-off timer
+
+Rules can be set to apply for **1 hour**, **8 hours**, **until Chrome closes**, or until you
+turn them off. When the time is up ReqKit parks the active profile: every rule stops being
+applied, but nothing is edited or deleted, so resuming is one click.
+
+The timer belongs to the activation rather than to a profile — switching profiles disarms it
+and choosing a duration arms a fresh one. The remaining time is shown rounded, and the
+timer runs on a Chrome alarm rather than a check that only happens when you open the popup.
+
 ### Pausing everything
 
 A single switch pauses every header rule without deleting anything or changing any rule's
@@ -124,6 +134,7 @@ Changes to extension files require clicking **Reload** on the ReqKit card in `ch
 | Permission | Why ReqKit needs it |
 |---|---|
 | `activeTab` | Reads the invoked active tab URL to prefill the transformer and identify the current hostname. It does not read page content or general browsing history. |
+| `alarms` | Fires the auto-off timer so rules stop applying when the time is up, even if no ReqKit page is open. |
 | `storage` | Stores privacy consent, the default URL recipe, and header rules locally in the current Chrome profile. |
 | `declarativeNetRequestWithHostAccess` | Applies enabled request-header rules without injecting scripts or reading response bodies. |
 | Optional `https://*/*` host access | Allows Chrome to prompt for a user-selected exact HTTPS hostname. ReqKit does not receive required access to every site. |

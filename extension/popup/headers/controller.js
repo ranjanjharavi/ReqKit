@@ -23,9 +23,12 @@ import {
 import {
   ACTIVATION_STORAGE_KEY,
   createDefaultActivation,
+  formatRemainingTime,
   getActivationStatus,
+  getRemainingMs,
   getTargetProfileId,
   normalizeActivation,
+  setActivationDuration,
   setActiveProfile,
   setMasterEnabled
 } from '../../shared/activation.js';
@@ -46,6 +49,7 @@ import { state } from '../state.js';
 import { escapeHtml, showStatus } from '../../shared/ui.js';
 
 const OPTIONS_PAGE = 'options/index.html';
+const DURATION_OPTIONS = [3_600_000, 28_800_000];
 
 export function bindHeaderEvents() {
   document.getElementById('headerComposerToggle').addEventListener('click', toggleHeaderComposer);
@@ -65,6 +69,9 @@ export function bindHeaderEvents() {
   document.getElementById('resumeMasterBtn').addEventListener('click', resumeFromBanner);
   document.getElementById('profileSelect').addEventListener('change', (event) => {
     selectProfile(event.target.value);
+  });
+  document.getElementById('durationSelect').addEventListener('change', (event) => {
+    selectDuration(event.target.value);
   });
 
   onStorageChanged((changes) => {
@@ -196,7 +203,8 @@ async function commitActivation(nextActivation, message, { type = 'success' } = 
   const controls = [
     document.getElementById('masterSwitch'),
     document.getElementById('resumeMasterBtn'),
-    document.getElementById('profileSelect')
+    document.getElementById('profileSelect'),
+    document.getElementById('durationSelect')
   ];
 
   controls.forEach((control) => {
@@ -248,30 +256,84 @@ function renderMasterSwitch() {
     .classList.toggle('is-master-paused', status !== 'live');
 }
 
-function renderProfileBar() {
+function renderSessionBar() {
+  renderProfileField();
+  renderDurationField();
+}
+
+function renderProfileField() {
   const { profiles, rules } = state.headers;
   const activation = getActivation();
-  const profileBar = document.getElementById('profileBar');
+  const profileField = document.getElementById('profileField');
 
   // A single profile is the same as no profiles at all — show nothing.
-  profileBar.hidden = profiles.length < 2;
-  if (profileBar.hidden) {
+  profileField.hidden = profiles.length < 2;
+  if (profileField.hidden) {
     return;
   }
 
   const activeProfileId = getTargetProfileId(activation);
   const select = document.getElementById('profileSelect');
-  const options = profiles.map((profile) => (
-    `<option value="${escapeHtml(profile.id)}"${profile.id === activeProfileId ? ' selected' : ''}>${escapeHtml(profile.name)}</option>`
-  )).join('');
+  const signature = `${profiles.map((profile) => profile.id + profile.name).join()}|${activeProfileId}`;
 
-  if (select.dataset.renderedFor !== `${profiles.map((p) => p.id + p.name).join()}|${activeProfileId}`) {
-    select.innerHTML = options;
-    select.dataset.renderedFor = `${profiles.map((p) => p.id + p.name).join()}|${activeProfileId}`;
+  if (select.dataset.renderedFor !== signature) {
+    select.innerHTML = profiles.map((profile) => (
+      `<option value="${escapeHtml(profile.id)}"${profile.id === activeProfileId ? ' selected' : ''}>${escapeHtml(profile.name)}</option>`
+    )).join('');
+    select.dataset.renderedFor = signature;
   }
 
   const ruleCount = countRulesInProfile(rules, activeProfileId);
   document.getElementById('profileBarCount').textContent = `${ruleCount} ${ruleCount === 1 ? 'rule' : 'rules'}`;
+}
+
+function renderDurationField() {
+  const activation = getActivation();
+  const select = document.getElementById('durationSelect');
+  const chip = document.getElementById('expiryChip');
+  const remainingMs = getRemainingMs(activation);
+
+  select.value = getDurationValue(activation);
+
+  const showTimer = remainingMs !== null;
+  chip.hidden = !showTimer;
+  if (showTimer) {
+    chip.textContent = formatRemainingTime(remainingMs);
+    chip.title = `Pauses in ${formatRemainingTime(remainingMs)}`;
+  }
+}
+
+function getDurationValue(activation) {
+  if (activation.untilBrowserClose) {
+    return 'session';
+  }
+  if (!activation.expiresAt) {
+    return 'indefinite';
+  }
+
+  return DURATION_OPTIONS.includes(activation.durationMs)
+    ? String(activation.durationMs)
+    : 'indefinite';
+}
+
+async function selectDuration(value) {
+  const activation = getActivation();
+  const next = value === 'session'
+    ? setActivationDuration(activation, { untilBrowserClose: true })
+    : setActivationDuration(activation, { durationMs: value === 'indefinite' ? null : Number(value) });
+
+  await commitActivation(next, describeDuration(value));
+}
+
+function describeDuration(value) {
+  if (value === 'session') {
+    return 'Rules will pause when Chrome closes.';
+  }
+  if (value === 'indefinite') {
+    return 'Rules stay on until you turn them off.';
+  }
+
+  return `Rules will pause in ${formatRemainingTime(Number(value))}.`;
 }
 
 /**
@@ -420,7 +482,7 @@ function renderRules() {
   const conflictMap = createConflictMap(getActiveRuleConflicts(rules, getActivation()));
   const conflictingIds = new Set(conflictMap.keys());
   renderMasterSwitch();
-  renderProfileBar();
+  renderSessionBar();
   updateCurrentSiteControls();
 
   const currentSiteRules = currentHostname ? filterRulesByHost(getScopedRules(), currentHostname) : [];
