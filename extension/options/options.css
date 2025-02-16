@@ -1,7 +1,5 @@
-/*
- * The manager reuses popup.css so a rule row looks identical in both surfaces.
- * Everything here undoes the fixed popup shell and lays the page out for a tab.
- */
+/* The manager reuses popup.css for controls and rule rows, then establishes a
+ * roomier page hierarchy for the extension tab. */
 
 html,
 body {
@@ -12,7 +10,7 @@ body {
 }
 
 body {
-  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 220px, #f7fbff 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 240px, #f7fbff 100%);
 }
 
 .privacy-gate {
@@ -26,9 +24,9 @@ body {
   display: flex;
   flex-direction: column;
   gap: 22px;
-  max-width: 860px;
+  width: min(920px, 100%);
   margin: 0 auto;
-  padding: 34px 24px 72px;
+  padding: 32px 24px 72px;
 }
 
 .options-header {
@@ -36,7 +34,6 @@ body {
   align-items: flex-start;
   justify-content: space-between;
   gap: 18px;
-  flex-wrap: wrap;
   padding-bottom: 18px;
   border-bottom: 1px solid var(--border);
 }
@@ -62,13 +59,16 @@ body {
 .options-header-copy h1 {
   margin: 0;
   font-size: 21px;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
 }
 
-.options-header-copy p {
+.options-header-copy p,
+.workspace-section-copy p,
+.profile-dialog-head p {
   margin: 0;
   color: var(--muted-foreground);
   font-size: 12.5px;
+  line-height: 1.5;
 }
 
 .options-header-actions {
@@ -78,69 +78,343 @@ body {
   flex: none;
 }
 
-.options-header-link {
+.options-header-link,
+.quiet-action {
   flex: none;
-  padding: 6px 2px;
+  border: 0;
   border-radius: var(--radius-sm);
+  background: transparent;
   color: var(--primary);
+  font-family: inherit;
   font-size: 12px;
   font-weight: 650;
   text-decoration: none;
+  cursor: pointer;
 }
 
-.options-header-link:hover {
+.options-header-link {
+  padding: 6px 2px;
+}
+
+.options-header-link:hover,
+.quiet-action:hover {
   text-decoration: underline;
 }
 
-.options-header-link:focus-visible {
+.options-header-link:focus-visible,
+.quiet-action:focus-visible {
   outline: 0;
   box-shadow: 0 0 0 3px var(--ring);
 }
 
-.options-main {
-  display: block;
-}
-
-.profiles-section {
+.options-main,
+.options-workspace {
   display: grid;
-  gap: 12px;
-  padding: 16px 18px 18px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: #ffffff;
 }
 
-.profiles-head {
+.options-workspace {
+  gap: 18px;
+}
+
+.workspace-section {
+  display: grid;
+  gap: 20px;
+  padding: 21px 22px 23px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--shadow-xs);
+}
+
+.workspace-section:focus {
+  outline: 0;
+}
+
+.active-setup-section {
+  border-color: rgba(191, 219, 254, 0.95);
+  background: var(--secondary);
+}
+
+.workspace-section-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
+  gap: 20px;
 }
 
-.profiles-heading {
+.workspace-section-copy {
   display: grid;
-  gap: 3px;
+  gap: 4px;
   min-width: 0;
 }
 
-.profiles-heading h2 {
-  margin: 0;
-  font-size: 15px;
-  letter-spacing: -0.005em;
+.workspace-kicker {
+  color: var(--primary);
+  font-size: 9.5px;
+  font-weight: 750;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
 }
 
-.profiles-heading p {
+.workspace-section-copy h2,
+.profile-dialog-head h2 {
   margin: 0;
-  max-width: 52ch;
+  color: var(--foreground);
+  font-size: 17px;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.quiet-action {
+  min-height: 34px;
+  padding: 0 4px;
+}
+
+.active-setup-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.setup-field {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.setup-field-label {
+  color: #475569;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.setup-select {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 38px 0 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background-color: #ffffff;
+  color: var(--foreground);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.setup-select:hover {
+  border-color: #93c5fd;
+}
+
+.setup-select:focus-visible {
+  outline: 0;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.setup-select:disabled {
+  background: var(--card-soft);
   color: var(--muted-foreground);
-  font-size: 12px;
-  line-height: 1.5;
+  cursor: not-allowed;
+}
+
+.setup-duration-control {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.setup-duration-control .setup-select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.rules-section {
+  gap: 18px;
+}
+
+.rules-section-head {
+  align-items: center;
+}
+
+.section-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 20px;
+  margin-left: 5px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--secondary);
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 750;
+  vertical-align: 2px;
+}
+
+.new-rule-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 14px;
+  white-space: nowrap;
+}
+
+.new-rule-btn svg,
+.dialog-close-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.rules-composer {
+  border-color: #93c5fd;
+  background: #f8fbff;
+}
+
+.rules-composer .header-composer-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.rules-composer .field:first-child,
+.rules-composer .field:last-of-type,
+.rules-composer .header-composer-actions {
+  grid-column: 1 / -1;
+}
+
+.rules-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 42px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.rules-toolbar[hidden] {
+  display: none;
+}
+
+.profile-filter {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.profile-filter[hidden] {
+  display: none;
+}
+
+.profile-filter label {
+  flex: none;
+  color: var(--muted-foreground);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.profile-filter .profile-select {
+  min-width: 190px;
+  min-height: 36px;
+  background-color: #ffffff;
+}
+
+.options-shell .rule-search {
+  width: min(290px, 100%);
+  margin-left: auto;
+}
+
+.options-shell .rule-search input {
+  min-height: 40px;
+}
+
+.options-shell .rule-edit-grid {
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+
+.options-shell .rule-edit-field:last-child {
+  grid-column: 1 / -1;
+}
+
+.profile-dialog {
+  width: min(640px, calc(100vw - 32px));
+  max-width: none;
+  max-height: min(720px, calc(100vh - 40px));
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  background: #ffffff;
+  color: var(--foreground);
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.2);
+}
+
+.profile-dialog:not([open]) {
+  display: none;
+}
+
+.profile-dialog::backdrop {
+  background: rgba(15, 23, 42, 0.35);
+  backdrop-filter: blur(2px);
+}
+
+.profile-dialog-shell {
+  display: grid;
+  gap: 16px;
+  max-height: inherit;
+  padding: 20px;
+}
+
+.profile-dialog-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--border);
+}
+
+.profile-dialog-head > div {
+  display: grid;
+  gap: 4px;
+}
+
+.dialog-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--muted-foreground);
+  cursor: pointer;
+}
+
+.dialog-close-btn:hover {
+  border-color: #93c5fd;
+  color: var(--foreground);
+}
+
+.dialog-close-btn:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px var(--ring);
 }
 
 .profile-list {
   display: grid;
   gap: 8px;
+  overflow-y: auto;
 }
 
 .profile-row {
@@ -148,23 +422,26 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  flex-wrap: wrap;
-  padding: 10px 12px;
+  padding: 11px 12px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   background: var(--card-soft);
 }
 
 .profile-row.is-active {
-  border-color: var(--primary);
+  border-color: #93c5fd;
   background: var(--secondary);
 }
 
-.profile-row-main {
+.profile-row-main,
+.profile-row-actions {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 7px;
   min-width: 0;
+}
+
+.profile-row-main {
   flex-wrap: wrap;
 }
 
@@ -191,40 +468,25 @@ body {
 }
 
 .profile-row-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
+  flex: none;
 }
 
 .profile-action-btn {
-  min-height: 28px;
+  min-height: 30px;
   padding: 0 10px;
   border: 1px solid var(--border-strong);
-  border-radius: 6px;
+  border-radius: 7px;
   background: #ffffff;
   color: var(--muted-foreground);
   font-family: inherit;
   font-size: 11.5px;
   font-weight: 650;
   cursor: pointer;
-  transition: border-color 0.16s ease, color 0.16s ease;
 }
 
 .profile-action-btn:hover {
-  border-color: var(--primary);
+  border-color: #93c5fd;
   color: var(--foreground);
-}
-
-.profile-action-btn.primary {
-  border-color: var(--primary);
-  background: var(--primary);
-  color: var(--primary-foreground);
-}
-
-.profile-action-btn.primary:hover {
-  background: var(--primary-hover);
-  color: var(--primary-foreground);
 }
 
 .profile-action-btn.danger:hover {
@@ -237,72 +499,91 @@ body {
   box-shadow: 0 0 0 3px var(--ring);
 }
 
-.profile-filter {
+.profile-dialog-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
 }
 
-.profile-filter[hidden] {
-  display: none;
-}
-
-.profile-filter label {
-  flex: none;
-  color: var(--muted-foreground);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-}
-
-.profile-filter .profile-select {
-  flex: 0 1 260px;
-  min-height: 36px;
-}
-
-.options-panel {
-  padding: 20px 22px 24px;
-}
-
-/* The manager has room for the search field at all times. */
-.rule-search input {
-  min-height: 42px;
-}
-
-.options-shell .rule-edit-grid {
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-}
-
-/* Header values are the longest field here, so give them the full row. */
-.options-shell .rule-edit-field:last-child {
-  grid-column: 1 / -1;
-}
-
-@media (max-width: 620px) {
+@media (max-width: 640px) {
   .options-shell {
-    padding: 22px 14px 56px;
+    gap: 18px;
+    padding: 20px 14px 48px;
   }
 
-  .options-panel {
-    padding: 16px 14px 20px;
+  .options-header,
+  .workspace-section-head {
+    align-items: stretch;
   }
-}
 
-.profile-duration {
-  padding-top: 4px;
-}
+  .options-header {
+    flex-direction: column;
+  }
 
-.profile-duration .session-label {
-  width: auto;
-}
+  .options-header-actions {
+    justify-content: space-between;
+  }
 
-.profile-duration .session-select {
-  flex: 0 1 240px;
-}
+  .workspace-section {
+    padding: 18px 15px 20px;
+  }
 
-.profile-duration .session-select:disabled {
-  background: var(--card-soft);
-  color: var(--muted-foreground);
-  cursor: not-allowed;
+  .workspace-section-head,
+  .active-setup-fields,
+  .rules-toolbar {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-section-head .quiet-action {
+    justify-self: start;
+  }
+
+  .rules-section-head .new-rule-btn {
+    width: 100%;
+  }
+
+  .rules-composer .header-composer-form {
+    grid-template-columns: 1fr;
+  }
+
+  .rules-composer .field,
+  .rules-composer .field:first-child,
+  .rules-composer .field:last-of-type,
+  .rules-composer .header-composer-actions {
+    grid-column: auto;
+  }
+
+  .options-shell .rule-search,
+  .profile-filter .profile-select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .profile-filter {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .profile-dialog {
+    width: calc(100vw - 20px);
+    max-height: calc(100vh - 20px);
+  }
+
+  .profile-dialog-shell {
+    padding: 16px;
+  }
+
+  .profile-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .profile-row-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
 }

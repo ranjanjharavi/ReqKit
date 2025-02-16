@@ -42,7 +42,7 @@ async function writeDocsPrivacyPage(target, renderedBody) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Learn how ReqKit handles URLs, request headers, Chrome permissions, and locally stored settings.">
+  <meta name="description" content="Learn how ReqKit handles request headers, Chrome permissions, and locally stored settings.">
   <meta name="theme-color" content="#eff6ff">
   <meta property="og:title" content="ReqKit Privacy Policy">
   <meta property="og:description" content="A clear account of ReqKit's local storage, permissions, and data handling.">
@@ -74,7 +74,7 @@ async function writeDocsPrivacyPage(target, renderedBody) {
       <div class="privacy-hero-copy">
         <span class="section-kicker">Privacy &amp; data use</span>
         <h1>Clear, local, user-controlled.</h1>
-        <p>ReqKit does not send data to its developer. Settings stay in Chrome, while URLs and headers reach destinations only through features you intentionally use.</p>
+        <p>ReqKit does not send data to its developer. Settings stay in Chrome, while configured headers reach only the exact HTTPS destinations you approve.</p>
       </div>
       <div class="privacy-hero-mark" aria-hidden="true">
         <svg viewBox="0 0 64 64"><path d="M32 7 13 15v14c0 13 7.5 22.5 19 28 11.5-5.5 19-15 19-28V15L32 7Z"/><path d="m23 32 6 6 13-15"/></svg>
@@ -83,7 +83,7 @@ async function writeDocsPrivacyPage(target, renderedBody) {
 
     <section class="privacy-highlights" aria-label="Privacy highlights">
       <article class="privacy-highlight"><strong>No analytics</strong><span>No telemetry, advertising, account system, or developer-operated API.</span></article>
-      <article class="privacy-highlight"><strong>Local Chrome storage</strong><span>Your URL recipe, header rules, and privacy choice stay in <code>chrome.storage.local</code>.</span></article>
+      <article class="privacy-highlight"><strong>Local Chrome storage</strong><span>Your profiles, activation settings, header rules, and privacy choice stay in <code>chrome.storage.local</code>.</span></article>
       <article class="privacy-highlight"><strong>On-demand site access</strong><span>Header permissions are requested for exact HTTPS hosts that you choose.</span></article>
     </section>
 

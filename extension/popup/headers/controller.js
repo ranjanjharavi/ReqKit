@@ -17,39 +17,36 @@ import {
   openOptionsPage,
   removeOriginPermission,
   requestOriginPermission,
-  requestOriginPermissions,
   storageLocalGet
 } from '../../shared/chrome-api.js';
 import {
   ACTIVATION_STORAGE_KEY,
   createDefaultActivation,
-  formatRemainingTime,
   getActivationStatus,
-  getRemainingMs,
   getTargetProfileId,
   normalizeActivation,
-  setActivationDuration,
-  setActiveProfile,
   setMasterEnabled
 } from '../../shared/activation.js';
 import { setActivationState } from '../../shared/activation-api.js';
 import {
   PROFILE_STORAGE_KEY,
-  countRulesInProfile,
   createDefaultProfiles,
   getProfileIds,
   getProfileName,
   normalizeProfiles
 } from '../../shared/profiles.js';
-import { getMissingProfileOrigins, isRuleGranted } from '../../shared/site-access.js';
+import { isRuleGranted } from '../../shared/site-access.js';
 import { createConflictMap, renderRuleRow, sortRulesForDisplay } from '../../shared/rule-render.js';
 import { parseUserUrl } from '../../shared/urls.js';
 import { commitRules, getStoredRules } from '../../shared/rule-api.js';
 import { state } from '../state.js';
 import { escapeHtml, showStatus } from '../../shared/ui.js';
-
-const OPTIONS_PAGE = 'options/index.html';
-const DURATION_OPTIONS = [3_600_000, 28_800_000];
+import {
+  formatRuleCount,
+  getActivationDisplay,
+  getManagerLinkLabel,
+  getManagerPath
+} from './view-model.js';
 
 export function bindHeaderEvents() {
   document.getElementById('headerComposerToggle').addEventListener('click', toggleHeaderComposer);
@@ -63,16 +60,11 @@ export function bindHeaderEvents() {
     event.preventDefault();
     openManager();
   });
+  document.getElementById('changeActiveSetupBtn').addEventListener('click', openActiveSetup);
 
   document.getElementById('ruleListContainer').addEventListener('click', handleRuleListClick);
   document.getElementById('masterSwitch').addEventListener('click', () => toggleMaster());
   document.getElementById('resumeMasterBtn').addEventListener('click', resumeFromBanner);
-  document.getElementById('profileSelect').addEventListener('change', (event) => {
-    selectProfile(event.target.value);
-  });
-  document.getElementById('durationSelect').addEventListener('change', (event) => {
-    selectDuration(event.target.value);
-  });
 
   onStorageChanged((changes) => {
     const touchesRules = RULE_STORAGE_KEY in changes
@@ -115,10 +107,6 @@ async function loadActivation() {
   state.headers.grantedOrigins = await readGrantedOrigins();
 }
 
-/**
- * Cached on load so a profile switch can call permissions.request in the same
- * task as the click. An await in between loses the user gesture Chrome needs.
- */
 async function readGrantedOrigins() {
   try {
     return await getGrantedOrigins();
@@ -150,61 +138,14 @@ async function toggleMaster(forceOn = false) {
   );
 }
 
-/**
- * The banner covers two different stops: the master switch, and an elapsed
- * timer that parked the profile. Resuming has to undo whichever it is.
- */
 async function resumeFromBanner() {
-  const activation = getActivation();
-
-  if (getActivationStatus(activation) === 'parked') {
-    await selectProfile(getTargetProfileId(activation));
-    return;
-  }
-
   await toggleMaster(true);
 }
 
-async function selectProfile(profileId) {
-  const activation = getActivation();
-  if (profileId === activation.profileId) {
-    return;
-  }
-
-  // Computed from the cached grant list so this stays in the click's task.
-  const missingOrigins = getMissingProfileOrigins(
-    state.headers.rules,
-    profileId,
-    state.headers.grantedOrigins
-  );
-
-  let granted = true;
-  if (missingOrigins.length) {
-    try {
-      granted = await requestOriginPermissions(missingOrigins);
-    } catch (error) {
-      console.error('Could not request site access for that profile.', error);
-      granted = false;
-    }
-    state.headers.grantedOrigins = await readGrantedOrigins();
-  }
-
-  const profileName = getProfileName(state.headers.profiles, profileId);
-  await commitActivation(
-    setActiveProfile(activation, profileId),
-    granted
-      ? `Switched to ${profileName}.`
-      : `Switched to ${profileName}. Some rules still need site access.`,
-    { type: granted ? 'success' : 'error' }
-  );
-}
-
-async function commitActivation(nextActivation, message, { type = 'success' } = {}) {
+async function commitActivation(nextActivation, message) {
   const controls = [
     document.getElementById('masterSwitch'),
-    document.getElementById('resumeMasterBtn'),
-    document.getElementById('profileSelect'),
-    document.getElementById('durationSelect')
+    document.getElementById('resumeMasterBtn')
   ];
 
   controls.forEach((control) => {
@@ -215,7 +156,7 @@ async function commitActivation(nextActivation, message, { type = 'success' } = 
   try {
     state.headers.activation = await setActivationState(nextActivation);
     renderRules();
-    showStatus('headerStatus', message, type);
+    showStatus('headerStatus', message, 'success');
   } catch (error) {
     console.error(error);
     renderRules();
@@ -256,84 +197,13 @@ function renderMasterSwitch() {
     .classList.toggle('is-master-paused', status !== 'live');
 }
 
-function renderSessionBar() {
-  renderProfileField();
-  renderDurationField();
-}
-
-function renderProfileField() {
-  const { profiles, rules } = state.headers;
-  const activation = getActivation();
-  const profileField = document.getElementById('profileField');
-
-  // A single profile is the same as no profiles at all — show nothing.
-  profileField.hidden = profiles.length < 2;
-  if (profileField.hidden) {
-    return;
-  }
-
-  const activeProfileId = getTargetProfileId(activation);
-  const select = document.getElementById('profileSelect');
-  const signature = `${profiles.map((profile) => profile.id + profile.name).join()}|${activeProfileId}`;
-
-  if (select.dataset.renderedFor !== signature) {
-    select.innerHTML = profiles.map((profile) => (
-      `<option value="${escapeHtml(profile.id)}"${profile.id === activeProfileId ? ' selected' : ''}>${escapeHtml(profile.name)}</option>`
-    )).join('');
-    select.dataset.renderedFor = signature;
-  }
-
-  const ruleCount = countRulesInProfile(rules, activeProfileId);
-  document.getElementById('profileBarCount').textContent = `${ruleCount} ${ruleCount === 1 ? 'rule' : 'rules'}`;
-}
-
-function renderDurationField() {
-  const activation = getActivation();
-  const select = document.getElementById('durationSelect');
-  const chip = document.getElementById('expiryChip');
-  const remainingMs = getRemainingMs(activation);
-
-  select.value = getDurationValue(activation);
-
-  const showTimer = remainingMs !== null;
-  chip.hidden = !showTimer;
-  if (showTimer) {
-    chip.textContent = formatRemainingTime(remainingMs);
-    chip.title = `Pauses in ${formatRemainingTime(remainingMs)}`;
-  }
-}
-
-function getDurationValue(activation) {
-  if (activation.untilBrowserClose) {
-    return 'session';
-  }
-  if (!activation.expiresAt) {
-    return 'indefinite';
-  }
-
-  return DURATION_OPTIONS.includes(activation.durationMs)
-    ? String(activation.durationMs)
-    : 'indefinite';
-}
-
-async function selectDuration(value) {
-  const activation = getActivation();
-  const next = value === 'session'
-    ? setActivationDuration(activation, { untilBrowserClose: true })
-    : setActivationDuration(activation, { durationMs: value === 'indefinite' ? null : Number(value) });
-
-  await commitActivation(next, describeDuration(value));
-}
-
-function describeDuration(value) {
-  if (value === 'session') {
-    return 'Rules will pause when Chrome closes.';
-  }
-  if (value === 'indefinite') {
-    return 'Rules stay on until you turn them off.';
-  }
-
-  return `Rules will pause in ${formatRemainingTime(Number(value))}.`;
+function renderActivationSummary() {
+  const display = getActivationDisplay(
+    state.headers.profiles,
+    getActivation()
+  );
+  document.getElementById('activeProfileName').textContent = display.profileName;
+  document.getElementById('activeUntilLabel').textContent = display.appliedUntil;
 }
 
 /**
@@ -350,6 +220,12 @@ function describeRule(rule) {
 function openManager() {
   openOptionsPage().catch((error) => {
     console.error('Could not open the ReqKit manager.', error);
+  });
+}
+
+function openActiveSetup() {
+  createTab({ url: getExtensionUrl(getManagerPath({ section: 'active-setup' })) }).catch((error) => {
+    console.error('Could not open the active setup.', error);
   });
 }
 
@@ -391,7 +267,7 @@ function handleRuleListClick(event) {
  * growing a form that a permission prompt could dismiss mid-edit.
  */
 function openRuleInManager(id) {
-  createTab({ url: getExtensionUrl(`${OPTIONS_PAGE}?edit=${id}`) }).catch((error) => {
+  createTab({ url: getExtensionUrl(getManagerPath({ editRuleId: id })) }).catch((error) => {
     console.error('Could not open that rule in the manager.', error);
   });
 }
@@ -442,12 +318,10 @@ function setHeaderComposerExpanded(expanded, {
 } = {}) {
   const composer = document.getElementById('headerComposer');
   const toggle = document.getElementById('headerComposerToggle');
-  const body = document.getElementById('headerComposerBody');
 
   state.headers.composerOpen = expanded;
-  composer.classList.toggle('is-open', expanded);
+  composer.hidden = !expanded;
   toggle.setAttribute('aria-expanded', String(expanded));
-  body.hidden = !expanded;
 
   if (reset) {
     clearHeaderForm();
@@ -482,7 +356,7 @@ function renderRules() {
   const conflictMap = createConflictMap(getActiveRuleConflicts(rules, getActivation()));
   const conflictingIds = new Set(conflictMap.keys());
   renderMasterSwitch();
-  renderSessionBar();
+  renderActivationSummary();
   updateCurrentSiteControls();
 
   const currentSiteRules = currentHostname ? filterRulesByHost(getScopedRules(), currentHostname) : [];
@@ -507,7 +381,7 @@ function renderRules() {
 function updateCurrentSiteControls() {
   const { rules, currentHostname } = state.headers;
   const currentSiteHost = document.getElementById('currentSiteHost');
-  const currentSiteToolbar = document.querySelector('.current-site-toolbar');
+  const currentSiteWorkbench = document.querySelector('.current-site-workbench');
   const currentSiteCount = currentHostname
     ? filterRulesByHost(getScopedRules(), currentHostname).length
     : 0;
@@ -515,18 +389,11 @@ function updateCurrentSiteControls() {
 
   currentSiteHost.textContent = currentHostname || 'Unavailable on this page';
   currentSiteHost.classList.toggle('is-unavailable', !currentHostname);
-  currentSiteToolbar.classList.toggle('is-unavailable', !currentHostname);
+  currentSiteWorkbench.classList.toggle('is-unavailable', !currentHostname);
 
-  countLabel.textContent = `${currentSiteCount} ${currentSiteCount === 1 ? 'rule' : 'rules'}`;
-  countLabel.hidden = !currentHostname;
+  countLabel.textContent = currentHostname ? formatRuleCount(currentSiteCount) : 'Site rules';
 
-  document.getElementById('headerComposerHint').textContent = currentHostname
-    ? `For ${currentHostname}`
-    : 'Choose an exact host';
-
-  document.getElementById('manageRulesLink').textContent = rules.length
-    ? `Manage all ${rules.length} ${rules.length === 1 ? 'rule' : 'rules'} →`
-    : 'Manage all rules →';
+  document.getElementById('manageRulesLink').textContent = getManagerLinkLabel(rules.length);
 }
 
 function getEmptyRulesMessage() {

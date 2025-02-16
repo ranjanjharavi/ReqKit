@@ -3,7 +3,7 @@ import { PROFILE_STORAGE_KEY, getProfileIds, normalizeProfiles } from './profile
 import { RULE_STORAGE_KEY, normalizeRules } from './rules.js';
 
 export const SCHEMA_VERSION_KEY = 'schemaVersion';
-export const CURRENT_SCHEMA_VERSION = 2;
+export const CURRENT_SCHEMA_VERSION = 3;
 
 export const MIGRATED_KEYS = [
   SCHEMA_VERSION_KEY,
@@ -11,6 +11,9 @@ export const MIGRATED_KEYS = [
   RULE_STORAGE_KEY,
   ACTIVATION_STORAGE_KEY
 ];
+
+const OBSOLETE_STORAGE_KEYS = ['transformerRecipe'];
+const MIGRATION_READ_KEYS = [...MIGRATED_KEYS, ...OBSOLETE_STORAGE_KEYS];
 
 /**
  * Ordered, additive steps. Later work adds a step rather than editing an
@@ -29,6 +32,14 @@ const MIGRATION_STEPS = [
         [RULE_STORAGE_KEY]: normalizeRules(state[RULE_STORAGE_KEY], { profileIds }),
         [ACTIVATION_STORAGE_KEY]: normalizeActivation(state[ACTIVATION_STORAGE_KEY], { profileIds })
       };
+    }
+  },
+  {
+    version: 3,
+    apply(state) {
+      const nextState = { ...state };
+      OBSOLETE_STORAGE_KEYS.forEach((key) => delete nextState[key]);
+      return nextState;
     }
   }
 ];
@@ -62,9 +73,9 @@ export function migrateState(stored = {}) {
  * Data keys are written before the version marker, so a failure part-way leaves
  * the old version in place and the migration simply re-runs next time.
  */
-export async function ensureMigrated({ get, set }) {
-  const stored = await get(MIGRATED_KEYS);
-  const { state, changed } = migrateState(stored);
+export async function ensureMigrated({ get, set, remove }) {
+  const stored = await get(MIGRATION_READ_KEYS);
+  const { state, changed, fromVersion } = migrateState(stored);
 
   if (changed) {
     await set({
@@ -72,6 +83,9 @@ export async function ensureMigrated({ get, set }) {
       [RULE_STORAGE_KEY]: state[RULE_STORAGE_KEY],
       [ACTIVATION_STORAGE_KEY]: state[ACTIVATION_STORAGE_KEY]
     });
+    if (fromVersion < 3) {
+      await remove(OBSOLETE_STORAGE_KEYS);
+    }
     await set({ [SCHEMA_VERSION_KEY]: state[SCHEMA_VERSION_KEY] });
   }
 

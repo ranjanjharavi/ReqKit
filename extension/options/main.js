@@ -20,6 +20,8 @@ async function start() {
     console.error('Could not load header rules.', error);
     showStatus('headerStatus', 'Could not load header rules.', 'error');
   });
+
+  focusRequestedSection();
 }
 
 /**
@@ -29,4 +31,16 @@ async function start() {
 function readEditRuleId() {
   const requestedId = Number(new URLSearchParams(globalThis.location.search).get('edit'));
   return Number.isInteger(requestedId) && requestedId > 0 ? requestedId : null;
+}
+
+function focusRequestedSection() {
+  if (globalThis.location.hash !== '#active-setup') {
+    return;
+  }
+
+  globalThis.setTimeout(() => {
+    const section = document.getElementById('active-setup');
+    section.scrollIntoView({ block: 'start' });
+    document.getElementById('activeProfileSelect').focus({ preventScroll: true });
+  }, 0);
 }

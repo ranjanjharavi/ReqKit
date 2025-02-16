@@ -50,6 +50,7 @@ import {
 import { commitRules, getStoredRules } from '../../shared/rule-api.js';
 import { state } from '../state.js';
 import { showStatus } from '../../shared/ui.js';
+import { getRuleWorkspaceSummary } from '../view-model.js';
 
 const SEARCH_VISIBLE_FROM = 5;
 const DURATION_OPTIONS = [3_600_000, 28_800_000];
@@ -182,7 +183,7 @@ function renderMasterSwitch() {
       : 'No headers are being applied to any site. Rules keep their own on/off state.';
   }
 
-  document.querySelector('.options-panel .content-stack')
+  document.querySelector('.options-workspace')
     .classList.toggle('is-master-paused', status !== 'live');
 }
 
@@ -240,10 +241,10 @@ async function selectDuration(value) {
   try {
     state.activation = await setActivationState(next);
     renderRules();
-    showStatus('profileStatus', describeDuration(value), 'success');
+    showStatus('activeSetupStatus', describeDuration(value), 'success');
   } catch (error) {
     console.error(error);
-    showStatus('profileStatus', error.message || 'Could not set the timer.', 'error');
+    showStatus('activeSetupStatus', error.message || 'Could not set the timer.', 'error');
   } finally {
     state.syncPaused = false;
   }
@@ -459,12 +460,11 @@ function setHeaderComposerExpanded(expanded, {
 } = {}) {
   const composer = document.getElementById('headerComposer');
   const toggle = document.getElementById('headerComposerToggle');
-  const body = document.getElementById('headerComposerBody');
 
   state.composerOpen = expanded;
-  composer.classList.toggle('is-open', expanded);
+  composer.hidden = !expanded;
   toggle.setAttribute('aria-expanded', String(expanded));
-  body.hidden = !expanded;
+  toggle.disabled = expanded;
 
   if (reset) {
     clearHeaderForm();
@@ -511,19 +511,17 @@ function renderRules() {
 
 function updateSummary() {
   const scopedRules = getVisibleRules();
-  const totalRules = scopedRules.length;
-  const activeRules = scopedRules.filter((rule) => rule.enabled).length;
-  const hostCount = new Set(scopedRules.map((rule) => rule.domain)).size;
+  const summary = getRuleWorkspaceSummary(scopedRules);
 
-  document.getElementById('optionsSummary').textContent = totalRules
-    ? `${totalRules} ${totalRules === 1 ? 'rule' : 'rules'} · ${activeRules} enabled · ${hostCount} ${hostCount === 1 ? 'host' : 'hosts'}`
-    : 'Every request-header rule in this Chrome profile.';
+  document.getElementById('rulesCount').textContent = String(summary.totalRules);
+  document.getElementById('optionsSummary').textContent = summary.detail;
 
   const searchContainer = document.getElementById('ruleSearchContainer');
   const searchInput = document.getElementById('ruleSearchInput');
-  const searchEnabled = totalRules >= SEARCH_VISIBLE_FROM;
+  const searchEnabled = summary.totalRules >= SEARCH_VISIBLE_FROM;
 
   searchContainer.hidden = !searchEnabled;
+  document.getElementById('rulesToolbar').hidden = state.profiles.length < 2 && !searchEnabled;
   if (!searchEnabled) {
     state.searchQuery = '';
   }

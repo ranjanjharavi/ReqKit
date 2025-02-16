@@ -3,7 +3,7 @@
   "name": "ReqKit",
   "version": "1.0",
   "minimum_chrome_version": "120",
-  "description": "Transform URLs and add domain-bound request headers.",
+  "description": "Manage profile-based request headers for approved HTTPS hosts.",
   "permissions": [
     "activeTab",
     "alarms",

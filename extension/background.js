@@ -6,6 +6,7 @@ import {
   getGrantedOrigins,
   queryTabs,
   storageAreaGet,
+  storageAreaRemove,
   storageAreaSet,
   updateDynamicRules
 } from './shared/chrome-api.js';
@@ -149,6 +150,7 @@ async function toggleMasterSwitch() {
 async function initialize({ newBrowserSession = false } = {}) {
   await ensureMigrated({
     get: (keys) => storageAreaGet(chrome.storage.local, keys),
+    remove: (keys) => storageAreaRemove(chrome.storage.local, keys),
     set: (value) => storageAreaSet(chrome.storage.local, value)
   });
 

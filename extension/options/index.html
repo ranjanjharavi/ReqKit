@@ -12,9 +12,9 @@
     <img class="privacy-gate-icon" src="../icons/reqkit-128.png" width="72" height="72" alt="ReqKit">
     <span class="privacy-gate-kicker">Before you begin</span>
     <h1 id="privacyGateTitle">Choose when ReqKit handles your data</h1>
-    <p>ReqKit reads the active tab URL locally and stores your default URL recipe and header rules in this Chrome profile. Query values are added only when you transform a URL; header values are sent only to exact HTTPS sites you approve.</p>
-    <p>ReqKit has no analytics or developer server. Query values may be visible in browser and destination logs.</p>
-    <a class="privacy-policy-link" href="../privacy/index.html" target="_blank" rel="noreferrer">Read the privacy policy</a>
+    <p>ReqKit reads the active tab URL locally to identify the current host and stores profiles, activation settings, and header rules in this Chrome profile.</p>
+    <p>ReqKit has no analytics or developer server. Header values are sent only to the exact HTTPS sites you approve and may be visible in destination or intermediary logs.</p>
+    <a class="privacy-policy-link" href="../privacy/index.html">Read the privacy policy</a>
     <button id="privacyConsentBtn" class="primary-btn privacy-consent-btn" type="button">Accept and continue</button>
     <div id="privacyConsentStatus" class="status-msg privacy-consent-status" role="status" aria-live="polite"></div>
   </section>
@@ -25,7 +25,7 @@
         <img src="../icons/reqkit-48.png" width="32" height="32" alt="">
         <div class="options-header-copy">
           <h1>Rule manager</h1>
-          <p id="optionsSummary">Every request-header rule in this Chrome profile.</p>
+          <p>Profiles, timing, and request-header rules.</p>
         </div>
       </div>
       <div class="options-header-actions">
@@ -33,57 +33,67 @@
           <span class="master-switch-track" aria-hidden="true"><span class="master-switch-thumb"></span></span>
           <span id="masterSwitchLabel" class="master-switch-label">On</span>
         </button>
-        <a class="options-header-link" href="../privacy/index.html" target="_blank" rel="noreferrer">Privacy policy</a>
+        <a class="options-header-link" href="../privacy/index.html">Privacy policy</a>
       </div>
     </header>
 
     <main class="options-main">
-      <article class="panel options-panel">
-        <div class="content-stack">
-          <div id="masterPausedBanner" class="master-paused-banner" role="status" hidden>
-            <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1a7 7 0 1 1 0 14A7 7 0 0 1 8 1Zm0 1.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM6.5 5.5h1.25v5H6.5v-5Zm1.75 0h1.25v5H8.25v-5Z"/></svg>
-            <div class="master-paused-copy">
-              <strong id="masterPausedTitle">All header rules are paused</strong>
-              <span id="masterPausedDetail">No headers are being applied to any site. Rules keep their own on/off state.</span>
-            </div>
-            <button id="resumeMasterBtn" class="master-resume-btn" type="button">Resume</button>
+      <div class="content-stack options-workspace">
+        <div id="masterPausedBanner" class="master-paused-banner" role="status" hidden>
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1a7 7 0 1 1 0 14A7 7 0 0 1 8 1Zm0 1.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM6.5 5.5h1.25v5H6.5v-5Zm1.75 0h1.25v5H8.25v-5Z"/></svg>
+          <div class="master-paused-copy">
+            <strong id="masterPausedTitle">All header rules are paused</strong>
+            <span id="masterPausedDetail">No headers are being applied to any site. Rules keep their own on/off state.</span>
           </div>
+          <button id="resumeMasterBtn" class="master-resume-btn" type="button">Resume</button>
+        </div>
 
-          <section class="profiles-section" aria-labelledby="profilesTitle">
-            <header class="profiles-head">
-              <div class="profiles-heading">
-                <h2 id="profilesTitle">Profiles</h2>
-                <p>One profile is active at a time. Rules in the others keep their own on/off state and are simply not applied.</p>
-              </div>
-              <button id="newProfileBtn" class="secondary-btn" type="button">New profile</button>
-            </header>
-            <div id="profileList" class="profile-list"></div>
-            <div class="session-field profile-duration">
-              <label class="session-label" for="durationSelect">Apply for</label>
-              <select id="durationSelect" class="session-select">
-                <option value="indefinite">Until I turn it off</option>
-                <option value="3600000">1 hour</option>
-                <option value="28800000">8 hours</option>
-                <option value="session">Until Chrome closes</option>
-              </select>
-              <span id="expiryChip" class="session-count is-timer" hidden></span>
+        <section id="active-setup" class="workspace-section active-setup-section" aria-labelledby="activeSetupTitle" tabindex="-1">
+          <header class="workspace-section-head">
+            <div class="workspace-section-copy">
+              <span class="workspace-kicker">Active setup</span>
+              <h2 id="activeSetupTitle">Control what applies now</h2>
+              <p>Choose one profile and how long its enabled rules should run.</p>
             </div>
-            <div id="profileStatus" class="status-msg"></div>
-          </section>
+            <button id="manageProfilesBtn" class="quiet-action" type="button" aria-haspopup="dialog" aria-controls="profileManagerDialog">Manage profiles</button>
+          </header>
 
-          <div id="headerComposer" class="header-composer">
-            <button id="headerComposerToggle" class="header-composer-toggle" type="button" aria-expanded="false" aria-controls="headerComposerBody">
-              <span class="header-composer-icon" aria-hidden="true">
-                <svg viewBox="0 0 16 16"><path fill="currentColor" d="M7.25 2.5h1.5v4.75h4.75v1.5H8.75v4.75h-1.5V8.75H2.5v-1.5h4.75V2.5Z"/></svg>
+          <div class="active-setup-fields">
+            <label class="setup-field" for="activeProfileSelect">
+              <span class="setup-field-label">Profile</span>
+              <select id="activeProfileSelect" class="setup-select"></select>
+            </label>
+            <label class="setup-field" for="durationSelect">
+              <span class="setup-field-label">Apply for</span>
+              <span class="setup-duration-control">
+                <select id="durationSelect" class="setup-select">
+                  <option value="indefinite">Until I turn it off</option>
+                  <option value="3600000">1 hour</option>
+                  <option value="28800000">8 hours</option>
+                  <option value="session">Until Chrome closes</option>
+                </select>
+                <span id="expiryChip" class="session-count is-timer" hidden></span>
               </span>
-              <span class="header-composer-copy">
-                <span class="header-composer-title">Add header rule</span>
-                <span id="headerComposerHint" class="header-composer-hint">Create an exact-host rule</span>
-              </span>
-              <svg class="header-composer-chevron" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="m4.2 6.1 3.8 3.8 3.8-3.8 1.05 1.05L8 12 3.15 7.15 4.2 6.1Z"/></svg>
+            </label>
+          </div>
+          <div id="activeSetupStatus" class="status-msg" role="status" aria-live="polite"></div>
+        </section>
+
+        <section class="workspace-section rules-section" aria-labelledby="rulesTitle">
+          <header class="workspace-section-head rules-section-head">
+            <div class="workspace-section-copy">
+              <span class="workspace-kicker">Rules</span>
+              <h2 id="rulesTitle">Request headers <span id="rulesCount" class="section-count">0</span></h2>
+              <p id="optionsSummary">No rules in this view.</p>
+            </div>
+            <button id="headerComposerToggle" class="primary-btn new-rule-btn" type="button" aria-expanded="false" aria-controls="headerComposer">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M7.25 2.5h1.5v4.75h4.75v1.5H8.75v4.75h-1.5V8.75H2.5v-1.5h4.75V2.5Z"/></svg>
+              New rule
             </button>
+          </header>
 
-            <div id="headerComposerBody" class="header-composer-body" hidden>
+          <div id="headerComposer" class="header-composer rules-composer" hidden>
+            <div class="header-composer-body">
               <form id="headerComposerForm" class="header-composer-form">
                 <div class="field">
                   <label for="domain">Exact HTTPS host</label>
@@ -110,23 +120,45 @@
             </div>
           </div>
 
-          <div id="headerStatus" class="status-msg"></div>
+          <div id="rulesToolbar" class="rules-toolbar">
+            <div id="profileFilter" class="profile-filter" hidden>
+              <label for="profileFilterSelect">Showing</label>
+              <select id="profileFilterSelect" class="profile-select" aria-label="Filter rules by profile"></select>
+            </div>
 
-          <div id="profileFilter" class="profile-filter" hidden>
-            <label for="profileFilterSelect">Showing rules in</label>
-            <select id="profileFilterSelect" class="profile-select"></select>
+            <div id="ruleSearchContainer" class="rule-search" hidden>
+              <label class="sr-only" for="ruleSearchInput">Search header rules</label>
+              <svg class="rule-search-icon" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M7 2a5 5 0 1 0 3.16 8.87l2.98 2.98 1.06-1.06-2.98-2.98A5 5 0 0 0 7 2Zm-3.5 5a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0Z"/></svg>
+              <input id="ruleSearchInput" type="search" placeholder="Search hosts and headers" autocomplete="off" spellcheck="false">
+            </div>
           </div>
 
-          <div id="ruleSearchContainer" class="rule-search" hidden>
-            <label class="sr-only" for="ruleSearchInput">Search header rules</label>
-            <svg class="rule-search-icon" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M7 2a5 5 0 1 0 3.16 8.87l2.98 2.98 1.06-1.06-2.98-2.98A5 5 0 0 0 7 2Zm-3.5 5a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0Z"/></svg>
-            <input id="ruleSearchInput" type="search" placeholder="Search hosts and headers" autocomplete="off" spellcheck="false">
-          </div>
-
+          <div id="headerStatus" class="status-msg" role="status" aria-live="polite"></div>
           <div id="ruleListContainer" class="rule-list"></div>
-        </div>
-      </article>
+        </section>
+      </div>
     </main>
+
+    <dialog id="profileManagerDialog" class="profile-dialog" aria-labelledby="profileManagerTitle">
+      <div class="profile-dialog-shell">
+        <header class="profile-dialog-head">
+          <div>
+            <span class="workspace-kicker">Profiles</span>
+            <h2 id="profileManagerTitle">Manage profiles</h2>
+            <p>Organize rule sets without changing what is currently applied.</p>
+          </div>
+          <button id="closeProfileManagerBtn" class="dialog-close-btn" type="button" aria-label="Close profile manager">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="m3.7 2.65 4.3 4.3 4.3-4.3 1.05 1.05-4.3 4.3 4.3 4.3-1.05 1.05-4.3-4.3-4.3 4.3-1.05-1.05 4.3-4.3-4.3-4.3L3.7 2.65Z"/></svg>
+          </button>
+        </header>
+        <div id="profileList" class="profile-list"></div>
+        <div id="profileStatus" class="status-msg" role="status" aria-live="polite"></div>
+        <footer class="profile-dialog-actions">
+          <button id="newProfileBtn" class="secondary-btn" type="button">New profile</button>
+          <button id="doneProfileManagerBtn" class="primary-btn" type="button">Done</button>
+        </footer>
+      </div>
+    </dialog>
   </div>
 
   <script type="module" src="main.js"></script>

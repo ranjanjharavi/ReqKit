@@ -8,10 +8,5 @@ export const state = {
     currentHostname: '',
     revealedRuleIds: new Set(),
     syncPaused: false
-  },
-  transformer: {
-    result: null,
-    recipe: null,
-    editor: { open: false, draft: null }
   }
 };

@@ -19,7 +19,7 @@
     }
     .frame {
       width: 680px;
-      height: 710px;
+      height: 790px;
       padding: 30px;
       overflow: hidden;
       border: 1px solid rgba(147, 197, 253, 0.8);
@@ -29,7 +29,7 @@
     }
     iframe {
       width: 480px;
-      height: 500px;
+      height: 560px;
       border: 0;
       transform: scale(1.29);
       transform-origin: top left;
@@ -39,8 +39,7 @@
 <body>
   <div class="frame"><iframe id="popupPreview" title="ReqKit extension popup"></iframe></div>
   <script>
-    const view = new URLSearchParams(location.search).get('view');
-    document.getElementById('popupPreview').src = `popup-harness.html?store=5${view === 'output' ? '&output=1' : ''}`;
+    document.getElementById('popupPreview').src = 'popup-harness.html?store=5&headers=1';
   </script>
 </body>
 </html>

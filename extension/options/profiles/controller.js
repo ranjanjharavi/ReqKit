@@ -32,6 +32,35 @@ export function bindProfileEvents({ onChanged }) {
 
   document.getElementById('newProfileBtn').addEventListener('click', createNewProfile);
   document.getElementById('profileList').addEventListener('click', handleProfileListClick);
+  document.getElementById('activeProfileSelect').addEventListener('change', handleActiveProfileChange);
+  document.getElementById('manageProfilesBtn').addEventListener('click', openProfileManager);
+  document.getElementById('closeProfileManagerBtn').addEventListener('click', closeProfileManager);
+  document.getElementById('doneProfileManagerBtn').addEventListener('click', closeProfileManager);
+  document.getElementById('profileManagerDialog').addEventListener('click', (event) => {
+    if (event.target === event.currentTarget) {
+      closeProfileManager();
+    }
+  });
+}
+
+function handleActiveProfileChange(event) {
+  const select = event.currentTarget;
+  select.disabled = true;
+  activateProfile(select.value).finally(() => {
+    select.disabled = false;
+    renderProfiles();
+  });
+}
+
+function openProfileManager() {
+  document.getElementById('profileManagerDialog').showModal();
+}
+
+function closeProfileManager() {
+  const dialog = document.getElementById('profileManagerDialog');
+  if (dialog.open) {
+    dialog.close();
+  }
 }
 
 function handleProfileListClick(event) {
@@ -42,7 +71,6 @@ function handleProfileListClick(event) {
 
   const { profileAction, id } = button.dataset;
   const actions = {
-    activate: () => activateProfile(id),
     rename: () => renameProfile(id),
     duplicate: () => duplicateProfile(id),
     delete: () => deleteProfile(id)
@@ -53,8 +81,18 @@ function handleProfileListClick(event) {
 
 export function renderProfiles() {
   const { profiles, rules } = state;
-  const activeProfileId = getActivation().profileId;
+  const activeProfileId = getTargetProfileId(getActivation());
+  const select = document.getElementById('activeProfileSelect');
   const list = document.getElementById('profileList');
+
+  const selectSignature = profiles.map((profile) => `${profile.id}:${profile.name}`).join('|');
+  if (select.dataset.renderedFor !== selectSignature) {
+    select.innerHTML = profiles.map((profile) => (
+      `<option value="${escapeHtml(profile.id)}">${escapeHtml(profile.name)}</option>`
+    )).join('');
+    select.dataset.renderedFor = selectSignature;
+  }
+  select.value = activeProfileId;
 
   list.innerHTML = profiles.map((profile) => {
     const ruleCount = countRulesInProfile(rules, profile.id);
@@ -68,9 +106,6 @@ export function renderProfiles() {
           <span class="profile-row-count">${ruleCount} ${ruleCount === 1 ? 'rule' : 'rules'}</span>
         </div>
         <div class="profile-row-actions">
-          ${isActive
-    ? ''
-    : `<button class="profile-action-btn primary" type="button" data-profile-action="activate" data-id="${escapeHtml(profile.id)}">Activate</button>`}
           <button class="profile-action-btn" type="button" data-profile-action="rename" data-id="${escapeHtml(profile.id)}">Rename</button>
           <button class="profile-action-btn" type="button" data-profile-action="duplicate" data-id="${escapeHtml(profile.id)}">Duplicate</button>
           ${profile.id === DEFAULT_PROFILE_ID
@@ -98,8 +133,9 @@ async function createNewProfile() {
     return;
   }
 
-  await saveProfiles([...state.profiles, createProfile(validation.profile.name)]);
-  showStatus('profileStatus', `Created ${validation.profile.name}.`, 'success');
+  if (await saveProfiles([...state.profiles, createProfile(validation.profile.name)])) {
+    showStatus('profileStatus', `Created ${validation.profile.name}.`, 'success');
+  }
 }
 
 async function renameProfile(id) {
@@ -119,10 +155,12 @@ async function renameProfile(id) {
     return;
   }
 
-  await saveProfiles(state.profiles.map((candidate) => (
+  const saved = await saveProfiles(state.profiles.map((candidate) => (
     candidate.id === id ? { ...candidate, name: validation.profile.name } : candidate
   )));
-  showStatus('profileStatus', `Renamed to ${validation.profile.name}.`, 'success');
+  if (saved) {
+    showStatus('profileStatus', `Renamed to ${validation.profile.name}.`, 'success');
+  }
 }
 
 /**
@@ -241,7 +279,7 @@ export async function activateProfile(id) {
 
     const name = getProfileName(state.profiles, id);
     showStatus(
-      'profileStatus',
+      'activeSetupStatus',
       granted
         ? `${name} is now active.`
         : `${name} is now active, but some of its rules still need site access.`,
@@ -249,7 +287,7 @@ export async function activateProfile(id) {
     );
   } catch (error) {
     console.error(error);
-    showStatus('profileStatus', error.message || 'Could not activate that profile.', 'error');
+    showStatus('activeSetupStatus', error.message || 'Could not activate that profile.', 'error');
   } finally {
     state.syncPaused = false;
   }
@@ -269,9 +307,11 @@ async function saveProfiles(profiles) {
     state.syncPaused = true;
     await storeProfiles(profiles);
     await refreshAll();
+    return true;
   } catch (error) {
     console.error(error);
     showStatus('profileStatus', error.message || 'Could not save profiles.', 'error');
+    return false;
   } finally {
     state.syncPaused = false;
   }
@@ -279,8 +319,4 @@ async function saveProfiles(profiles) {
 
 function storeProfiles(profiles) {
   return storageLocalSet({ [PROFILE_STORAGE_KEY]: profiles });
-}
-
-export function getActiveProfileId() {
-  return getTargetProfileId(getActivation());
 }

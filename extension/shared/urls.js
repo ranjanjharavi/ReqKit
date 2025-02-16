@@ -42,7 +42,3 @@ function isLoopbackHostname(hostname) {
     || normalized === '[::1]'
     || normalized === '::1';
 }
-
-export function encodeRedirectPath(value) {
-  return encodeURIComponent(value).replace(/%2F/g, '/');
-}

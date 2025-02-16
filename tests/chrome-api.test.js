@@ -7,6 +7,7 @@ import {
   removeOriginPermission,
   requestOriginPermission,
   sendRuntimeMessage,
+  storageAreaRemove,
   storageLocalGet,
   storageLocalSet
 } from '../extension/shared/chrome-api.js';
@@ -26,6 +27,10 @@ function createChromeApi() {
         },
         set(value, callback) {
           this.value = value;
+          callback();
+        },
+        remove(keys, callback) {
+          this.removed = keys;
           callback();
         }
       }
@@ -56,8 +61,10 @@ test('Chrome API wrappers resolve callback results', async () => {
   const chromeApi = createChromeApi();
 
   assert.deepEqual(await storageLocalGet(['key'], chromeApi), { query: ['key'] });
-  await storageLocalSet({ recipe: 'saved' }, chromeApi);
-  assert.deepEqual(chromeApi.storage.local.value, { recipe: 'saved' });
+  await storageLocalSet({ privacyConsentVersion: 1 }, chromeApi);
+  assert.deepEqual(chromeApi.storage.local.value, { privacyConsentVersion: 1 });
+  await storageAreaRemove(chromeApi.storage.local, ['obsolete'], chromeApi);
+  assert.deepEqual(chromeApi.storage.local.removed, ['obsolete']);
   assert.equal(await requestOriginPermission('https://example.com/*', chromeApi), true);
   assert.deepEqual(chromeApi.permissions.requested, { origins: ['https://example.com/*'] });
   assert.equal(await removeOriginPermission('https://example.com/*', chromeApi), true);

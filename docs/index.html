@@ -3,17 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="ReqKit is a privacy-conscious Chrome developer utility for transforming URLs and managing exact-host request headers.">
+  <meta name="description" content="ReqKit is a privacy-conscious Chrome utility for managing profile-based request headers on exact HTTPS hosts.">
   <meta name="theme-color" content="#eff6ff">
-  <meta property="og:title" content="ReqKit — URL and request-header tools for Chrome">
-  <meta property="og:description" content="Transform active-tab URLs with one saved recipe and manage request headers for user-approved HTTPS hosts.">
+  <meta property="og:title" content="ReqKit — Request-header profiles for Chrome">
+  <meta property="og:description" content="Manage profile-based request headers for user-approved HTTPS hosts.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://ranjanjharavi.github.io/ReqKit/">
-  <meta property="og:image" content="https://ranjanjharavi.github.io/ReqKit/assets/reqkit-screenshot.png">
+  <meta property="og:image" content="https://ranjanjharavi.github.io/ReqKit/assets/reqkit-headers-screenshot.png">
   <link rel="canonical" href="https://ranjanjharavi.github.io/ReqKit/">
   <link rel="icon" type="image/png" href="assets/reqkit-128.png">
   <link rel="stylesheet" href="assets/site.css">
-  <title>ReqKit — URL and request-header tools for Chrome</title>
+  <title>ReqKit — Request-header profiles for Chrome</title>
 </head>
 <body>
   <header class="site-header">
@@ -35,22 +35,22 @@
     <section class="hero section-shell">
       <div class="hero-copy">
         <span class="eyebrow"><span class="eyebrow-dot" aria-hidden="true"></span> Manifest V3 · Chrome 120+</span>
-        <h1>Shape test URLs.<br><span>Control request headers.</span></h1>
-        <p class="hero-lead">ReqKit keeps the developer utilities you reach for every day in one focused Chrome popup—without analytics, accounts, or a developer-operated backend.</p>
+        <h1>Control request headers.<br><span>Switch environments safely.</span></h1>
+        <p class="hero-lead">ReqKit keeps exact-host header rules, profiles, and time-limited activation in one focused Chrome extension—without analytics, accounts, or a developer-operated backend.</p>
         <div class="hero-actions">
           <a class="button primary" href="#features">Explore features</a>
           <a class="button secondary" href="https://github.com/ranjanjharavi/ReqKit">View source <span aria-hidden="true">↗</span></a>
         </div>
         <ul class="trust-list" aria-label="ReqKit highlights">
-          <li><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3 8.1 3.1 3.1L13 4.6"/></svg>Local processing</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3 8.1 3.1 3.1L13 4.6"/></svg>Local settings</li>
           <li><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3 8.1 3.1 3.1L13 4.6"/></svg>Exact-host access</li>
           <li><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3 8.1 3.1 3.1L13 4.6"/></svg>No telemetry</li>
         </ul>
       </div>
-      <div class="hero-visual" aria-label="ReqKit URL transformer preview">
+      <div class="hero-visual" aria-label="ReqKit request-header preview">
         <div class="preview-window">
           <div class="preview-bar" aria-hidden="true"><span></span><span></span><span></span><strong>ReqKit</strong></div>
-          <img src="assets/reqkit-screenshot.png" width="1280" height="800" decoding="async" alt="ReqKit popup showing a URL recipe with two enabled query parameters">
+          <img src="assets/reqkit-headers-screenshot.png" width="1280" height="800" decoding="async" alt="ReqKit showing exact-host request-header rules">
         </div>
       </div>
     </section>
@@ -59,24 +59,24 @@
       <div class="section-heading">
         <span class="section-kicker">Built for focused testing</span>
         <h2>Useful controls, without the configuration maze.</h2>
-        <p>One saved URL recipe and exact-host header rules cover the common workflow while keeping every action visible and reversible.</p>
+        <p>Exact-host rules and environment profiles keep every change scoped, visible, and reversible.</p>
       </div>
 
       <div class="feature-grid">
         <article class="feature-card">
-          <div class="feature-icon blue"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M4 17h16M17 4v6M8 14v6"/><circle cx="17" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg></div>
-          <h3>One editable recipe</h3>
-          <p>Save query keys and values once, then independently enable only the transformations needed for the current URL.</p>
-        </article>
-        <article class="feature-card">
-          <div class="feature-icon sky"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14v12H5zM8 10h8M8 14h5"/></svg></div>
-          <h3>Optional path capture</h3>
-          <p>Move the original path, query, and fragment into a configured query key before applying the enabled parameters.</p>
-        </article>
-        <article class="feature-card">
-          <div class="feature-icon indigo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4v16M18 4v16M3 8h6M15 8h6M3 16h6M15 16h6"/></svg></div>
+          <div class="feature-icon blue"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14v12H5zM8 10h8M8 14h5"/></svg></div>
           <h3>Exact-host headers</h3>
-          <p>Create, pause, edit, and remove request headers for HTTPS hostnames you explicitly approve through Chrome.</p>
+          <p>Create, pause, edit, and remove request headers only for HTTPS hostnames you explicitly approve through Chrome.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon sky"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg></div>
+          <h3>Environment profiles</h3>
+          <p>Keep staging, QA, and other rule sets separate, then select the one environment that should apply.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon indigo"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></svg></div>
+          <h3>Automatic expiry</h3>
+          <p>Apply a profile for one hour, eight hours, the browser session, or until you explicitly turn it off.</p>
         </article>
         <article class="feature-card">
           <div class="feature-icon green"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.6 2.8 8 7 10 4.2-2 7-5.4 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-5"/></svg></div>
@@ -90,27 +90,11 @@
       <div class="section-shell">
         <article class="showcase-row">
           <div class="showcase-copy">
-            <span class="number-label">01 · URL transformer</span>
-            <h2>Start from the page you are already testing.</h2>
-            <p>ReqKit prefills the active tab URL but leaves it editable. Enabled recipe parameters merge into the query string while the path and fragment remain intact.</p>
-            <ul class="check-list">
-              <li>HTTPS by default; HTTP only for local loopback development</li>
-              <li>Duplicate keys and empty values are rejected</li>
-              <li>Copy the result or open it directly in a new tab</li>
-            </ul>
-          </div>
-          <div class="product-frame">
-            <img src="assets/reqkit-output-screenshot.png" width="1280" height="800" loading="lazy" decoding="async" alt="ReqKit displaying a transformed URL">
-          </div>
-        </article>
-
-        <article class="showcase-row reverse">
-          <div class="showcase-copy">
-            <span class="number-label">02 · Request headers</span>
+            <span class="number-label">Request headers</span>
             <h2>Grant access one hostname at a time.</h2>
             <p>Header rules use Chrome's optional site permission prompt. Active conflicts are surfaced before a rule can silently replace another value.</p>
             <ul class="check-list">
-              <li>Current-host and all-host views</li>
+              <li>Focused current-host popup and searchable all-host manager</li>
               <li>Sensitive-looking values masked in the popup</li>
               <li>Site permission released after the last rule is deleted</li>
             </ul>
@@ -128,9 +112,9 @@
         <h2>Configure, apply, continue.</h2>
       </div>
       <div class="steps-grid">
-        <article><span>1</span><h3>Open ReqKit</h3><p>The current URL and hostname are detected after you invoke the popup.</p></article>
-        <article><span>2</span><h3>Choose what is active</h3><p>Toggle saved query parameters or manage a header rule for an approved host.</p></article>
-        <article><span>3</span><h3>Use the result</h3><p>Open the transformed URL or let Chrome apply enabled headers to matching requests.</p></article>
+        <article><span>1</span><h3>Open ReqKit</h3><p>The popup identifies the current hostname and shows the rules that affect it.</p></article>
+        <article><span>2</span><h3>Choose what applies</h3><p>Select a profile and activation lifetime in the rule manager, then enable only the rules you need.</p></article>
+        <article><span>3</span><h3>Keep testing</h3><p>Chrome applies enabled headers to matching exact-host requests and stops them automatically when configured.</p></article>
       </div>
     </section>
 
@@ -138,7 +122,7 @@
       <div>
         <span class="section-kicker">Privacy you can inspect</span>
         <h2>No hidden data pipeline.</h2>
-        <p>ReqKit's source, permissions, storage behavior, and complete privacy policy are public. Query strings and headers may still be logged by destinations, so use only authorized systems and test data.</p>
+        <p>ReqKit's source, permissions, storage behavior, and complete privacy policy are public. Header values may still be logged by destinations or intermediaries, so use only authorized systems and test data.</p>
       </div>
       <a class="button light" href="privacy-policy.html">Read the privacy policy</a>
     </section>
