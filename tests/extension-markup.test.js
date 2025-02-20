@@ -17,6 +17,7 @@ test('popup activation state is display-only', () => {
 
 test('rule manager separates active setup, rules, and profile administration', () => {
   assert.match(optionsMarkup, /id="active-setup"/);
+  assert.match(optionsMarkup, /id="profileTabs"[^>]*role="tablist"/);
   assert.match(optionsMarkup, /id="activeProfileSelect"/);
   assert.match(optionsMarkup, /id="durationSelect"/);
   assert.match(optionsMarkup, /id="headerComposerToggle"[^>]*>\s*<svg[\s\S]*?New rule/);

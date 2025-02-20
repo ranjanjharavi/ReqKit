@@ -38,7 +38,7 @@
     </header>
 
     <main class="options-main">
-      <div class="content-stack options-workspace">
+      <div class="options-workspace">
         <div id="masterPausedBanner" class="master-paused-banner" role="status" hidden>
           <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1a7 7 0 1 1 0 14A7 7 0 0 1 8 1Zm0 1.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM6.5 5.5h1.25v5H6.5v-5Zm1.75 0h1.25v5H8.25v-5Z"/></svg>
           <div class="master-paused-copy">
@@ -48,49 +48,37 @@
           <button id="resumeMasterBtn" class="master-resume-btn" type="button">Resume</button>
         </div>
 
-        <section id="active-setup" class="workspace-section active-setup-section" aria-labelledby="activeSetupTitle" tabindex="-1">
-          <header class="workspace-section-head">
-            <div class="workspace-section-copy">
-              <span class="workspace-kicker">Active setup</span>
-              <h2 id="activeSetupTitle">Control what applies now</h2>
-              <p>Choose one profile and how long its enabled rules should run.</p>
-            </div>
+        <section class="manager-workspace" aria-label="Request-header rules">
+          <div class="profile-tabs-bar">
+            <div id="profileTabs" class="profile-tabs" role="tablist" aria-label="Rule profiles"></div>
             <button id="manageProfilesBtn" class="quiet-action" type="button" aria-haspopup="dialog" aria-controls="profileManagerDialog">Manage profiles</button>
-          </header>
+            <select id="activeProfileSelect" hidden></select>
+          </div>
 
-          <div class="active-setup-fields">
-            <label class="setup-field" for="activeProfileSelect">
-              <span class="setup-field-label">Profile</span>
-              <select id="activeProfileSelect" class="setup-select"></select>
-            </label>
-            <label class="setup-field" for="durationSelect">
-              <span class="setup-field-label">Apply for</span>
+          <section id="active-setup" class="active-setup-row" aria-label="Active setup" tabindex="-1">
+            <div class="active-run-summary">
+              <span id="activeProfileRunLabel" class="active-profile-run-label">Default runs until</span>
+              <label class="sr-only" for="durationSelect">Apply rules for</label>
               <span class="setup-duration-control">
-                <select id="durationSelect" class="setup-select">
-                  <option value="indefinite">Until I turn it off</option>
+                <select id="durationSelect" class="setup-select duration-inline-select">
+                  <option value="indefinite">I turn it off</option>
                   <option value="3600000">1 hour</option>
                   <option value="28800000">8 hours</option>
-                  <option value="session">Until Chrome closes</option>
+                  <option value="session">Chrome closes</option>
                 </select>
                 <span id="expiryChip" class="session-count is-timer" hidden></span>
               </span>
-            </label>
-          </div>
-          <div id="activeSetupStatus" class="status-msg" role="status" aria-live="polite"></div>
-        </section>
-
-        <section class="workspace-section rules-section" aria-labelledby="rulesTitle">
-          <header class="workspace-section-head rules-section-head">
-            <div class="workspace-section-copy">
-              <span class="workspace-kicker">Rules</span>
-              <h2 id="rulesTitle">Request headers <span id="rulesCount" class="section-count">0</span></h2>
-              <p id="optionsSummary">No rules in this view.</p>
+              <span class="summary-separator" aria-hidden="true">·</span>
+              <span id="optionsSummary" class="options-summary">No rules in this view.</span>
+              <span id="rulesCount" hidden>0</span>
             </div>
             <button id="headerComposerToggle" class="primary-btn new-rule-btn" type="button" aria-expanded="false" aria-controls="headerComposer">
               <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M7.25 2.5h1.5v4.75h4.75v1.5H8.75v4.75h-1.5V8.75H2.5v-1.5h4.75V2.5Z"/></svg>
               New rule
             </button>
-          </header>
+          </section>
+
+          <div id="activeSetupStatus" class="status-msg workspace-status" role="status" aria-live="polite"></div>
 
           <div id="headerComposer" class="header-composer rules-composer" hidden>
             <div class="header-composer-body">
@@ -120,7 +108,7 @@
             </div>
           </div>
 
-          <div id="rulesToolbar" class="rules-toolbar">
+          <div id="rulesToolbar" class="rules-toolbar" hidden>
             <div id="profileFilter" class="profile-filter" hidden>
               <label for="profileFilterSelect">Showing</label>
               <select id="profileFilterSelect" class="profile-select" aria-label="Filter rules by profile"></select>
@@ -133,7 +121,7 @@
             </div>
           </div>
 
-          <div id="headerStatus" class="status-msg" role="status" aria-live="polite"></div>
+          <div id="headerStatus" class="status-msg workspace-status" role="status" aria-live="polite"></div>
           <div id="ruleListContainer" class="rule-list"></div>
         </section>
       </div>

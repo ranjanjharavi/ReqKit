@@ -65,8 +65,7 @@ export function renderRuleRow(rule, {
   editOpensManager = false,
   editProfiles = null,
   needsAccess = false,
-  profileName = '',
-  alsoInProfiles = []
+  profileName = ''
 } = {}) {
   if (editing) {
     return renderRuleEditForm(rule, editProfiles);
@@ -101,7 +100,6 @@ export function renderRuleRow(rule, {
         </div>
         ${needsAccess ? renderAccessNotice(rule) : ''}
         ${hasConflict ? renderConflictNotice(conflictingRules) : ''}
-        ${alsoInProfiles.length ? renderOtherProfilesNote(alsoInProfiles) : ''}
       </div>
     </article>
   `;
@@ -119,15 +117,6 @@ function renderAccessNotice(rule) {
       <button class="rule-access-btn" type="button" data-rule-action="grant" data-id="${rule.id}">Grant</button>
     </div>
   `;
-}
-
-/**
- * Not a conflict — different profiles never apply together — but worth seeing,
- * because it usually means the value was edited in the wrong environment.
- */
-function renderOtherProfilesNote(profileNames) {
-  const names = profileNames.map((name) => escapeHtml(name)).join(', ');
-  return `<p class="rule-other-profiles">Also set in ${names}.</p>`;
 }
 
 function renderRevealButton(rule, revealed) {
@@ -202,6 +191,7 @@ export function renderDomainGroup(domain, domainRules, {
   revealedRuleIds = new Set(),
   editOpensManager = false,
   editProfiles = null,
+  managerView = false,
   describeRule = () => ({})
 } = {}) {
   const conflictingIds = new Set(conflictMap.keys());
@@ -214,10 +204,12 @@ export function renderDomainGroup(domain, domainRules, {
     count + (conflictMap.get(rule.id)?.length || 0)
   ), 0) / 2;
   const groupId = `domainRuleGroup-${index}`;
-  const summary = [
-    activeCount ? `${activeCount} active` : '',
-    pausedCount ? `${pausedCount} paused` : ''
-  ].filter(Boolean).join(' · ');
+  const summary = managerView
+    ? `${domainRules.length} ${domainRules.length === 1 ? 'rule' : 'rules'} · ${activeCount} on`
+    : [
+      activeCount ? `${activeCount} active` : '',
+      pausedCount ? `${pausedCount} paused` : ''
+    ].filter(Boolean).join(' · ');
 
   return `
     <section class="rule-group${conflictCount ? ' has-conflict' : ''}">

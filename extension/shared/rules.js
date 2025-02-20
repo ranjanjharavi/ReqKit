@@ -217,24 +217,6 @@ export function areRulesConflicting(leftRule, rightRule, activation = createDefa
   return true;
 }
 
-/**
- * Same host and header in another profile. Not a conflict and never blocking —
- * surfaced so a value edited in the wrong environment stays visible.
- */
-export function findRulesInOtherProfiles(rule, rules) {
-  if (!rule) {
-    return [];
-  }
-
-  const ruleProfileId = resolveProfileId(rule.profileId);
-  return (Array.isArray(rules) ? rules : []).filter((existingRule) => (
-    existingRule?.id !== rule.id
-    && resolveProfileId(existingRule?.profileId) !== ruleProfileId
-    && existingRule?.domain === rule.domain
-    && String(existingRule?.headerName).toLowerCase() === String(rule.headerName).toLowerCase()
-  ));
-}
-
 export function getRuleConflictMessage(conflictingRule) {
   return `Conflicts with the active ${conflictingRule.headerName} rule for ${conflictingRule.domain} because they use different values.`;
 }

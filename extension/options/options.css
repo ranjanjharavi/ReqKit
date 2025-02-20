@@ -1,5 +1,26 @@
 /* The manager reuses popup.css for controls and rule rows, then establishes a
- * roomier page hierarchy for the extension tab. */
+ * compact page hierarchy for the extension tab. */
+
+:root {
+  --manager-surface: #ffffff;
+  --manager-surface-subtle: #fbfcfe;
+  --manager-surface-tint: #f6f9fe;
+  --manager-surface-hover: #f1f6fd;
+  --manager-border: var(--border);
+  --manager-divider: #edf0f5;
+  --manager-row-divider: #f3f5f9;
+  --manager-muted: #5a6474;
+  --manager-subtle: #8a93a3;
+  --manager-faint: #b4bcc8;
+  --manager-active-header: #315f91;
+  --manager-inline-space: 18px;
+  --manager-section-space: 12px;
+  --manager-compact-gap: 8px;
+  --manager-success-surface: #f0fdf4;
+  --manager-success-border: #bbf7d0;
+  --manager-error-surface: #fef2f2;
+  --manager-error-border: #fecaca;
+}
 
 html,
 body {
@@ -46,7 +67,7 @@ body {
 }
 
 .options-header-brand img {
-  border-radius: 9px;
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs);
 }
 
@@ -112,42 +133,6 @@ body {
   display: grid;
 }
 
-.options-workspace {
-  gap: 18px;
-}
-
-.workspace-section {
-  display: grid;
-  gap: 20px;
-  padding: 21px 22px 23px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: var(--shadow-xs);
-}
-
-.workspace-section:focus {
-  outline: 0;
-}
-
-.active-setup-section {
-  border-color: rgba(191, 219, 254, 0.95);
-  background: var(--secondary);
-}
-
-.workspace-section-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 20px;
-}
-
-.workspace-section-copy {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-
 .workspace-kicker {
   color: var(--primary);
   font-size: 9.5px;
@@ -156,7 +141,6 @@ body {
   text-transform: uppercase;
 }
 
-.workspace-section-copy h2,
 .profile-dialog-head h2 {
   margin: 0;
   color: var(--foreground);
@@ -170,177 +154,27 @@ body {
   padding: 0 4px;
 }
 
-.active-setup-fields {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.setup-field {
-  display: grid;
-  gap: 7px;
-  min-width: 0;
-}
-
-.setup-field-label {
-  color: #475569;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-}
-
-.setup-select {
-  width: 100%;
-  min-height: 36px;
-  padding: 0 38px 0 12px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-md);
-  background-color: #ffffff;
-  color: var(--foreground);
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.setup-select:hover {
-  border-color: #93c5fd;
-}
-
-.setup-select:focus-visible {
-  outline: 0;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--ring);
-}
-
-.setup-select:disabled {
-  background: var(--card-soft);
-  color: var(--muted-foreground);
-  cursor: not-allowed;
-}
-
-.setup-duration-control {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  min-width: 0;
-}
-
-.setup-duration-control .setup-select {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.rules-section {
-  gap: 18px;
-}
-
-.rules-section-head {
-  align-items: center;
-}
-
-.section-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 24px;
-  min-height: 20px;
-  margin-left: 5px;
-  padding: 0 7px;
-  border-radius: 999px;
-  background: var(--secondary);
-  color: var(--primary);
-  font-size: 11px;
-  font-weight: 750;
-  vertical-align: 2px;
-}
-
 .new-rule-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  min-height: 38px;
-  padding: 0 14px;
+  gap: 6px;
   white-space: nowrap;
 }
 
-.new-rule-btn svg,
 .dialog-close-btn svg {
   width: 16px;
   height: 16px;
 }
 
-.rules-composer {
-  border-color: #93c5fd;
-  background: #f8fbff;
-}
-
-.rules-composer .header-composer-form {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.rules-composer .field:first-child,
-.rules-composer .field:last-of-type,
-.rules-composer .header-composer-actions {
-  grid-column: 1 / -1;
-}
-
 .rules-toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: 42px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
-}
-
-.rules-toolbar[hidden] {
-  display: none;
-}
-
-.profile-filter {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-}
-
-.profile-filter[hidden] {
-  display: none;
-}
-
-.profile-filter label {
-  flex: none;
-  color: var(--muted-foreground);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-}
-
-.profile-filter .profile-select {
-  min-width: 190px;
-  min-height: 36px;
-  background-color: #ffffff;
-}
-
-.options-shell .rule-search {
-  width: min(290px, 100%);
-  margin-left: auto;
+  gap: var(--manager-section-space);
 }
 
 .options-shell .rule-search input {
-  min-height: 40px;
-}
-
-.options-shell .rule-edit-grid {
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-}
-
-.options-shell .rule-edit-field:last-child {
-  grid-column: 1 / -1;
+  min-height: 34px;
 }
 
 .profile-dialog {
@@ -350,8 +184,8 @@ body {
   padding: 0;
   overflow: hidden;
   border: 1px solid var(--border-strong);
-  border-radius: 16px;
-  background: #ffffff;
+  border-radius: var(--radius-xl);
+  background: var(--manager-surface);
   color: var(--foreground);
   box-shadow: 0 24px 70px rgba(15, 23, 42, 0.2);
 }
@@ -395,14 +229,14 @@ body {
   flex: none;
   padding: 0;
   border: 1px solid var(--border);
-  border-radius: 999px;
-  background: #ffffff;
+  border-radius: var(--radius-pill);
+  background: var(--manager-surface);
   color: var(--muted-foreground);
   cursor: pointer;
 }
 
 .dialog-close-btn:hover {
-  border-color: #93c5fd;
+  border-color: var(--focus-border);
   color: var(--foreground);
 }
 
@@ -429,7 +263,7 @@ body {
 }
 
 .profile-row.is-active {
-  border-color: #93c5fd;
+  border-color: var(--focus-border);
   background: var(--secondary);
 }
 
@@ -452,7 +286,7 @@ body {
 
 .profile-row-badge {
   padding: 2px 7px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--primary);
   color: var(--primary-foreground);
   font-size: 9px;
@@ -475,8 +309,8 @@ body {
   min-height: 30px;
   padding: 0 10px;
   border: 1px solid var(--border-strong);
-  border-radius: 7px;
-  background: #ffffff;
+  border-radius: var(--radius-lg);
+  background: var(--manager-surface);
   color: var(--muted-foreground);
   font-family: inherit;
   font-size: 11.5px;
@@ -485,7 +319,7 @@ body {
 }
 
 .profile-action-btn:hover {
-  border-color: #93c5fd;
+  border-color: var(--focus-border);
   color: var(--foreground);
 }
 
@@ -514,58 +348,13 @@ body {
     padding: 20px 14px 48px;
   }
 
-  .options-header,
-  .workspace-section-head {
-    align-items: stretch;
-  }
-
   .options-header {
+    align-items: stretch;
     flex-direction: column;
   }
 
   .options-header-actions {
     justify-content: space-between;
-  }
-
-  .workspace-section {
-    padding: 18px 15px 20px;
-  }
-
-  .workspace-section-head,
-  .active-setup-fields,
-  .rules-toolbar {
-    display: grid;
-    grid-template-columns: 1fr;
-  }
-
-  .workspace-section-head .quiet-action {
-    justify-self: start;
-  }
-
-  .rules-section-head .new-rule-btn {
-    width: 100%;
-  }
-
-  .rules-composer .header-composer-form {
-    grid-template-columns: 1fr;
-  }
-
-  .rules-composer .field,
-  .rules-composer .field:first-child,
-  .rules-composer .field:last-of-type,
-  .rules-composer .header-composer-actions {
-    grid-column: auto;
-  }
-
-  .options-shell .rule-search,
-  .profile-filter .profile-select {
-    width: 100%;
-    min-width: 0;
-  }
-
-  .profile-filter {
-    align-items: stretch;
-    flex-direction: column;
   }
 
   .profile-dialog {
@@ -584,6 +373,616 @@ body {
 
   .profile-row-actions {
     width: 100%;
+    flex-wrap: wrap;
+  }
+}
+
+/* Unified workspace below the existing Rule manager header. */
+.options-workspace {
+  display: grid;
+  gap: var(--manager-section-space);
+}
+
+.manager-workspace {
+  overflow: hidden;
+  border: 1px solid var(--manager-border);
+  border-radius: var(--radius-lg);
+  background: var(--manager-surface);
+  box-shadow: var(--shadow-xs);
+}
+
+.profile-tabs-bar {
+  display: flex;
+  align-items: stretch;
+  gap: var(--manager-section-space);
+  min-height: 42px;
+  padding: 0 var(--manager-inline-space);
+  border-bottom: 1px solid var(--manager-divider);
+  background: var(--manager-surface-subtle);
+}
+
+.profile-tabs {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.profile-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.profile-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 42px;
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+  color: var(--manager-muted);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.profile-tab::after {
+  content: '';
+  position: absolute;
+  right: 10px;
+  bottom: 0;
+  left: 10px;
+  height: 2px;
+  background: transparent;
+}
+
+.profile-tab:hover {
+  color: var(--foreground);
+}
+
+.profile-tab:focus-visible {
+  outline: 0;
+  box-shadow: inset 0 0 0 3px var(--ring);
+}
+
+.profile-tab[aria-selected='true'] {
+  color: var(--foreground);
+  font-weight: 650;
+}
+
+.profile-tab[aria-selected='true']::after {
+  background: var(--primary);
+}
+
+.profile-tab-count {
+  color: var(--manager-faint);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.profile-tab[aria-selected='true'] .profile-tab-count {
+  color: var(--manager-subtle);
+}
+
+.profile-tabs-bar .quiet-action {
+  align-self: center;
+  margin-left: auto;
+  padding: 5px 0;
+  font-size: 12px;
+}
+
+.active-setup-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--manager-section-space);
+  min-height: 64px;
+  padding: 12px var(--manager-inline-space);
+  border-bottom: 1px solid var(--manager-divider);
+}
+
+.active-setup-row:focus {
+  outline: 0;
+}
+
+.active-run-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--manager-compact-gap);
+  min-width: 0;
+  color: var(--manager-muted);
+  font-size: 13px;
+}
+
+.active-profile-run-label,
+.options-summary {
+  white-space: nowrap;
+}
+
+.summary-separator {
+  color: var(--manager-faint);
+}
+
+.options-summary {
+  color: var(--manager-subtle);
+  font-size: 12px;
+}
+
+.setup-duration-control {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--manager-compact-gap);
+  min-width: 0;
+}
+
+.duration-inline-select {
+  width: auto;
+  min-height: 24px;
+  padding: 0 2px 1px;
+  border: 0;
+  border-bottom: 1.5px dashed var(--manager-faint);
+  border-radius: 0;
+  appearance: none;
+  background: transparent;
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.duration-inline-select:hover {
+  border-bottom-color: var(--primary);
+}
+
+.duration-inline-select:focus-visible {
+  outline: 0;
+  border-bottom-color: var(--primary);
+  box-shadow: 0 2px 0 var(--ring);
+}
+
+.duration-inline-select:disabled {
+  color: var(--manager-subtle);
+  cursor: not-allowed;
+}
+
+.new-rule-btn {
+  min-height: 34px;
+  padding: 0 11px;
+  border-radius: var(--radius-md);
+  box-shadow: none;
+  white-space: nowrap;
+}
+
+.new-rule-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.rules-composer {
+  margin: var(--manager-section-space) var(--manager-inline-space) 0;
+  border-color: var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--manager-surface-subtle);
+}
+
+.rules-composer .header-composer-body {
+  padding: 12px;
+}
+
+.rules-composer .header-composer-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.rules-composer input {
+  padding: 9px 10px;
+}
+
+.rules-composer .field:first-child,
+.rules-composer .field:last-of-type,
+.rules-composer .header-composer-actions {
+  grid-column: 1 / -1;
+}
+
+.rules-toolbar {
+  justify-content: flex-end;
+  min-height: auto;
+  padding: var(--manager-section-space) var(--manager-inline-space) 0;
+  border: 0;
+}
+
+.rules-toolbar[hidden],
+.profile-filter {
+  display: none;
+}
+
+.options-shell .rule-search {
+  width: min(300px, 100%);
+}
+
+.workspace-status.visible {
+  margin: 10px var(--manager-inline-space) 0;
+  padding: 6px 9px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+}
+
+.workspace-status.visible.success {
+  border-color: var(--manager-success-border);
+  background: var(--manager-success-surface);
+}
+
+.workspace-status.visible.error {
+  border-color: var(--manager-error-border);
+  background: var(--manager-error-surface);
+}
+
+.rule-list {
+  gap: var(--manager-compact-gap);
+  padding: var(--manager-section-space) var(--manager-inline-space) 16px;
+}
+
+.options-workspace.is-master-paused .rule-list {
+  opacity: 0.55;
+}
+
+.options-shell .rule-group {
+  overflow: hidden;
+  border-color: var(--manager-border);
+  border-radius: var(--radius-lg);
+  background: var(--manager-surface);
+  box-shadow: none;
+}
+
+.options-shell .rule-group-toggle {
+  position: relative;
+  justify-content: flex-start;
+  gap: 10px;
+  min-height: 40px;
+  padding: 9px 12px 9px 36px;
+  border-radius: 0;
+  background: var(--manager-surface-tint);
+}
+
+.options-shell .rule-group-toggle[aria-expanded='false'] {
+  background: var(--manager-surface-subtle);
+}
+
+.options-shell .rule-group-toggle:hover {
+  background: var(--manager-surface-hover);
+}
+
+.options-shell .rule-group-heading {
+  flex: 0 1 auto;
+  max-width: 50%;
+}
+
+.options-shell .rule-group-meta {
+  flex: 0 1 auto;
+  gap: var(--manager-compact-gap);
+}
+
+.options-shell .rule-domain {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  color: var(--foreground);
+}
+
+.options-shell .rule-group-summary {
+  color: var(--manager-subtle);
+  font-size: 12px;
+}
+
+.options-shell .rule-group-chevron {
+  position: absolute;
+  left: 12px;
+  width: 14px;
+  height: 14px;
+  color: var(--manager-muted);
+}
+
+.options-shell .rule-group-toggle::after {
+  content: 'Collapse';
+  margin-left: auto;
+  color: var(--manager-muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.options-shell .rule-group-toggle[aria-expanded='false']::after {
+  content: 'Expand';
+}
+
+.options-shell .domain-rule-list {
+  border-top-color: var(--manager-divider);
+}
+
+.options-shell .domain-rule-row {
+  padding: 0;
+  background: var(--manager-surface);
+}
+
+.options-shell .domain-rule-row + .domain-rule-row {
+  border-top-color: var(--manager-row-divider);
+}
+
+.options-shell .domain-rule-row.is-paused {
+  background: var(--manager-surface);
+}
+
+.options-shell .domain-rule-content {
+  display: grid;
+  grid-template-columns: minmax(170px, 0.75fr) minmax(180px, 1fr) auto;
+  align-items: center;
+  gap: var(--manager-section-space);
+  min-height: 44px;
+  padding: 8px 12px;
+}
+
+.options-shell .rule-row-head {
+  display: contents;
+}
+
+.options-shell .rule-identification {
+  grid-column: 1;
+  min-height: auto;
+}
+
+.options-shell .rule-value-row {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+}
+
+.options-shell .rule-row-controls {
+  grid-column: 3;
+  grid-row: 1;
+  gap: var(--manager-compact-gap);
+}
+
+.options-shell .rule-header-name,
+.options-shell .rule-header-value {
+  font-size: 13px;
+}
+
+.options-shell .domain-rule-row:not(.is-paused) .rule-header-name {
+  color: var(--manager-active-header);
+}
+
+.options-shell .rule-header-value {
+  display: block;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--manager-muted);
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  -webkit-line-clamp: initial;
+}
+
+.options-shell .rule-header-value.is-masked {
+  display: block;
+}
+
+.options-shell .domain-rule-row.is-paused .rule-header-name,
+.options-shell .domain-rule-row.is-paused .rule-header-value,
+.options-shell .domain-rule-row.is-paused .rule-enable-label {
+  color: var(--manager-subtle);
+}
+
+.options-shell .rule-enable-control {
+  gap: 6px;
+  min-height: 28px;
+  padding: 0;
+}
+
+.options-shell .rule-enable-control:hover {
+  background: transparent;
+}
+
+.options-shell .rule-enable-label {
+  order: -1;
+  min-width: 20px;
+  color: var(--foreground);
+  font-size: 12px;
+}
+
+.options-shell .rule-switch-track {
+  width: 34px;
+  height: 20px;
+}
+
+.options-shell .rule-switch-thumb {
+  width: 16px;
+  height: 16px;
+}
+
+.options-shell .rule-enable-control[aria-checked='true'] .rule-switch-thumb {
+  transform: translateX(14px);
+}
+
+.options-shell .rule-action-btn {
+  width: auto;
+  min-height: 28px;
+  padding: 0;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.options-shell .rule-action-btn:hover {
+  border-color: transparent;
+  background: transparent;
+  color: var(--primary-hover);
+}
+
+.options-shell .rule-action-btn svg {
+  display: none;
+}
+
+.options-shell .rule-action-btn::after {
+  content: 'Edit';
+}
+
+.options-shell .rule-action-btn.danger {
+  color: var(--manager-subtle);
+}
+
+.options-shell .rule-action-btn.danger::after {
+  content: 'Delete';
+}
+
+.options-shell .rule-action-btn.danger:hover {
+  color: var(--danger);
+}
+
+.options-shell .rule-access-notice,
+.options-shell .rule-conflict-notice {
+  grid-column: 1 / -1;
+}
+
+.options-shell .rule-edit-form {
+  gap: 10px;
+  padding: 12px;
+}
+
+.options-shell .rule-edit-grid {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.options-shell .rule-edit-field:last-child {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 760px) {
+  .profile-tabs-bar {
+    flex-wrap: wrap;
+    gap: 0 var(--manager-section-space);
+    padding: 0 12px 6px;
+  }
+
+  .profile-tabs {
+    width: 100%;
+  }
+
+  .profile-tab {
+    min-height: 40px;
+    padding: 0 8px;
+  }
+
+  .profile-tab::after {
+    right: 8px;
+    left: 8px;
+  }
+
+  .profile-tabs-bar .quiet-action {
+    margin-left: 0;
+  }
+
+  .active-setup-row {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  .active-run-summary {
+    flex-wrap: wrap;
+  }
+
+  .active-profile-run-label,
+  .options-summary {
+    white-space: normal;
+  }
+
+  .new-rule-btn {
+    width: 100%;
+  }
+
+  .rules-composer {
+    margin: 10px 12px 0;
+  }
+
+  .rules-composer .header-composer-form {
+    grid-template-columns: 1fr;
+  }
+
+  .rules-composer .field,
+  .rules-composer .field:first-child,
+  .rules-composer .field:last-of-type,
+  .rules-composer .header-composer-actions {
+    grid-column: auto;
+  }
+
+  .rules-toolbar {
+    padding: 10px 12px 0;
+  }
+
+  .workspace-status.visible {
+    margin-right: 12px;
+    margin-left: 12px;
+  }
+
+  .rule-list {
+    padding: 10px 12px 12px;
+  }
+
+  .options-shell .rule-group-toggle {
+    padding-right: 10px;
+  }
+
+  .options-shell .rule-group-heading {
+    max-width: none;
+  }
+
+  .options-shell .rule-group-meta {
+    display: none;
+  }
+
+  .options-shell .domain-rule-content {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px 10px;
+  }
+
+  .options-shell .rule-identification {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .options-shell .rule-value-row {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .options-shell .rule-row-controls {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: center;
+  }
+}
+
+@media (max-width: 520px) {
+  .options-shell .domain-rule-content {
+    display: flex;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .options-shell .rule-row-head {
+    display: flex;
+  }
+
+  .options-shell .rule-row-controls {
+    justify-content: flex-start;
     flex-wrap: wrap;
   }
 }

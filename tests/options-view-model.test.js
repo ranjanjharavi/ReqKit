@@ -20,7 +20,7 @@ test('rule workspace summary handles host grammar and enabled counts', () => {
     totalRules: 2,
     activeRules: 1,
     hostCount: 1,
-    detail: '1 enabled · 1 host'
+    detail: '2 rules applying to 1 host'
   });
 
   assert.deepEqual(getRuleWorkspaceSummary([
@@ -30,6 +30,6 @@ test('rule workspace summary handles host grammar and enabled counts', () => {
     totalRules: 2,
     activeRules: 2,
     hostCount: 2,
-    detail: '2 enabled · 2 hosts'
+    detail: '2 rules applying to 2 hosts'
   });
 });

@@ -90,11 +90,14 @@
       };
       window.chrome = window.__REQKIT_CHROME_STUB__;
 
+      const cacheBust = Date.now();
       const markup = await fetch('/extension/options/index.html', { cache: 'no-store' }).then((response) => response.text());
       document.open();
       document.write(markup
         .replace('<head>', '<head><base href="/extension/options/">')
-        .replace('<script type="module" src="main.js"></' + 'script>', '<script>window.chrome = window.__REQKIT_CHROME_STUB__;</' + 'script><script type="module" src="main.js"></' + 'script>'));
+        .replace('href="../popup/popup.css"', `href="../popup/popup.css?v=${cacheBust}"`)
+        .replace('href="options.css"', `href="options.css?v=${cacheBust}"`)
+        .replace('<script type="module" src="main.js"></' + 'script>', `<script>window.chrome = window.__REQKIT_CHROME_STUB__;</` + `script><script type="module" src="main.js?v=${cacheBust}"></` + 'script>'));
       document.close();
     })();
   </script>

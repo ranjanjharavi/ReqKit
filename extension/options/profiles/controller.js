@@ -32,6 +32,8 @@ export function bindProfileEvents({ onChanged }) {
 
   document.getElementById('newProfileBtn').addEventListener('click', createNewProfile);
   document.getElementById('profileList').addEventListener('click', handleProfileListClick);
+  document.getElementById('profileTabs').addEventListener('click', handleProfileTabClick);
+  document.getElementById('profileTabs').addEventListener('keydown', handleProfileTabKeydown);
   document.getElementById('activeProfileSelect').addEventListener('change', handleActiveProfileChange);
   document.getElementById('manageProfilesBtn').addEventListener('click', openProfileManager);
   document.getElementById('closeProfileManagerBtn').addEventListener('click', closeProfileManager);
@@ -50,6 +52,39 @@ function handleActiveProfileChange(event) {
     select.disabled = false;
     renderProfiles();
   });
+}
+
+function handleProfileTabClick(event) {
+  const tab = event.target.closest('[data-profile-tab]');
+  if (!tab || tab.getAttribute('aria-selected') === 'true') {
+    return;
+  }
+
+  tab.disabled = true;
+  activateProfile(tab.dataset.profileTab).finally(() => {
+    tab.disabled = false;
+    renderProfiles();
+  });
+}
+
+function handleProfileTabKeydown(event) {
+  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+    return;
+  }
+
+  const tabs = [...event.currentTarget.querySelectorAll('[data-profile-tab]')];
+  const currentIndex = tabs.indexOf(event.target.closest('[data-profile-tab]'));
+  if (currentIndex < 0 || !tabs.length) {
+    return;
+  }
+
+  event.preventDefault();
+  const nextIndex = event.key === 'Home'
+    ? 0
+    : event.key === 'End'
+      ? tabs.length - 1
+      : (currentIndex + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+  tabs[nextIndex].focus();
 }
 
 function openProfileManager() {
@@ -83,6 +118,7 @@ export function renderProfiles() {
   const { profiles, rules } = state;
   const activeProfileId = getTargetProfileId(getActivation());
   const select = document.getElementById('activeProfileSelect');
+  const tabs = document.getElementById('profileTabs');
   const list = document.getElementById('profileList');
 
   const selectSignature = profiles.map((profile) => `${profile.id}:${profile.name}`).join('|');
@@ -93,6 +129,20 @@ export function renderProfiles() {
     select.dataset.renderedFor = selectSignature;
   }
   select.value = activeProfileId;
+
+  tabs.innerHTML = profiles.map((profile) => {
+    const isActive = profile.id === activeProfileId;
+    const ruleCount = countRulesInProfile(rules, profile.id);
+
+    return `
+      <button class="profile-tab" type="button" role="tab" aria-selected="${String(isActive)}" tabindex="${isActive ? '0' : '-1'}" data-profile-tab="${escapeHtml(profile.id)}">
+        <span>${escapeHtml(profile.name)}</span>
+        <span class="profile-tab-count">${ruleCount}</span>
+      </button>
+    `;
+  }).join('');
+
+  document.getElementById('activeProfileRunLabel').textContent = `${getProfileName(profiles, activeProfileId)} runs until`;
 
   list.innerHTML = profiles.map((profile) => {
     const ruleCount = countRulesInProfile(rules, profile.id);

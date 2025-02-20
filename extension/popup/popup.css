@@ -4,6 +4,7 @@
   --card-soft: #f5f9ff;
   --border: #dbe7f5;
   --border-strong: #bfd3ef;
+  --focus-border: #93c5fd;
   --ring: rgba(59, 130, 246, 0.18);
   --primary: #2563eb;
   --primary-hover: #1d4ed8;
@@ -18,6 +19,8 @@
   --radius-lg: 6px;
   --radius-md: 4px;
   --radius-sm: 2px;
+  --radius-xl: 16px;
+  --radius-pill: 999px;
 }
 
 * {
@@ -256,7 +259,7 @@ input:hover {
 
 input:focus {
   outline: none;
-  border-color: #93c5fd;
+  border-color: var(--focus-border);
   box-shadow: 0 0 0 4px var(--ring);
   background: #ffffff;
 }
@@ -343,7 +346,7 @@ button:disabled {
 
 .header-composer {
   overflow: hidden;
-  border: 1px solid #93c5fd;
+  border: 1px solid var(--focus-border);
   border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.72);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08), var(--shadow-sm);
@@ -425,7 +428,7 @@ button:disabled {
   width: 8px;
   height: 8px;
   flex: 0 0 auto;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--primary);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
@@ -491,7 +494,7 @@ button:disabled {
   gap: 7px;
   padding: 4px 9px 4px 5px;
   border: 1px solid var(--border-strong);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: #ffffff;
   color: var(--muted-foreground);
   font-size: 11px;
@@ -515,7 +518,7 @@ button:disabled {
   position: relative;
   width: 26px;
   height: 15px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: #cbd5e1;
   transition: background-color 0.18s ease;
 }
@@ -756,7 +759,7 @@ button:disabled {
 
 .rule-profile-chip {
   padding: 2px 6px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--secondary);
   color: var(--primary);
   font-size: 9px;
@@ -819,12 +822,6 @@ button:disabled {
 .rule-access-btn:focus-visible {
   outline: 0;
   box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.3);
-}
-
-.rule-other-profiles {
-  margin: 7px 0 0;
-  color: var(--muted-foreground);
-  font-size: 11px;
 }
 
 .rules-section-title {
@@ -935,7 +932,7 @@ button:disabled {
   align-items: center;
   min-height: 20px;
   padding: 0 7px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   font-size: 9px;
   font-weight: 700;
   white-space: nowrap;
@@ -1112,7 +1109,7 @@ button:disabled {
   width: 30px;
   height: 18px;
   flex: 0 0 auto;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: #cbd5e1;
   transition: background-color 0.18s ease;
 }

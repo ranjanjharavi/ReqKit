@@ -7,7 +7,6 @@ import {
   filterRulesByHost,
   filterRulesByProfile,
   findActiveRuleConflict,
-  findRulesInOtherProfiles,
   getActiveRuleConflicts,
   getNextRuleId,
   groupRulesByDomain,
@@ -188,15 +187,12 @@ test('an identical rule in another profile is not a duplicate', () => {
   }).error, 'That rule already exists.');
 });
 
-test('profile helpers group and cross-reference rules', () => {
+test('profile helpers filter rules', () => {
   const stagingRule = { ...sampleRules[0], profileId: 'staging' };
-  const prodRule = { ...sampleRules[0], id: 9, headerValue: 'different', profileId: 'prod' };
-  const rules = [stagingRule, prodRule, sampleRules[1]];
+  const rules = [stagingRule, sampleRules[1]];
 
   assert.deepEqual(filterRulesByProfile(rules, 'staging'), [stagingRule]);
   assert.deepEqual(filterRulesByProfile([sampleRules[1]], 'default'), [sampleRules[1]]);
-  assert.deepEqual(findRulesInOtherProfiles(stagingRule, rules), [prodRule]);
-  assert.deepEqual(findRulesInOtherProfiles(sampleRules[1], rules), []);
 });
 
 test('buildDynamicRule produces an exact-host DNR rule', () => {

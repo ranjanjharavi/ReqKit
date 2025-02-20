@@ -2,7 +2,6 @@ import {
   RULE_STORAGE_KEY,
   filterRulesByProfile,
   findActiveRuleConflict,
-  findRulesInOtherProfiles,
   getActiveRuleConflicts,
   getNextRuleId,
   getRuleConflictMessage,
@@ -263,28 +262,8 @@ function describeDuration(value) {
 
 function renderProfileFilter() {
   const filter = document.getElementById('profileFilter');
-  filter.hidden = state.profiles.length < 2;
-  if (filter.hidden) {
-    state.profileFilter = 'active';
-    return;
-  }
-
-  const select = document.getElementById('profileFilterSelect');
-  // Keyed on the resolved value, not the raw filter: "active" stays the same
-  // string while the profile it points at changes underneath it.
-  const signature = `${state.profiles.map((p) => p.id + p.name).join()}|${resolveFilterValue()}`;
-  if (select.dataset.renderedFor === signature) {
-    return;
-  }
-
-  const options = [
-    ...state.profiles.map((profile) => ({ value: profile.id, label: profile.name })),
-    { value: 'all', label: 'All profiles' }
-  ];
-  select.innerHTML = options.map(({ value, label }) => (
-    `<option value="${value}"${value === resolveFilterValue() ? ' selected' : ''}>${label}</option>`
-  )).join('');
-  select.dataset.renderedFor = signature;
+  filter.hidden = true;
+  state.profileFilter = 'active';
 }
 
 function resolveFilterValue() {
@@ -304,15 +283,10 @@ function getVisibleRules() {
  */
 function describeRule(rule) {
   const showProfile = state.profiles.length > 1 && resolveFilterValue() === 'all';
-  const otherProfiles = state.profiles.length > 1
-    ? [...new Set(findRulesInOtherProfiles(rule, state.rules)
-      .map((other) => getProfileName(state.profiles, other.profileId)))]
-    : [];
 
   return {
     needsAccess: Boolean(state.grantedOrigins) && !isRuleGranted(rule, state.grantedOrigins),
-    profileName: showProfile ? getProfileName(state.profiles, rule.profileId) : '',
-    alsoInProfiles: otherProfiles
+    profileName: showProfile ? getProfileName(state.profiles, rule.profileId) : ''
   };
 }
 
@@ -504,6 +478,7 @@ function renderRules() {
       editingId: state.editingId,
       revealedRuleIds: state.revealedRuleIds,
       editProfiles: state.profiles,
+      managerView: true,
       describeRule
     }
   )).join('');
@@ -521,7 +496,7 @@ function updateSummary() {
   const searchEnabled = summary.totalRules >= SEARCH_VISIBLE_FROM;
 
   searchContainer.hidden = !searchEnabled;
-  document.getElementById('rulesToolbar').hidden = state.profiles.length < 2 && !searchEnabled;
+  document.getElementById('rulesToolbar').hidden = !searchEnabled;
   if (!searchEnabled) {
     state.searchQuery = '';
   }

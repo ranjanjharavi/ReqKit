@@ -17,6 +17,6 @@ export function getRuleWorkspaceSummary(rules) {
     totalRules,
     activeRules,
     hostCount,
-    detail: `${activeRules} enabled · ${hostCount} ${hostCount === 1 ? 'host' : 'hosts'}`
+    detail: `${totalRules} ${totalRules === 1 ? 'rule' : 'rules'} applying to ${hostCount} ${hostCount === 1 ? 'host' : 'hosts'}`
   };
 }
