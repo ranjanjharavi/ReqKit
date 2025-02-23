@@ -75,6 +75,18 @@ chrome.runtime.onStartup.addListener(() => {
   });
 });
 
+chrome.permissions.onAdded.addListener(() => {
+  refreshAfterPermissionChange().catch((error) => {
+    console.error('Could not apply rules after site access was granted.', error);
+  });
+});
+
+chrome.permissions.onRemoved.addListener(() => {
+  refreshAfterPermissionChange().catch((error) => {
+    console.error('Could not update rules after site access was removed.', error);
+  });
+});
+
 /**
  * An alarm rather than a lazy timestamp check: a safety feature that only
  * expires the next time you happen to open the popup is not one.
@@ -98,6 +110,12 @@ async function applyExpiry() {
   await applyDynamicRules(state.rules, state.activation, state.grantedOrigins);
   await refreshBadgesSafely(state);
   await scheduleExpiryAlarm(state.activation);
+}
+
+async function refreshAfterPermissionChange() {
+  const state = await loadState();
+  await applyDynamicRules(state.rules, state.activation, state.grantedOrigins);
+  await refreshBadgesSafely(state);
 }
 
 async function scheduleExpiryAlarm(activation) {

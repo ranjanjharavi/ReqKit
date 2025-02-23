@@ -70,7 +70,7 @@ test('commitRuleSet permits the same header in different profiles', async () => 
   assert.equal(applied.length, 1);
 });
 
-test('commitRuleSet still rejects conflicts inside the active profile', async () => {
+test('commitRuleSet rejects duplicate headers inside a profile', async () => {
   let applied = false;
   const conflictingRules = [
     { ...nextRules[0], profileId: 'staging' },
@@ -84,7 +84,7 @@ test('commitRuleSet still rejects conflicts inside the active profile', async ()
       applied = true;
     },
     storeRules: async () => {}
-  }), /Active X-New rules.*conflict/);
+  }), /X-New already exists.*in this profile/);
 
   assert.equal(applied, false);
 });
@@ -128,7 +128,7 @@ test('commitRuleSet rejects malformed rule collections before applying them', as
   assert.equal(applied, false);
 });
 
-test('commitRuleSet rejects conflicting active rules before applying them', async () => {
+test('commitRuleSet rejects duplicate headers before applying them', async () => {
   let applied = false;
   const conflictingRules = [
     nextRules[0],
@@ -145,7 +145,7 @@ test('commitRuleSet rejects conflicting active rules before applying them', asyn
       applied = true;
     },
     storeRules: async () => {}
-  }), /Active X-New rules.*conflict/);
+  }), /X-New already exists.*in this profile/);
 
   assert.equal(applied, false);
 });

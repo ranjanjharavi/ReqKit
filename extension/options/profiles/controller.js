@@ -5,11 +5,12 @@ import {
   countRulesInProfile,
   createProfile,
   getProfileName,
-  reassignRulesFromProfile,
+  removeRulesFromProfile,
   validateProfileDraft
 } from '../../shared/profiles.js';
 import {
   getGrantedOrigins,
+  removeOriginPermission,
   requestOriginPermissions,
   storageLocalSet
 } from '../../shared/chrome-api.js';
@@ -20,8 +21,9 @@ import {
 } from '../../shared/activation.js';
 import { setActivationState } from '../../shared/activation-api.js';
 import { getMissingProfileOrigins } from '../../shared/site-access.js';
-import { getNextRuleId } from '../../shared/rules.js';
+import { getNextRuleId, getRuleOriginPattern } from '../../shared/rules.js';
 import { commitRules } from '../../shared/rule-api.js';
+import { confirmDestructiveAction } from '../../shared/confirmation-dialog.js';
 import { state } from '../state.js';
 import { escapeHtml, showStatus } from '../../shared/ui.js';
 
@@ -261,10 +263,6 @@ async function duplicateProfile(id) {
   }
 }
 
-/**
- * Deleting a profile never deletes rules. They move to Default and are paused,
- * so nothing starts reaching the network as a side effect of a deletion.
- */
 async function deleteProfile(id) {
   const profile = state.profiles.find((candidate) => candidate.id === id);
   if (!profile || id === DEFAULT_PROFILE_ID) {
@@ -273,24 +271,33 @@ async function deleteProfile(id) {
 
   const ruleCount = countRulesInProfile(state.rules, id);
   const consequence = ruleCount
-    ? `Its ${ruleCount} ${ruleCount === 1 ? 'rule moves' : 'rules move'} to Default and ${ruleCount === 1 ? 'is' : 'are'} paused.`
+    ? `Its ${ruleCount} ${ruleCount === 1 ? 'rule' : 'rules'} and related data will also be deleted.`
     : 'It has no rules.';
 
-  if (!globalThis.confirm(`Delete the profile ${profile.name}?\n\n${consequence}`)) {
+  const confirmed = await confirmDestructiveAction({
+    title: `Delete ${profile.name}?`,
+    message: consequence,
+    confirmLabel: 'Delete profile'
+  });
+  if (!confirmed) {
     return;
   }
 
-  const wasActive = getActivation().profileId === id;
+  const activation = getActivation();
+  const referencesDeletedProfile = activation.profileId === id || activation.lastProfileId === id;
+  const deletedRules = state.rules.filter((rule) => rule.profileId === id);
+  const remainingRules = removeRulesFromProfile(state.rules, id);
 
   try {
     state.syncPaused = true;
-    await storeProfiles(state.profiles.filter((candidate) => candidate.id !== id));
-    await commitRules(reassignRulesFromProfile(state.rules, id, DEFAULT_PROFILE_ID));
+    await commitRules(remainingRules);
 
-    if (wasActive) {
-      await setActivationState(setActiveProfile(getActivation(), DEFAULT_PROFILE_ID));
+    if (referencesDeletedProfile) {
+      await setActivationState(setActiveProfile(activation, DEFAULT_PROFILE_ID));
     }
 
+    await storeProfiles(state.profiles.filter((candidate) => candidate.id !== id));
+    await releaseDeletedProfilePermissions(deletedRules, remainingRules);
     await refreshAll();
     showStatus('profileStatus', `Deleted ${profile.name}. ${consequence}`, 'success');
   } catch (error) {
@@ -299,6 +306,23 @@ async function deleteProfile(id) {
   } finally {
     state.syncPaused = false;
   }
+}
+
+async function releaseDeletedProfilePermissions(deletedRules, remainingRules) {
+  const remainingDomains = new Set(remainingRules.map((rule) => rule.domain));
+  const origins = new Set(
+    deletedRules
+      .filter((rule) => !remainingDomains.has(rule.domain))
+      .map(getRuleOriginPattern)
+  );
+
+  await Promise.all([...origins].map(async (origin) => {
+    try {
+      await removeOriginPermission(origin);
+    } catch (error) {
+      console.error(`Could not release site access for ${origin}.`, error);
+    }
+  }));
 }
 
 export async function activateProfile(id) {

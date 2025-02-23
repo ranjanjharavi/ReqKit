@@ -101,18 +101,11 @@ export function cloneRulesIntoProfile(rules, sourceProfileId, targetProfileId, n
     .map((rule) => ({ ...rule, id: id++, profileId: resolveProfileId(targetProfileId) }));
 }
 
-/**
- * Deleting a profile never deletes rules. They move to the default profile and
- * are paused, so nothing starts hitting the network as a side effect.
- */
-export function reassignRulesFromProfile(rules, profileId, targetProfileId = DEFAULT_PROFILE_ID) {
+export function removeRulesFromProfile(rules, profileId) {
   const sourceId = resolveProfileId(profileId);
 
-  return (Array.isArray(rules) ? rules : []).map((rule) => (
-    resolveProfileId(rule.profileId) === sourceId
-      ? { ...rule, profileId: resolveProfileId(targetProfileId), enabled: false }
-      : rule
-  ));
+  return (Array.isArray(rules) ? rules : [])
+    .filter((rule) => resolveProfileId(rule.profileId) !== sourceId);
 }
 
 export function countRulesInProfile(rules, profileId) {

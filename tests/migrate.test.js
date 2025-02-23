@@ -17,12 +17,10 @@ const legacyState = {
 
 function createStorageStub(initial = {}) {
   const data = { ...initial };
-  const removals = [];
   const writes = [];
 
   return {
     data,
-    removals,
     writes,
     get: async (keys) => Object.fromEntries(
       keys.filter((key) => key in data).map((key) => [key, data[key]])
@@ -30,10 +28,6 @@ function createStorageStub(initial = {}) {
     set: async (value) => {
       writes.push(value);
       Object.assign(data, value);
-    },
-    remove: async (keys) => {
-      removals.push(keys);
-      keys.forEach((key) => delete data[key]);
     }
   };
 }
@@ -98,20 +92,6 @@ test('migration preserves unrelated keys', () => {
   assert.equal(state.unrelatedPreference, 'kept');
 });
 
-test('migration removes URL transformer data saved by earlier builds', async () => {
-  const storage = createStorageStub({
-    ...legacyState,
-    schemaVersion: 2,
-    transformerRecipe: { parameters: [{ key: 'token', value: 'legacy-value' }] }
-  });
-
-  const state = await ensureMigrated(storage);
-
-  assert.equal('transformerRecipe' in state, false);
-  assert.equal('transformerRecipe' in storage.data, false);
-  assert.deepEqual(storage.removals, [['transformerRecipe']]);
-});
-
 test('ensureMigrated writes data before the version marker', async () => {
   const storage = createStorageStub(legacyState);
 
@@ -134,7 +114,7 @@ test('a failure before the version marker re-runs cleanly', async () => {
     return storage.set(value);
   };
 
-  await assert.rejects(ensureMigrated({ get: storage.get, remove: storage.remove, set: failingSet }), /Storage failed/);
+  await assert.rejects(ensureMigrated({ get: storage.get, set: failingSet }), /Storage failed/);
   assert.equal(SCHEMA_VERSION_KEY in storage.data, false);
 
   await ensureMigrated(storage);

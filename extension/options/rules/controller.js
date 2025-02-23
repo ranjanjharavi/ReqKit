@@ -36,6 +36,8 @@ import {
   resolveProfileId
 } from '../../shared/profiles.js';
 import { isRuleGranted } from '../../shared/site-access.js';
+import { createSiteAccessPreflight } from '../../shared/site-access-preflight.js';
+import { saveRuleBeforePermissionPrompt } from '../../shared/site-access-save.js';
 import {
   activateProfile,
   readGrantedOrigins,
@@ -47,18 +49,21 @@ import {
   sortDomainGroups
 } from '../../shared/rule-render.js';
 import { commitRules, getStoredRules } from '../../shared/rule-api.js';
+import { confirmDestructiveAction } from '../../shared/confirmation-dialog.js';
 import { state } from '../state.js';
 import { showStatus } from '../../shared/ui.js';
 import { getRuleWorkspaceSummary } from '../view-model.js';
 
 const SEARCH_VISIBLE_FROM = 5;
 const DURATION_OPTIONS = [3_600_000, 28_800_000];
+let siteAccessPreflight;
 
 export function bindRuleEvents() {
   document.getElementById('headerComposerToggle').addEventListener('click', toggleHeaderComposer);
   document.getElementById('cancelHeaderComposerBtn').addEventListener('click', cancelHeaderComposer);
 
   const composerForm = document.getElementById('headerComposerForm');
+  siteAccessPreflight = createSiteAccessPreflight();
   composerForm.addEventListener('submit', handleComposerSubmit);
   composerForm.addEventListener('keydown', handleComposerKeydown);
 
@@ -73,9 +78,9 @@ export function bindRuleEvents() {
     state.profileFilter = event.target.value;
     renderRules();
   });
-  document.getElementById('durationSelect').addEventListener('change', (event) => {
-    selectDuration(event.target.value);
-  });
+  const durationPills = document.getElementById('durationPills');
+  durationPills.addEventListener('click', handleDurationClick);
+  durationPills.addEventListener('keydown', handleDurationKeydown);
 
   onStorageChanged((changes) => {
     const touchesRules = RULE_STORAGE_KEY in changes
@@ -203,18 +208,53 @@ async function resumeFromBanner() {
 
 function renderDurationField() {
   const activation = getActivation();
-  const select = document.getElementById('durationSelect');
+  const selectedValue = getDurationValue(activation);
+  const disabled = getActivationStatus(activation) !== 'live';
   const chip = document.getElementById('expiryChip');
   const remainingMs = getRemainingMs(activation);
 
-  select.value = getDurationValue(activation);
-  select.disabled = getActivationStatus(activation) !== 'live';
+  document.querySelectorAll('[data-duration]').forEach((pill) => {
+    const selected = pill.dataset.duration === selectedValue;
+    pill.setAttribute('aria-checked', String(selected));
+    pill.tabIndex = selected ? 0 : -1;
+    pill.disabled = disabled;
+  });
 
   chip.hidden = remainingMs === null;
   if (remainingMs !== null) {
     chip.textContent = formatRemainingTime(remainingMs);
     chip.title = `Pauses in ${formatRemainingTime(remainingMs)}`;
   }
+}
+
+function handleDurationClick(event) {
+  const pill = event.target.closest('[data-duration]');
+  if (!pill || pill.disabled || pill.getAttribute('aria-checked') === 'true') {
+    return;
+  }
+
+  selectDuration(pill.dataset.duration);
+}
+
+function handleDurationKeydown(event) {
+  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+    return;
+  }
+
+  const pills = [...event.currentTarget.querySelectorAll('[data-duration]:not(:disabled)')];
+  const currentIndex = pills.indexOf(event.target.closest('[data-duration]'));
+  if (currentIndex < 0 || !pills.length) {
+    return;
+  }
+
+  event.preventDefault();
+  const nextIndex = event.key === 'Home'
+    ? 0
+    : event.key === 'End'
+      ? pills.length - 1
+      : (currentIndex + (event.key === 'ArrowRight' ? 1 : -1) + pills.length) % pills.length;
+  pills[nextIndex].focus();
+  selectDuration(pills[nextIndex].dataset.duration);
 }
 
 function getDurationValue(activation) {
@@ -237,6 +277,7 @@ async function selectDuration(value) {
     : setActivationDuration(activation, { durationMs: value === 'indefinite' ? null : Number(value) });
 
   state.syncPaused = true;
+  setDurationPillsDisabled(true);
   try {
     state.activation = await setActivationState(next);
     renderRules();
@@ -246,7 +287,14 @@ async function selectDuration(value) {
     showStatus('activeSetupStatus', error.message || 'Could not set the timer.', 'error');
   } finally {
     state.syncPaused = false;
+    renderDurationField();
   }
+}
+
+function setDurationPillsDisabled(disabled) {
+  document.querySelectorAll('[data-duration]').forEach((pill) => {
+    pill.disabled = disabled;
+  });
 }
 
 function describeDuration(value) {
@@ -406,7 +454,7 @@ async function handleComposerSubmit(event) {
     }
   } finally {
     addButton.disabled = false;
-    addButton.textContent = 'Add rule';
+    siteAccessPreflight.syncSubmitLabel('Add rule');
   }
 }
 
@@ -436,11 +484,15 @@ function setHeaderComposerExpanded(expanded, {
   const toggle = document.getElementById('headerComposerToggle');
 
   state.composerOpen = expanded;
+  if (expanded) {
+    state.editingId = null;
+  }
   composer.hidden = !expanded;
   toggle.setAttribute('aria-expanded', String(expanded));
-  toggle.disabled = expanded;
+  syncAddRuleActions();
 
   if (reset) {
+    siteAccessPreflight.hide();
     clearHeaderForm();
   }
 
@@ -464,6 +516,7 @@ function renderRules() {
   const visibleRules = filterRulesBySearch(getVisibleRules(), state.searchQuery);
   if (!visibleRules.length) {
     container.innerHTML = getEmptyRulesMessage();
+    syncAddRuleActions();
     return;
   }
 
@@ -482,6 +535,16 @@ function renderRules() {
       describeRule
     }
   )).join('');
+  syncAddRuleActions();
+}
+
+function syncAddRuleActions() {
+  const disabled = state.composerOpen || state.editingId !== null;
+  document.getElementById('headerComposerToggle').disabled = disabled;
+
+  document.querySelectorAll('[data-rule-action="open-composer"]').forEach((button) => {
+    button.disabled = disabled;
+  });
 }
 
 function updateSummary() {
@@ -557,6 +620,7 @@ function startEditingRule(id) {
     return;
   }
 
+  setHeaderComposerExpanded(false, { reset: true });
   state.editingId = id;
   state.collapsedDomains.delete(rule.domain);
   renderRules();
@@ -593,10 +657,44 @@ async function addRule() {
     profileId
   };
 
+  const needsAccess = !isRuleGranted(newRule, state.grantedOrigins);
+  if (needsAccess && !siteAccessPreflight.isReadyFor(newRule)) {
+    siteAccessPreflight.show(newRule);
+    return false;
+  }
+
   try {
-    await ensureRulePermission(newRule);
-    await persistRules([...state.rules, newRule]);
-    showStatus('headerStatus', 'Header rule added.', 'success');
+    const updatedRules = [...state.rules, newRule];
+    if (needsAccess) {
+      const result = await saveRuleBeforePermissionPrompt(newRule, updatedRules, {
+        persistRules,
+        requestPermission: requestOriginPermission
+      });
+      state.grantedOrigins = await readGrantedOrigins();
+
+      if (!result.granted) {
+        if (result.permissionError) {
+          console.error('Could not request site access.', result.permissionError);
+        }
+        renderRules();
+        showStatus(
+          'headerStatus',
+          `Rule saved, but site access to https://${newRule.domain} was not granted.`,
+          'error'
+        );
+        return true;
+      }
+
+      await persistRules(state.rules);
+    } else {
+      await persistRules(updatedRules);
+    }
+
+    showStatus(
+      'headerStatus',
+      needsAccess ? 'Site access granted and rule added.' : 'Header rule added.',
+      'success'
+    );
     return true;
   } catch (error) {
     console.error(error);
@@ -691,14 +789,19 @@ async function saveEditedRule(id) {
   }
 }
 
-function confirmDeleteRule(id) {
+async function confirmDeleteRule(id) {
   const rule = state.rules.find((candidate) => candidate.id === id);
   if (!rule) {
     return;
   }
 
-  if (globalThis.confirm(`Delete ${rule.headerName} for ${rule.domain}?`)) {
-    deleteRule(id);
+  const confirmed = await confirmDestructiveAction({
+    title: `Delete ${rule.headerName}?`,
+    message: `The rule for ${rule.domain} will be permanently removed.`,
+    confirmLabel: 'Delete rule'
+  });
+  if (confirmed) {
+    await deleteRule(id);
   }
 }
 

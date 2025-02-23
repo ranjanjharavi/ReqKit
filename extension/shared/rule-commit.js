@@ -1,8 +1,6 @@
-import { createDefaultActivation } from './activation.js';
-import { getActiveRuleConflicts, normalizeRules } from './rules.js';
+import { getRuleIdentityKey, normalizeRules } from './rules.js';
 
 export async function commitRuleSet(nextRules, {
-  activation = createDefaultActivation(),
   profileIds = null,
   getCurrentRules,
   applyRules,
@@ -17,10 +15,18 @@ export async function commitRuleSet(nextRules, {
     throw new Error('One or more header rules are invalid.');
   }
 
-  const [conflict] = getActiveRuleConflicts(normalizedRules, activation);
-  if (conflict) {
+  const identities = new Set();
+  const duplicateRule = normalizedRules.find((rule) => {
+    const identity = getRuleIdentityKey(rule);
+    if (identities.has(identity)) {
+      return true;
+    }
+    identities.add(identity);
+    return false;
+  });
+  if (duplicateRule) {
     throw new Error(
-      `Active ${conflict.leftRule.headerName} rules for ${conflict.leftRule.domain} conflict because they use different values.`
+      `${duplicateRule.headerName} already exists for ${duplicateRule.domain} in this profile.`
     );
   }
 

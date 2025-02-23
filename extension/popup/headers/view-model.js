@@ -23,10 +23,6 @@ export function getActivationDisplay(profiles, activation, now = Date.now()) {
   return { profileName, appliedUntil: 'Until turned off' };
 }
 
-export function formatRuleCount(count) {
-  return `${count} ${count === 1 ? 'rule' : 'rules'}`;
-}
-
 export function getManagerLinkLabel(ruleCount) {
   if (ruleCount === 0) {
     return 'Manage profiles and rules →';
@@ -38,11 +34,7 @@ export function getManagerLinkLabel(ruleCount) {
   return `Manage profiles and all ${ruleCount} rules →`;
 }
 
-export function getManagerPath({ editRuleId = null, section = '' } = {}) {
-  if (Number.isInteger(editRuleId) && editRuleId > 0) {
-    return `options/index.html?edit=${editRuleId}`;
-  }
-
+export function getManagerPath({ section = '' } = {}) {
   const targetSection = String(section).trim().replace(/^#/, '');
   return targetSection
     ? `options/index.html#${encodeURIComponent(targetSection)}`

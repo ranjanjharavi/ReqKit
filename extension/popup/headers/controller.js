@@ -7,6 +7,7 @@ import {
   getNextRuleId,
   getRuleConflictMessage,
   getRuleOriginPattern,
+  groupRulesByDomain,
   validateRuleDraft
 } from '../../shared/rules.js';
 import {
@@ -36,23 +37,36 @@ import {
   normalizeProfiles
 } from '../../shared/profiles.js';
 import { isRuleGranted } from '../../shared/site-access.js';
-import { createConflictMap, renderRuleRow, sortRulesForDisplay } from '../../shared/rule-render.js';
+import { createSiteAccessPreflight } from '../../shared/site-access-preflight.js';
+import { saveRuleBeforePermissionPrompt } from '../../shared/site-access-save.js';
+import {
+  createConflictMap,
+  renderDomainGroup,
+  renderRuleRow,
+  sortDomainGroups,
+  sortRulesForDisplay
+} from '../../shared/rule-render.js';
 import { parseUserUrl } from '../../shared/urls.js';
 import { commitRules, getStoredRules } from '../../shared/rule-api.js';
+import { confirmDestructiveAction } from '../../shared/confirmation-dialog.js';
 import { state } from '../state.js';
 import { escapeHtml, showStatus } from '../../shared/ui.js';
 import {
-  formatRuleCount,
   getActivationDisplay,
   getManagerLinkLabel,
   getManagerPath
 } from './view-model.js';
+
+let siteAccessPreflight;
 
 export function bindHeaderEvents() {
   document.getElementById('headerComposerToggle').addEventListener('click', toggleHeaderComposer);
   document.getElementById('cancelHeaderComposerBtn').addEventListener('click', cancelHeaderComposer);
 
   const composerForm = document.getElementById('headerComposerForm');
+  siteAccessPreflight = createSiteAccessPreflight({
+    getDefaultSubmitLabel: () => state.headers.editingId ? 'Update rule' : 'Add rule'
+  });
   composerForm.addEventListener('submit', handleComposerSubmit);
   composerForm.addEventListener('keydown', handleComposerKeydown);
 
@@ -61,6 +75,8 @@ export function bindHeaderEvents() {
     openManager();
   });
   document.getElementById('changeActiveSetupBtn').addEventListener('click', openActiveSetup);
+  document.getElementById('ruleScopeTabs').addEventListener('click', handleScopeTabClick);
+  document.getElementById('ruleScopeTabs').addEventListener('keydown', handleScopeTabKeydown);
 
   document.getElementById('ruleListContainer').addEventListener('click', handleRuleListClick);
   document.getElementById('masterSwitch').addEventListener('click', () => toggleMaster());
@@ -87,6 +103,9 @@ export async function initializeHeaders(activeTab) {
 async function refreshFromStorage() {
   await loadActivation();
   state.headers.rules = await getStoredRules();
+  if (state.headers.editingId && !getScopedRules().some((rule) => rule.id === state.headers.editingId)) {
+    setHeaderComposerExpanded(false, { reset: true });
+  }
   renderRules();
 }
 
@@ -237,13 +256,16 @@ function handleRuleListClick(event) {
 
   switch (button.dataset.ruleAction) {
     case 'open-composer':
-      setHeaderComposerExpanded(true, { focusFirstField: true });
+      openCreateComposer();
       break;
     case 'open-manager':
       openManager();
       break;
     case 'edit':
-      openRuleInManager(Number(button.dataset.id));
+      openRuleEditor(Number(button.dataset.id));
+      break;
+    case 'toggle-domain':
+      toggleDomain(button.dataset.domain);
       break;
     case 'toggle':
       toggleRule(Number(button.dataset.id));
@@ -262,14 +284,20 @@ function handleRuleListClick(event) {
   }
 }
 
-/**
- * Editing lives in the manager, so the popup hands the rule over rather than
- * growing a form that a permission prompt could dismiss mid-edit.
- */
-function openRuleInManager(id) {
-  createTab({ url: getExtensionUrl(getManagerPath({ editRuleId: id })) }).catch((error) => {
-    console.error('Could not open that rule in the manager.', error);
-  });
+function openRuleEditor(id) {
+  const rule = getScopedRules().find((candidate) => candidate.id === id);
+  if (!rule) {
+    showStatus('headerStatus', 'That rule is no longer in the active profile.', 'error');
+    return;
+  }
+
+  state.headers.editingId = id;
+  siteAccessPreflight.hide();
+  document.getElementById('domain').value = rule.domain;
+  document.getElementById('headerName').value = rule.headerName;
+  document.getElementById('headerValue').value = rule.headerValue;
+  configureComposer();
+  setHeaderComposerExpanded(true, { focusFirstField: true });
 }
 
 async function handleComposerSubmit(event) {
@@ -280,15 +308,18 @@ async function handleComposerSubmit(event) {
   }
 
   addButton.disabled = true;
-  addButton.textContent = 'Adding…';
+  addButton.textContent = state.headers.editingId ? 'Updating…' : 'Adding…';
 
   try {
-    if (await addRule()) {
+    const saved = state.headers.editingId
+      ? await saveEditedRule(state.headers.editingId)
+      : await addRule();
+    if (saved) {
       setHeaderComposerExpanded(false, { reset: true, returnFocus: true });
     }
   } finally {
     addButton.disabled = false;
-    addButton.textContent = 'Add rule';
+    configureComposer();
   }
 }
 
@@ -302,13 +333,24 @@ function handleComposerKeydown(event) {
 }
 
 function toggleHeaderComposer() {
-  setHeaderComposerExpanded(!state.headers.composerOpen, {
-    focusFirstField: !state.headers.composerOpen
-  });
+  if (state.headers.composerOpen) {
+    setHeaderComposerExpanded(false, { reset: true, returnFocus: true });
+    return;
+  }
+
+  openCreateComposer();
 }
 
 function cancelHeaderComposer() {
   setHeaderComposerExpanded(false, { reset: true, returnFocus: true });
+}
+
+function openCreateComposer() {
+  state.headers.editingId = null;
+  siteAccessPreflight.hide();
+  clearHeaderForm();
+  configureComposer();
+  setHeaderComposerExpanded(true, { focusFirstField: true });
 }
 
 function setHeaderComposerExpanded(expanded, {
@@ -322,9 +364,13 @@ function setHeaderComposerExpanded(expanded, {
   state.headers.composerOpen = expanded;
   composer.hidden = !expanded;
   toggle.setAttribute('aria-expanded', String(expanded));
+  toggle.disabled = expanded || !state.headers.currentHostname;
 
   if (reset) {
+    state.headers.editingId = null;
+    siteAccessPreflight.hide();
     clearHeaderForm();
+    configureComposer();
   }
 
   if (focusFirstField && expanded) {
@@ -332,10 +378,16 @@ function setHeaderComposerExpanded(expanded, {
     const firstField = domainInput.value.trim()
       ? document.getElementById('headerName')
       : domainInput;
-    firstField.focus();
+    composer.scrollTop = 0;
+    firstField.focus({ preventScroll: true });
   } else if (returnFocus && !expanded) {
     toggle.focus();
   }
+}
+
+function configureComposer() {
+  const editing = Boolean(state.headers.editingId);
+  siteAccessPreflight.syncSubmitLabel(editing ? 'Update rule' : 'Add rule');
 }
 
 function initializeCurrentSite(activeTab) {
@@ -350,6 +402,50 @@ function initializeCurrentSite(activeTab) {
   document.getElementById('domain').value = state.headers.currentHostname;
 }
 
+function handleScopeTabClick(event) {
+  const tab = event.target.closest('[data-rule-scope]');
+  if (!tab || tab.disabled) {
+    return;
+  }
+
+  setRuleScope(tab.dataset.ruleScope);
+}
+
+function handleScopeTabKeydown(event) {
+  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+    return;
+  }
+
+  const tabs = [...event.currentTarget.querySelectorAll('[data-rule-scope]:not(:disabled)')];
+  const currentIndex = tabs.indexOf(event.target.closest('[data-rule-scope]'));
+  if (currentIndex < 0 || tabs.length < 2) {
+    return;
+  }
+
+  event.preventDefault();
+  const nextIndex = event.key === 'Home'
+    ? 0
+    : event.key === 'End'
+      ? tabs.length - 1
+      : (currentIndex + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+  setRuleScope(tabs[nextIndex].dataset.ruleScope);
+  tabs[nextIndex].focus();
+}
+
+function setRuleScope(scope) {
+  state.headers.scope = scope === 'all' ? 'all' : 'site';
+  renderRules();
+}
+
+function toggleDomain(domain) {
+  if (state.headers.collapsedDomains.has(domain)) {
+    state.headers.collapsedDomains.delete(domain);
+  } else {
+    state.headers.collapsedDomains.add(domain);
+  }
+  renderRules();
+}
+
 function renderRules() {
   const { rules, currentHostname } = state.headers;
   const container = document.getElementById('ruleListContainer');
@@ -358,20 +454,45 @@ function renderRules() {
   renderMasterSwitch();
   renderActivationSummary();
   updateCurrentSiteControls();
+  configureComposer();
 
-  const currentSiteRules = currentHostname ? filterRulesByHost(getScopedRules(), currentHostname) : [];
-  if (!currentSiteRules.length) {
+  const scopedRules = getScopedRules();
+  const visibleRules = state.headers.scope === 'all'
+    ? scopedRules
+    : (currentHostname ? filterRulesByHost(scopedRules, currentHostname) : []);
+  container.classList.toggle('is-empty', !visibleRules.length);
+  if (!visibleRules.length) {
     container.innerHTML = getEmptyRulesMessage();
     return;
   }
 
-  const sortedRules = sortRulesForDisplay(currentSiteRules, conflictingIds);
+  if (state.headers.scope === 'all') {
+    const groups = sortDomainGroups(
+      groupRulesByDomain(visibleRules),
+      conflictingIds,
+      currentHostname
+    );
+    container.innerHTML = `<div class="all-rule-groups">${groups.map((group, index) => renderDomainGroup(
+      group.domain,
+      group.rules,
+      {
+        index,
+        conflictMap,
+        collapsed: state.headers.collapsedDomains.has(group.domain),
+        currentHostname,
+        revealedRuleIds: state.headers.revealedRuleIds,
+        describeRule
+      }
+    )).join('')}</div>`;
+    return;
+  }
+
+  const sortedRules = sortRulesForDisplay(visibleRules, conflictingIds);
   container.innerHTML = `
     <div class="current-rule-list" aria-label="Rules for ${escapeHtml(currentHostname)}">
       ${sortedRules.map((rule) => renderRuleRow(rule, {
     conflictingRules: conflictMap.get(rule.id) || [],
     revealed: state.headers.revealedRuleIds.has(rule.id),
-    editOpensManager: true,
     ...describeRule(rule)
   })).join('')}
     </div>
@@ -381,17 +502,29 @@ function renderRules() {
 function updateCurrentSiteControls() {
   const { rules, currentHostname } = state.headers;
   const currentSiteHost = document.getElementById('currentSiteHost');
-  const currentSiteWorkbench = document.querySelector('.current-site-workbench');
+  const scopedRules = getScopedRules();
   const currentSiteCount = currentHostname
-    ? filterRulesByHost(getScopedRules(), currentHostname).length
+    ? filterRulesByHost(scopedRules, currentHostname).length
     : 0;
-  const countLabel = document.getElementById('currentSiteRuleCount');
+  const currentSiteTab = document.getElementById('currentSiteTab');
 
-  currentSiteHost.textContent = currentHostname || 'Unavailable on this page';
+  currentSiteHost.textContent = currentHostname || 'Current site unavailable';
   currentSiteHost.classList.toggle('is-unavailable', !currentHostname);
-  currentSiteWorkbench.classList.toggle('is-unavailable', !currentHostname);
+  document.getElementById('currentSiteRuleCount').textContent = currentSiteCount;
+  document.getElementById('allRulesCount').textContent = scopedRules.length;
+  currentSiteTab.disabled = !currentHostname;
 
-  countLabel.textContent = currentHostname ? formatRuleCount(currentSiteCount) : 'Site rules';
+  if (!currentHostname && state.headers.scope === 'site') {
+    state.headers.scope = 'all';
+  }
+
+  document.querySelectorAll('[data-rule-scope]').forEach((tab) => {
+    const selected = tab.dataset.ruleScope === state.headers.scope;
+    tab.setAttribute('aria-selected', String(selected));
+    tab.tabIndex = selected ? 0 : -1;
+  });
+
+  document.getElementById('headerComposerToggle').disabled = !currentHostname || state.headers.composerOpen;
 
   document.getElementById('manageRulesLink').textContent = getManagerLinkLabel(rules.length);
 }
@@ -399,13 +532,22 @@ function updateCurrentSiteControls() {
 function getEmptyRulesMessage() {
   const { currentHostname, rules } = state.headers;
 
+  if (state.headers.scope === 'all') {
+    return `
+      <div class="empty-state">
+        <div class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 16 16"><path fill="currentColor" d="M7.25 2.5h1.5v4.75h4.75v1.5H8.75v4.75h-1.5V8.75H2.5v-1.5h4.75V2.5Z"/></svg></div>
+        <p class="empty-state-title">No rules in this profile</p>
+        <p>Add a rule for the current HTTPS site, or manage profiles and rules.</p>
+      </div>
+    `;
+  }
+
   if (currentHostname) {
     return `
       <div class="empty-state">
         <div class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 16 16"><path fill="currentColor" d="M7.25 2.5h1.5v4.75h4.75v1.5H8.75v4.75h-1.5V8.75H2.5v-1.5h4.75V2.5Z"/></svg></div>
         <p class="empty-state-title">No rules for <code>${escapeHtml(currentHostname)}</code></p>
         <p>Add a rule to modify requests sent to this HTTPS host.</p>
-        <button class="primary-btn empty-state-action" type="button" data-rule-action="open-composer">Add rule for this site</button>
       </div>
     `;
   }
@@ -443,14 +585,91 @@ async function addRule() {
     newRule
   ];
 
+  const needsAccess = !isRuleGranted(newRule, state.headers.grantedOrigins);
+  if (needsAccess && !siteAccessPreflight.isReadyFor(newRule)) {
+    siteAccessPreflight.show(newRule);
+    return false;
+  }
+
   try {
-    await ensureRulePermission(newRule);
-    await persistRules(updatedRules);
-    showStatus('headerStatus', 'Header rule added.', 'success');
+    if (needsAccess) {
+      const result = await saveRuleBeforePermissionPrompt(newRule, updatedRules, {
+        persistRules,
+        requestPermission: requestOriginPermission
+      });
+      state.headers.grantedOrigins = await readGrantedOrigins();
+
+      if (!result.granted) {
+        if (result.permissionError) {
+          console.error('Could not request site access.', result.permissionError);
+        }
+        renderRules();
+        showStatus(
+          'headerStatus',
+          `Rule saved, but site access to https://${newRule.domain} was not granted.`,
+          'error'
+        );
+        return true;
+      }
+
+      // Re-commit with the refreshed grant list when the popup remains open.
+      // The background permission listener covers the popup-close case.
+      await persistRules(state.headers.rules);
+    } else {
+      await persistRules(updatedRules);
+    }
+
+    showStatus(
+      'headerStatus',
+      needsAccess ? 'Site access granted and rule added.' : 'Header rule added.',
+      'success'
+    );
     return true;
   } catch (error) {
     console.error(error);
     showStatus('headerStatus', error.message || 'Chrome rejected the new rule.', 'error');
+    return false;
+  }
+}
+
+async function saveEditedRule(id) {
+  const currentRule = state.headers.rules.find((rule) => rule.id === id);
+  if (!currentRule) {
+    showStatus('headerStatus', 'That rule no longer exists.', 'error');
+    return false;
+  }
+
+  const profileId = getTargetProfileId(getActivation());
+  const validation = validateRuleDraft(readCreateDraft(), state.headers.rules, {
+    excludeId: id,
+    enabled: currentRule.enabled,
+    activation: getActivation(),
+    profileId
+  });
+  if (!validation.ok) {
+    showStatus('headerStatus', validation.error, 'error');
+    return false;
+  }
+
+  const updatedRules = state.headers.rules.map((rule) => (
+    rule.id === id ? { ...rule, ...validation.rule, profileId } : rule
+  ));
+  const updatedRule = updatedRules.find((rule) => rule.id === id);
+
+  try {
+    if (updatedRule.enabled) {
+      await ensureRulePermission(updatedRule);
+    }
+    await persistRules(updatedRules);
+    if (currentRule.domain !== updatedRule.domain) {
+      await releaseUnusedPermission(currentRule, updatedRules);
+    }
+    state.headers.revealedRuleIds.delete(id);
+    showStatus('headerStatus', 'Header rule updated.', 'success');
+    return true;
+  } catch (error) {
+    console.error(error);
+    showStatus('headerStatus', error.message || 'Could not update that rule.', 'error');
     return false;
   }
 }
@@ -495,14 +714,19 @@ async function toggleRule(id) {
   }
 }
 
-function confirmDeleteRule(id) {
+async function confirmDeleteRule(id) {
   const rule = state.headers.rules.find((candidate) => candidate.id === id);
   if (!rule) {
     return;
   }
 
-  if (globalThis.confirm(`Delete ${rule.headerName} for ${rule.domain}?`)) {
-    deleteRule(id);
+  const confirmed = await confirmDestructiveAction({
+    title: `Delete ${rule.headerName}?`,
+    message: `The rule for ${rule.domain} will be permanently removed.`,
+    confirmLabel: 'Delete rule'
+  });
+  if (confirmed) {
+    await deleteRule(id);
   }
 }
 

@@ -24,6 +24,7 @@
       <div class="options-header-brand">
         <img src="../icons/reqkit-48.png" width="32" height="32" alt="">
         <div class="options-header-copy">
+          <span class="product-kicker">ReqKit</span>
           <h1>Rule manager</h1>
           <p>Profiles, timing, and request-header rules.</p>
         </div>
@@ -58,14 +59,13 @@
           <section id="active-setup" class="active-setup-row" aria-label="Active setup" tabindex="-1">
             <div class="active-run-summary">
               <span id="activeProfileRunLabel" class="active-profile-run-label">Default runs until</span>
-              <label class="sr-only" for="durationSelect">Apply rules for</label>
               <span class="setup-duration-control">
-                <select id="durationSelect" class="setup-select duration-inline-select">
-                  <option value="indefinite">I turn it off</option>
-                  <option value="3600000">1 hour</option>
-                  <option value="28800000">8 hours</option>
-                  <option value="session">Chrome closes</option>
-                </select>
+                <span id="durationPills" class="duration-pills" role="radiogroup" aria-label="Run this profile until">
+                  <button class="duration-pill" type="button" role="radio" aria-checked="true" data-duration="indefinite">I turn it off</button>
+                  <button class="duration-pill" type="button" role="radio" aria-checked="false" data-duration="3600000">1 hour</button>
+                  <button class="duration-pill" type="button" role="radio" aria-checked="false" data-duration="28800000">8 hours</button>
+                  <button class="duration-pill" type="button" role="radio" aria-checked="false" data-duration="session">Chrome closes</button>
+                </span>
                 <span id="expiryChip" class="session-count is-timer" hidden></span>
               </span>
               <span class="summary-separator" aria-hidden="true">·</span>
@@ -89,15 +89,26 @@
                   <p class="helper-text">HTTPS is required. Only the exact hostname is used; paths are ignored.</p>
                 </div>
 
-                <div class="field">
-                  <label for="headerName">Header name</label>
-                  <input type="text" id="headerName" placeholder="X-ReqKit-Debug" autocapitalize="off" autocorrect="off" spellcheck="false">
+                <div class="header-fields-row">
+                  <div class="field">
+                    <label for="headerName">Header name</label>
+                    <input type="text" id="headerName" placeholder="X-ReqKit-Debug" autocapitalize="off" autocorrect="off" spellcheck="false">
+                  </div>
+
+                  <div class="field">
+                    <label for="headerValue">Header value</label>
+                    <input type="text" id="headerValue" placeholder="enabled" autocapitalize="off" autocorrect="off" spellcheck="false">
+                  </div>
                 </div>
 
-                <div class="field">
-                  <label for="headerValue">Header value</label>
-                  <input type="text" id="headerValue" placeholder="enabled" autocapitalize="off" autocorrect="off" spellcheck="false">
-                  <p class="helper-text disclosure-text">Stored in this Chrome profile and sent only to the exact HTTPS host you approve. Use only authorized systems.</p>
+                <p class="helper-text disclosure-text composer-disclosure">Stored in this Chrome profile and sent only to the exact HTTPS host you approve. Use only authorized systems.</p>
+
+                <div id="siteAccessPreflight" class="site-access-preflight" role="note" aria-live="polite" hidden>
+                  <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1.25 13 3v3.85c0 3.38-2.08 6.43-5 7.9-2.92-1.47-5-4.52-5-7.9V3l5-1.75Zm0 1.59L4.5 4.07v2.78c0 2.58 1.47 4.99 3.5 6.21 2.03-1.22 3.5-3.63 3.5-6.21V4.07L8 2.84Zm-.75 2.41h1.5V8h-1.5V5.25Zm0 3.75h1.5v1.5h-1.5V9Z"/></svg>
+                  <div>
+                    <strong>Site access required for <code id="siteAccessPreflightHost"></code></strong>
+                    <p>Chrome will ask you to approve this exact HTTPS host. ReqKit will not request access to other sites.</p>
+                  </div>
                 </div>
 
                 <div class="action-row header-composer-actions">
@@ -145,6 +156,23 @@
           <button id="newProfileBtn" class="secondary-btn" type="button">New profile</button>
           <button id="doneProfileManagerBtn" class="primary-btn" type="button">Done</button>
         </footer>
+      </div>
+    </dialog>
+
+    <dialog id="confirmationDialog" class="confirmation-dialog" aria-labelledby="confirmationTitle" aria-describedby="confirmationMessage">
+      <div class="confirmation-dialog-shell">
+        <div class="confirmation-dialog-icon" aria-hidden="true">
+          <svg viewBox="0 0 16 16"><path fill="currentColor" d="M6.25 2.5h3.5l.5 1H13a.75.75 0 0 1 0 1.5h-.6l-.55 7.14A1.5 1.5 0 0 1 10.35 13.5h-4.7a1.5 1.5 0 0 1-1.5-1.36L3.6 5H3a.75.75 0 0 1 0-1.5h2.75l.5-1Zm-.46 2.5.5 6.5h3.42l.5-6.5H5.79Z"/></svg>
+        </div>
+        <div class="confirmation-dialog-copy">
+          <span class="product-kicker">ReqKit</span>
+          <h2 id="confirmationTitle">Delete this item?</h2>
+          <p id="confirmationMessage">This cannot be undone.</p>
+        </div>
+        <div class="confirmation-dialog-actions">
+          <button id="confirmationCancelBtn" class="secondary-btn" type="button">Cancel</button>
+          <button id="confirmationConfirmBtn" class="danger-btn" type="button">Delete</button>
+        </div>
       </div>
     </dialog>
   </div>

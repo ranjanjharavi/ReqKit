@@ -33,6 +33,9 @@
 
       let runtimeRules = storage.headerRules || [];
       let runtimeActivation = storage.activation;
+      const grantedOrigins = previewParameters.has('noaccess')
+        ? []
+        : ['https://example.com/*', 'https://staging.example.com/*'];
       window.__REQKIT_CHROME_STUB__ = {
         runtime: {
           lastError: null,
@@ -74,8 +77,16 @@
           onChanged: { addListener() {} }
         },
         permissions: {
-          getAll(callback) { callback({ origins: ['https://example.com/*', 'https://staging.example.com/*'] }); },
-          request(_details, callback) { callback(true); },
+          getAll(callback) {
+            callback({ origins: grantedOrigins });
+          },
+          request(details, callback) {
+            document.documentElement.dataset.permissionRequest = details.origins[0];
+            if (!grantedOrigins.includes(details.origins[0])) {
+              grantedOrigins.push(details.origins[0]);
+            }
+            callback(true);
+          },
           remove(_details, callback) { callback(true); }
         },
         tabs: {
@@ -91,11 +102,13 @@
       }
       window.chrome = window.__REQKIT_CHROME_STUB__;
 
+      const cacheBust = Date.now();
       const markup = await fetch('/extension/popup/index.html', { cache: 'no-store' }).then((response) => response.text());
       document.open();
       document.write(markup
         .replace('<head>', '<head><base href="/extension/popup/">')
-        .replace('<script type="module" src="main.js"></' + 'script>', '<script>window.chrome = window.__REQKIT_CHROME_STUB__ || parent.__REQKIT_CHROME_STUB__;</' + 'script><script type="module" src="main.js"></' + 'script>'));
+        .replace('href="popup.css"', `href="popup.css?v=${cacheBust}"`)
+        .replace('<script type="module" src="main.js"></' + 'script>', '<script>window.chrome = window.__REQKIT_CHROME_STUB__ || parent.__REQKIT_CHROME_STUB__;</' + `script><script type="module" src="main.js?v=${cacheBust}"></` + 'script>'));
       document.close();
     })();
   </script>

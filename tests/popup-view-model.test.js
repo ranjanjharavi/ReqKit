@@ -4,7 +4,6 @@ import test from 'node:test';
 import { createDefaultActivation } from '../extension/shared/activation.js';
 import { createDefaultProfiles } from '../extension/shared/profiles.js';
 import {
-  formatRuleCount,
   getActivationDisplay,
   getManagerLinkLabel,
   getManagerPath
@@ -63,12 +62,6 @@ test('popup activation summary makes a parked profile explicit', () => {
   });
 });
 
-test('popup rule count labels handle singular and plural forms', () => {
-  assert.equal(formatRuleCount(0), '0 rules');
-  assert.equal(formatRuleCount(1), '1 rule');
-  assert.equal(formatRuleCount(2), '2 rules');
-});
-
 test('popup manager link describes profiles and the total rule count', () => {
   assert.equal(getManagerLinkLabel(0), 'Manage profiles and rules →');
   assert.equal(getManagerLinkLabel(1), 'Manage profiles and 1 rule →');
@@ -78,5 +71,4 @@ test('popup manager link describes profiles and the total rule count', () => {
 test('popup manager targets are built in one testable place', () => {
   assert.equal(getManagerPath(), 'options/index.html');
   assert.equal(getManagerPath({ section: 'active-setup' }), 'options/index.html#active-setup');
-  assert.equal(getManagerPath({ editRuleId: 4 }), 'options/index.html?edit=4');
 });

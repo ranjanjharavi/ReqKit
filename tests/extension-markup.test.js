@@ -4,25 +4,75 @@ import test from 'node:test';
 
 const popupMarkup = readFileSync(new URL('../extension/popup/index.html', import.meta.url), 'utf8');
 const optionsMarkup = readFileSync(new URL('../extension/options/index.html', import.meta.url), 'utf8');
+const popupStyles = readFileSync(new URL('../extension/popup/popup.css', import.meta.url), 'utf8');
+const optionsStyles = readFileSync(new URL('../extension/options/options.css', import.meta.url), 'utf8');
+const popupRulesSource = readFileSync(new URL('../extension/popup/headers/controller.js', import.meta.url), 'utf8');
+const optionsRulesSource = readFileSync(new URL('../extension/options/rules/controller.js', import.meta.url), 'utf8');
+const optionsProfilesSource = readFileSync(new URL('../extension/options/profiles/controller.js', import.meta.url), 'utf8');
+const sharedRuleRenderSource = readFileSync(new URL('../extension/shared/rule-render.js', import.meta.url), 'utf8');
+const backgroundSource = readFileSync(new URL('../extension/background.js', import.meta.url), 'utf8');
 
-test('popup activation state is display-only', () => {
+test('popup keeps profile context in the header and scopes rules with tabs', () => {
   assert.match(popupMarkup, /<main id="headers-panel" class="popup-shell">/);
+  assert.match(popupMarkup, /class="product-kicker">ReqKit</);
   assert.match(popupMarkup, /id="activeProfileName"/);
   assert.match(popupMarkup, /id="activeUntilLabel"/);
-  assert.match(popupMarkup, /id="changeActiveSetupBtn"[^>]*>Change</);
+  assert.match(popupMarkup, /id="changeActiveSetupBtn"/);
+  assert.match(popupMarkup, /id="ruleScopeTabs"[^>]*role="tablist"/);
+  assert.match(popupMarkup, /id="currentSiteTab"[^>]*role="tab"/);
+  assert.match(popupMarkup, /id="allRulesTab"[^>]*role="tab"/);
+  assert.match(popupMarkup, /id="headerComposerToggle"[\s\S]*?Add rule for this site/);
   assert.doesNotMatch(popupMarkup, /id="profileSelect"/);
   assert.doesNotMatch(popupMarkup, /id="durationSelect"/);
-  assert.doesNotMatch(popupMarkup, /role="tab"|URL transform|transformer-panel/);
+  assert.doesNotMatch(popupMarkup, /header-composer-heading|headerComposerTitle|headerComposerProfile/);
+  assert.match(popupMarkup, /id="siteAccessPreflight"[\s\S]*?Chrome will ask you to approve this exact HTTPS host/);
+  assert.match(popupMarkup, /id="confirmationDialog"[^>]*aria-labelledby="confirmationTitle"/);
 });
 
 test('rule manager separates active setup, rules, and profile administration', () => {
   assert.match(optionsMarkup, /id="active-setup"/);
   assert.match(optionsMarkup, /id="profileTabs"[^>]*role="tablist"/);
   assert.match(optionsMarkup, /id="activeProfileSelect"/);
-  assert.match(optionsMarkup, /id="durationSelect"/);
+  assert.match(optionsMarkup, /id="durationPills"[^>]*role="radiogroup"/);
+  assert.equal((optionsMarkup.match(/class="duration-pill"/g) || []).length, 4);
+  assert.doesNotMatch(optionsMarkup, /id="durationSelect"/);
   assert.match(optionsMarkup, /id="headerComposerToggle"[^>]*>\s*<svg[\s\S]*?New rule/);
+  assert.match(optionsMarkup, /class="header-fields-row"[\s\S]*?for="headerName"[\s\S]*?for="headerValue"/);
+  assert.match(optionsMarkup, /class="helper-text disclosure-text composer-disclosure"/);
+  assert.match(optionsMarkup, /id="siteAccessPreflight"[\s\S]*?ReqKit will not request access to other sites/);
   assert.match(optionsMarkup, /<dialog id="profileManagerDialog"/);
   assert.match(optionsMarkup, /id="manageProfilesBtn"/);
+  assert.match(optionsMarkup, /class="product-kicker">ReqKit</);
+  assert.match(optionsMarkup, /id="confirmationDialog"[^>]*aria-labelledby="confirmationTitle"/);
+});
+
+test('site permission changes immediately rebuild the applied rule set', () => {
+  assert.match(backgroundSource, /chrome\.permissions\.onAdded\.addListener/);
+  assert.match(backgroundSource, /chrome\.permissions\.onRemoved\.addListener/);
+  assert.match(backgroundSource, /refreshAfterPermissionChange/);
+});
+
+test('empty popup state relies on the footer add action', () => {
+  assert.match(popupRulesSource, /container\.classList\.toggle\('is-empty', !visibleRules\.length\)/);
+  assert.doesNotMatch(popupRulesSource, /empty-state-action[^\n]*data-rule-action="open-composer"/);
+});
+
+test('rule editor keeps header inputs together and the disclosure on its own row', () => {
+  assert.match(sharedRuleRenderSource, /rule-edit-field-name[\s\S]*?rule-edit-field-value/);
+  assert.match(sharedRuleRenderSource, /rule-edit-disclosure/);
+});
+
+test('destructive actions use the ReqKit confirmation dialog', () => {
+  [popupRulesSource, optionsRulesSource, optionsProfilesSource].forEach((source) => {
+    assert.match(source, /confirmDestructiveAction/);
+    assert.doesNotMatch(source, /globalThis\.confirm/);
+  });
+});
+
+test('text inputs share the ten pixel padding token', () => {
+  assert.match(popupStyles, /--input-padding:\s*10px/);
+  assert.match(popupStyles, /input\s*\{[\s\S]*?padding:\s*var\(--input-padding\)/);
+  assert.doesNotMatch(optionsStyles, /rules-composer input/);
 });
 
 test('rule-manager privacy links stay in the same extension tab', () => {

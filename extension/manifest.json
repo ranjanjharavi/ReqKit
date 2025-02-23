@@ -3,7 +3,8 @@
   "name": "ReqKit",
   "version": "1.0",
   "minimum_chrome_version": "120",
-  "description": "Manage profile-based request headers for approved HTTPS hosts.",
+  "description": "Create and switch profile-based request-header rules for exact HTTPS hosts you approve.",
+  "homepage_url": "https://ranjanjharavi.github.io/ReqKit/",
   "permissions": [
     "activeTab",
     "alarms",

@@ -4,6 +4,7 @@
 <body>
   <script>
     (async () => {
+      const previewParameters = new URLSearchParams(location.search);
       const storage = {
         privacyConsentVersion: 1,
         profiles: [
@@ -19,7 +20,7 @@
           durationMs: null,
           untilBrowserClose: false
         },
-        headerRules: [
+        headerRules: previewParameters.has('empty') ? [] : [
           { id: 1, domain: 'api.example.com', headerName: 'Authorization', headerValue: 'Bearer secret', enabled: true, profileId: 'default' },
           { id: 2, domain: 'api.example.com', headerName: 'X-ReqKit-Debug', headerValue: 'enabled', enabled: true, profileId: 'default' },
           { id: 3, domain: 'accounts.example.com', headerName: 'X-Client', headerValue: 'reqkit', enabled: false, profileId: 'default' },
@@ -31,6 +32,12 @@
 
       let runtimeRules = storage.headerRules;
       let runtimeActivation = storage.activation;
+      const grantedOrigins = previewParameters.has('noaccess') ? [] : [
+        'https://api.example.com/*',
+        'https://accounts.example.com/*',
+        'https://staging.example.com/*',
+        'https://localhost/*'
+      ];
       window.__REQKIT_CHROME_STUB__ = {
         runtime: {
           lastError: null,
@@ -77,14 +84,15 @@
         },
         permissions: {
           getAll(callback) {
-            callback({ origins: [
-              'https://api.example.com/*',
-              'https://accounts.example.com/*',
-              'https://staging.example.com/*',
-              'https://localhost/*'
-            ] });
+            callback({ origins: grantedOrigins });
           },
-          request(_details, callback) { callback(true); },
+          request(details, callback) {
+            document.documentElement.dataset.permissionRequest = details.origins[0];
+            if (!grantedOrigins.includes(details.origins[0])) {
+              grantedOrigins.push(details.origins[0]);
+            }
+            callback(true);
+          },
           remove(_details, callback) { callback(true); }
         }
       };

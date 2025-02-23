@@ -88,7 +88,16 @@ test('validateRuleDraft rejects invalid and duplicate rules', () => {
     headerName: 'X-Test',
     headerValue: 'bad\nvalue'
   }, []).error, 'Header values cannot contain line breaks.');
-  assert.equal(validateRuleDraft(sampleRules[0], sampleRules).error, 'That rule already exists.');
+  assert.equal(
+    validateRuleDraft(sampleRules[0], sampleRules).error,
+    'That header already exists for this host in this profile.'
+  );
+  assert.equal(validateRuleDraft({
+    ...sampleRules[0],
+    headerName: 'x-auth',
+    headerValue: 'different',
+    enabled: false
+  }, sampleRules, { enabled: false }).ok, false);
   assert.equal(validateRuleDraft(sampleRules[0], sampleRules, { excludeId: 1 }).ok, true);
 });
 
@@ -115,7 +124,7 @@ test('conflict detection finds different active values for the same header and h
   }]);
 });
 
-test('validateRuleDraft rejects active conflicts but permits paused drafts', () => {
+test('validateRuleDraft rejects duplicate headers even for paused drafts', () => {
   const draft = {
     domain: 'api.example.com',
     headerName: 'x-auth',
@@ -123,9 +132,9 @@ test('validateRuleDraft rejects active conflicts but permits paused drafts', () 
   };
 
   const activeResult = validateRuleDraft(draft, sampleRules);
-  assert.equal(activeResult.conflictId, 1);
-  assert.match(activeResult.error, /Conflicts with the active X-Auth rule/);
-  assert.equal(validateRuleDraft(draft, sampleRules, { enabled: false }).ok, true);
+  assert.equal(activeResult.ok, false);
+  assert.match(activeResult.error, /already exists for this host/);
+  assert.equal(validateRuleDraft(draft, sampleRules, { enabled: false }).ok, false);
 });
 
 test('rule collection helpers preserve exact-host behavior', () => {
@@ -184,7 +193,7 @@ test('an identical rule in another profile is not a duplicate', () => {
   assert.equal(validateRuleDraft(sampleRules[0], stagingRules, {
     activation: { masterEnabled: true, profileId: 'staging' },
     profileId: 'staging'
-  }).error, 'That rule already exists.');
+  }).error, 'That header already exists for this host in this profile.');
 });
 
 test('profile helpers filter rules', () => {

@@ -62,7 +62,6 @@ export function renderRuleRow(rule, {
   conflictingRules = [],
   revealed = false,
   editing = false,
-  editOpensManager = false,
   editProfiles = null,
   needsAccess = false,
   profileName = ''
@@ -75,7 +74,7 @@ export function renderRuleRow(rule, {
   const isSensitive = isSensitiveHeaderName(rule.headerName);
   const displayValue = isSensitive && !revealed ? MASKED_VALUE : rule.headerValue;
   const hasConflict = conflictingRules.length > 0;
-  const editTitle = editOpensManager ? 'Edit rule in the manager' : 'Edit rule';
+  const editTitle = 'Edit rule';
 
   return `
     <article class="domain-rule-row${rule.enabled ? '' : ' is-paused'}${hasConflict ? ' has-conflict' : ''}${needsAccess ? ' needs-access' : ''}">
@@ -144,20 +143,21 @@ export function renderRuleEditForm(rule, profiles = null) {
     <div class="domain-rule-row">
       <form class="rule-edit-form" data-id="${rule.id}">
         <div class="rule-edit-grid">
-          <div class="rule-edit-field">
+          <div class="rule-edit-field rule-edit-field-host">
             <label for="editDomain-${rule.id}">Exact HTTPS host</label>
             <input id="editDomain-${rule.id}" type="text" value="${escapeHtml(rule.domain)}" autocapitalize="off" autocorrect="off" spellcheck="false">
           </div>
-          <div class="rule-edit-field">
+          <div class="rule-edit-field rule-edit-field-name">
             <label for="editHeaderName-${rule.id}">Header name</label>
             <input id="editHeaderName-${rule.id}" type="text" value="${escapeHtml(rule.headerName)}" autocapitalize="off" autocorrect="off" spellcheck="false">
           </div>
-          ${showProfileField ? renderProfileField(rule, profiles) : ''}
-          <div class="rule-edit-field">
+          <div class="rule-edit-field rule-edit-field-value">
             <label for="editHeaderValue-${rule.id}">Header value</label>
             <input id="editHeaderValue-${rule.id}" type="text" value="${escapeHtml(rule.headerValue)}" autocapitalize="off" autocorrect="off" spellcheck="false">
           </div>
+          ${showProfileField ? renderProfileField(rule, profiles) : ''}
         </div>
+        <p class="helper-text disclosure-text rule-edit-disclosure">Stored in this Chrome profile and sent only to the exact HTTPS host you approve. Use only authorized systems.</p>
         <div id="ruleEditStatus-${rule.id}" class="status-msg rule-edit-status" aria-live="polite"></div>
         <div class="action-row rule-edit-actions">
           <button class="primary-btn save-edit-rule-btn" type="submit">Save changes</button>
@@ -175,7 +175,7 @@ function renderProfileField(rule, profiles) {
   )).join('');
 
   return `
-    <div class="rule-edit-field">
+    <div class="rule-edit-field rule-edit-field-profile">
       <label for="editProfile-${rule.id}">Profile</label>
       <select id="editProfile-${rule.id}">${options}</select>
     </div>
@@ -189,7 +189,6 @@ export function renderDomainGroup(domain, domainRules, {
   currentHostname = '',
   editingId = null,
   revealedRuleIds = new Set(),
-  editOpensManager = false,
   editProfiles = null,
   managerView = false,
   describeRule = () => ({})
@@ -229,7 +228,6 @@ export function renderDomainGroup(domain, domainRules, {
           conflictingRules: conflictMap.get(rule.id) || [],
           revealed: revealedRuleIds.has(rule.id),
           editing: rule.id === editingId,
-          editOpensManager,
           editProfiles,
           ...describeRule(rule)
         })).join('')}

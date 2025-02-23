@@ -7,7 +7,7 @@ import {
   countRulesInProfile,
   createDefaultProfiles,
   createProfile,
-  reassignRulesFromProfile,
+  removeRulesFromProfile,
   findProfile,
   getProfileIds,
   getProfileName,
@@ -94,17 +94,16 @@ test('cloning copies only the source profile and renumbers ids', () => {
   assert.deepEqual(rules.map((rule) => rule.id), [1, 2, 3], 'source rules untouched');
 });
 
-test('deleting a profile moves its rules to default and pauses them', () => {
+test('deleting a profile removes all of its rules', () => {
   const rules = [
     { id: 1, domain: 'a.example.com', headerName: 'X-A', headerValue: '1', enabled: true, profileId: 'staging' },
     { id: 2, domain: 'b.example.com', headerName: 'X-B', headerValue: '2', enabled: true, profileId: 'default' }
   ];
 
-  const reassigned = reassignRulesFromProfile(rules, 'staging');
+  const remaining = removeRulesFromProfile(rules, 'staging');
 
-  assert.deepEqual(reassigned.map((rule) => rule.profileId), ['default', 'default']);
-  assert.deepEqual(reassigned.map((rule) => rule.enabled), [false, true], 'moved rules paused, others untouched');
-  assert.equal(reassigned.length, 2, 'no rule is deleted');
+  assert.deepEqual(remaining, [rules[1]]);
+  assert.equal(remaining[0].enabled, true, 'rules in other profiles are untouched');
 });
 
 test('rules are counted per profile, treating a missing profile as default', () => {

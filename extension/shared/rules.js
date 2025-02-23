@@ -123,17 +123,15 @@ export function validateRuleDraft(draft, existingRules, {
     return { ok: false, error: 'Header values cannot contain line breaks.' };
   }
 
-  // An identical rule in another profile is deliberate, not a duplicate.
+  // A profile can set a header only once for a host. The value and enabled
+  // state do not change that identity; edit the existing rule instead.
+  const identity = getRuleIdentityKey({ ...rule, profileId: draftProfileId });
   const duplicateRule = (Array.isArray(existingRules) ? existingRules : []).some((existingRule) => (
-    existingRule.id !== excludeId
-    && resolveProfileId(existingRule.profileId) === draftProfileId
-    && existingRule.domain === rule.domain
-    && existingRule.headerName.toLowerCase() === rule.headerName.toLowerCase()
-    && existingRule.headerValue === rule.headerValue
+    existingRule.id !== excludeId && getRuleIdentityKey(existingRule) === identity
   ));
 
   if (duplicateRule) {
-    return { ok: false, error: 'That rule already exists.' };
+    return { ok: false, error: 'That header already exists for this host in this profile.' };
   }
 
   const conflictingRule = findActiveRuleConflict(
@@ -150,6 +148,14 @@ export function validateRuleDraft(draft, existingRules, {
   }
 
   return { ok: true, rule };
+}
+
+export function getRuleIdentityKey(rule) {
+  return [
+    resolveProfileId(rule?.profileId),
+    String(rule?.domain || '').toLowerCase(),
+    String(rule?.headerName || '').toLowerCase()
+  ].join('\n');
 }
 
 function isValidHeaderName(value) {
