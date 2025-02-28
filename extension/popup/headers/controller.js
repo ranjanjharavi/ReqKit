@@ -1,5 +1,7 @@
 import {
+  RULE_STORAGE_KEY,
   filterRulesByHost,
+  filterRulesByProfile,
   findActiveRuleConflict,
   getActiveRuleConflicts,
   getNextRuleId,
@@ -8,38 +10,242 @@ import {
   groupRulesByDomain,
   validateRuleDraft
 } from '../../shared/rules.js';
-import { removeOriginPermission, requestOriginPermission } from '../../shared/chrome-api.js';
+import {
+  createTab,
+  getExtensionUrl,
+  getGrantedOrigins,
+  onStorageChanged,
+  openOptionsPage,
+  removeOriginPermission,
+  requestOriginPermission,
+  storageLocalGet
+} from '../../shared/chrome-api.js';
+import {
+  ACTIVATION_STORAGE_KEY,
+  createDefaultActivation,
+  getActivationStatus,
+  getTargetProfileId,
+  normalizeActivation,
+  setMasterEnabled
+} from '../../shared/activation.js';
+import { setActivationState } from '../../shared/activation-api.js';
+import {
+  PROFILE_STORAGE_KEY,
+  createDefaultProfiles,
+  getProfileIds,
+  getProfileName,
+  normalizeProfiles
+} from '../../shared/profiles.js';
+import { isRuleGranted } from '../../shared/site-access.js';
+import { createSiteAccessPreflight } from '../../shared/site-access-preflight.js';
+import { saveRuleBeforePermissionPrompt } from '../../shared/site-access-save.js';
+import {
+  createConflictMap,
+  renderDomainGroup,
+  renderRuleRow,
+  sortDomainGroups,
+  sortRulesForDisplay
+} from '../../shared/rule-render.js';
 import { parseUserUrl } from '../../shared/urls.js';
-import { commitRules, getStoredRules } from './api.js';
+import { commitRules, getStoredRules } from '../../shared/rule-api.js';
+import { confirmDestructiveAction } from '../../shared/confirmation-dialog.js';
 import { state } from '../state.js';
-import { escapeHtml, showStatus } from '../ui.js';
+import { escapeHtml, showStatus } from '../../shared/ui.js';
+import {
+  getActivationDisplay,
+  getManagerLinkLabel,
+  getManagerPath
+} from './view-model.js';
+
+let siteAccessPreflight;
 
 export function bindHeaderEvents() {
   document.getElementById('headerComposerToggle').addEventListener('click', toggleHeaderComposer);
   document.getElementById('cancelHeaderComposerBtn').addEventListener('click', cancelHeaderComposer);
 
   const composerForm = document.getElementById('headerComposerForm');
+  siteAccessPreflight = createSiteAccessPreflight({
+    getDefaultSubmitLabel: () => state.headers.editingId ? 'Update rule' : 'Add rule'
+  });
   composerForm.addEventListener('submit', handleComposerSubmit);
   composerForm.addEventListener('keydown', handleComposerKeydown);
 
-  document.querySelector('.rule-view-toggle').addEventListener('click', (event) => {
-    const button = event.target.closest('.rule-view-btn');
-    if (button) {
-      setRuleView(button.dataset.ruleView);
+  document.getElementById('manageRulesLink').addEventListener('click', (event) => {
+    event.preventDefault();
+    openManager();
+  });
+  document.getElementById('changeActiveSetupBtn').addEventListener('click', openActiveSetup);
+  document.getElementById('ruleScopeTabs').addEventListener('click', handleScopeTabClick);
+  document.getElementById('ruleScopeTabs').addEventListener('keydown', handleScopeTabKeydown);
+
+  document.getElementById('ruleListContainer').addEventListener('click', handleRuleListClick);
+  document.getElementById('masterSwitch').addEventListener('click', () => toggleMaster());
+  document.getElementById('resumeMasterBtn').addEventListener('click', resumeFromBanner);
+
+  onStorageChanged((changes) => {
+    const touchesRules = RULE_STORAGE_KEY in changes
+      || ACTIVATION_STORAGE_KEY in changes
+      || PROFILE_STORAGE_KEY in changes;
+
+    if (touchesRules && !state.headers.syncPaused) {
+      refreshFromStorage().catch((error) => {
+        console.error('Could not refresh header rules.', error);
+      });
     }
   });
-
-  const ruleList = document.getElementById('ruleListContainer');
-  ruleList.addEventListener('click', handleRuleListClick);
-  ruleList.addEventListener('submit', handleRuleFormSubmit);
-  ruleList.addEventListener('keydown', handleRuleFormKeydown);
-  document.getElementById('ruleSearchInput').addEventListener('input', handleRuleSearchInput);
 }
 
 export async function initializeHeaders(activeTab) {
   initializeCurrentSite(activeTab);
+  await refreshFromStorage();
+}
+
+async function refreshFromStorage() {
+  await loadActivation();
   state.headers.rules = await getStoredRules();
+  if (state.headers.editingId && !getScopedRules().some((rule) => rule.id === state.headers.editingId)) {
+    setHeaderComposerExpanded(false, { reset: true });
+  }
   renderRules();
+}
+
+async function loadActivation() {
+  try {
+    const stored = await storageLocalGet([PROFILE_STORAGE_KEY, ACTIVATION_STORAGE_KEY]);
+    const profiles = normalizeProfiles(stored[PROFILE_STORAGE_KEY]);
+    state.headers.profiles = profiles;
+    state.headers.activation = normalizeActivation(stored[ACTIVATION_STORAGE_KEY], {
+      profileIds: getProfileIds(profiles)
+    });
+  } catch (error) {
+    console.error('Could not read the activation state.', error);
+    state.headers.profiles = createDefaultProfiles();
+    state.headers.activation = createDefaultActivation();
+  }
+
+  state.headers.grantedOrigins = await readGrantedOrigins();
+}
+
+async function readGrantedOrigins() {
+  try {
+    return await getGrantedOrigins();
+  } catch (error) {
+    console.error('Could not read granted site access.', error);
+    return null;
+  }
+}
+
+function getActivation() {
+  return state.headers.activation || createDefaultActivation();
+}
+
+/**
+ * The popup only ever shows the profile in play. Rules parked in another
+ * profile are not applied here, so listing them would misrepresent the site.
+ */
+function getScopedRules() {
+  return filterRulesByProfile(state.headers.rules, getTargetProfileId(getActivation()));
+}
+
+async function toggleMaster(forceOn = false) {
+  const activation = getActivation();
+  const nextEnabled = forceOn || !activation.masterEnabled;
+
+  await commitActivation(
+    setMasterEnabled(activation, nextEnabled),
+    nextEnabled ? 'Header rules resumed.' : 'All header rules paused.'
+  );
+}
+
+async function resumeFromBanner() {
+  await toggleMaster(true);
+}
+
+async function commitActivation(nextActivation, message) {
+  const controls = [
+    document.getElementById('masterSwitch'),
+    document.getElementById('resumeMasterBtn')
+  ];
+
+  controls.forEach((control) => {
+    control.disabled = true;
+  });
+
+  state.headers.syncPaused = true;
+  try {
+    state.headers.activation = await setActivationState(nextActivation);
+    renderRules();
+    showStatus('headerStatus', message, 'success');
+  } catch (error) {
+    console.error(error);
+    renderRules();
+    showStatus('headerStatus', error.message || 'Could not change the ReqKit switch.', 'error');
+  } finally {
+    state.headers.syncPaused = false;
+    controls.forEach((control) => {
+      control.disabled = false;
+    });
+  }
+}
+
+function renderMasterSwitch() {
+  const activation = getActivation();
+  const status = getActivationStatus(activation);
+  const masterSwitch = document.getElementById('masterSwitch');
+
+  masterSwitch.setAttribute('aria-checked', String(activation.masterEnabled));
+  masterSwitch.setAttribute(
+    'aria-label',
+    activation.masterEnabled ? 'Pause all header rules' : 'Resume all header rules'
+  );
+  document.getElementById('masterSwitchLabel').textContent = activation.masterEnabled ? 'On' : 'Paused';
+
+  const banner = document.getElementById('masterPausedBanner');
+  banner.hidden = status === 'live';
+  if (status !== 'live') {
+    const parked = status === 'parked';
+    document.getElementById('masterPausedTitle').textContent = parked
+      ? 'No profile is active'
+      : 'All header rules are paused';
+    document.getElementById('masterPausedDetail').textContent = parked
+      ? `Resume to switch back to ${getProfileName(state.headers.profiles, getTargetProfileId(activation))}.`
+      : 'No headers are being applied to any site.';
+  }
+
+  document.querySelector('#headers-panel .content-stack')
+    .classList.toggle('is-master-paused', status !== 'live');
+}
+
+function renderActivationSummary() {
+  const display = getActivationDisplay(
+    state.headers.profiles,
+    getActivation()
+  );
+  document.getElementById('activeProfileName').textContent = display.profileName;
+  document.getElementById('activeUntilLabel').textContent = display.appliedUntil;
+}
+
+/**
+ * When the grant list could not be read, say nothing rather than flagging every
+ * rule as broken.
+ */
+function describeRule(rule) {
+  const grantedOrigins = state.headers.grantedOrigins;
+  return {
+    needsAccess: Boolean(grantedOrigins) && !isRuleGranted(rule, grantedOrigins)
+  };
+}
+
+function openManager() {
+  openOptionsPage().catch((error) => {
+    console.error('Could not open the ReqKit manager.', error);
+  });
+}
+
+function openActiveSetup() {
+  createTab({ url: getExtensionUrl(getManagerPath({ section: 'active-setup' })) }).catch((error) => {
+    console.error('Could not open the active setup.', error);
+  });
 }
 
 function handleRuleListClick(event) {
@@ -50,16 +256,16 @@ function handleRuleListClick(event) {
 
   switch (button.dataset.ruleAction) {
     case 'open-composer':
-      setHeaderComposerExpanded(true, { focusFirstField: true });
+      openCreateComposer();
       break;
-    case 'clear-search':
-      clearRuleSearch();
-      break;
-    case 'toggle-domain':
-      toggleDomainGroup(button.dataset.domain);
+    case 'open-manager':
+      openManager();
       break;
     case 'edit':
-      startEditingRule(Number(button.dataset.id));
+      openRuleEditor(Number(button.dataset.id));
+      break;
+    case 'toggle-domain':
+      toggleDomain(button.dataset.domain);
       break;
     case 'toggle':
       toggleRule(Number(button.dataset.id));
@@ -67,59 +273,31 @@ function handleRuleListClick(event) {
     case 'reveal':
       toggleRuleValueVisibility(Number(button.dataset.id));
       break;
+    case 'grant':
+      grantRuleAccess(Number(button.dataset.id));
+      break;
     case 'delete':
       confirmDeleteRule(Number(button.dataset.id));
-      break;
-    case 'cancel-edit':
-      state.headers.editingId = null;
-      renderRules();
       break;
     default:
       break;
   }
 }
 
-function handleRuleSearchInput(event) {
-  state.headers.searchQuery = event.target.value;
-  renderRules();
-}
-
-async function handleRuleFormSubmit(event) {
-  const form = event.target.closest('.rule-edit-form');
-  if (!form) {
+function openRuleEditor(id) {
+  const rule = getScopedRules().find((candidate) => candidate.id === id);
+  if (!rule) {
+    showStatus('headerStatus', 'That rule is no longer in the active profile.', 'error');
     return;
   }
 
-  event.preventDefault();
-  const id = Number(form.dataset.id);
-  const buttons = form.querySelectorAll('button');
-  const saveButton = form.querySelector('.save-edit-rule-btn');
-
-  buttons.forEach((button) => {
-    button.disabled = true;
-  });
-  saveButton.textContent = 'Saving…';
-
-  try {
-    await saveEditedRule(id);
-  } finally {
-    if (saveButton.isConnected) {
-      buttons.forEach((button) => {
-        button.disabled = false;
-      });
-      saveButton.textContent = 'Save changes';
-    }
-  }
-}
-
-function handleRuleFormKeydown(event) {
-  if (event.key !== 'Escape' || !event.target.closest('.rule-edit-form')) {
-    return;
-  }
-
-  event.preventDefault();
-  state.headers.editingId = null;
-  renderRules();
+  state.headers.editingId = id;
+  siteAccessPreflight.hide();
+  document.getElementById('domain').value = rule.domain;
+  document.getElementById('headerName').value = rule.headerName;
+  document.getElementById('headerValue').value = rule.headerValue;
+  configureComposer();
+  setHeaderComposerExpanded(true, { focusFirstField: true });
 }
 
 async function handleComposerSubmit(event) {
@@ -130,15 +308,18 @@ async function handleComposerSubmit(event) {
   }
 
   addButton.disabled = true;
-  addButton.textContent = 'Adding…';
+  addButton.textContent = state.headers.editingId ? 'Updating…' : 'Adding…';
 
   try {
-    if (await addRule()) {
+    const saved = state.headers.editingId
+      ? await saveEditedRule(state.headers.editingId)
+      : await addRule();
+    if (saved) {
       setHeaderComposerExpanded(false, { reset: true, returnFocus: true });
     }
   } finally {
     addButton.disabled = false;
-    addButton.textContent = 'Add rule';
+    configureComposer();
   }
 }
 
@@ -152,13 +333,24 @@ function handleComposerKeydown(event) {
 }
 
 function toggleHeaderComposer() {
-  setHeaderComposerExpanded(!state.headers.composerOpen, {
-    focusFirstField: !state.headers.composerOpen
-  });
+  if (state.headers.composerOpen) {
+    setHeaderComposerExpanded(false, { reset: true, returnFocus: true });
+    return;
+  }
+
+  openCreateComposer();
 }
 
 function cancelHeaderComposer() {
   setHeaderComposerExpanded(false, { reset: true, returnFocus: true });
+}
+
+function openCreateComposer() {
+  state.headers.editingId = null;
+  siteAccessPreflight.hide();
+  clearHeaderForm();
+  configureComposer();
+  setHeaderComposerExpanded(true, { focusFirstField: true });
 }
 
 function setHeaderComposerExpanded(expanded, {
@@ -168,15 +360,17 @@ function setHeaderComposerExpanded(expanded, {
 } = {}) {
   const composer = document.getElementById('headerComposer');
   const toggle = document.getElementById('headerComposerToggle');
-  const body = document.getElementById('headerComposerBody');
 
   state.headers.composerOpen = expanded;
-  composer.classList.toggle('is-open', expanded);
+  composer.hidden = !expanded;
   toggle.setAttribute('aria-expanded', String(expanded));
-  body.hidden = !expanded;
+  toggle.disabled = expanded || !state.headers.currentHostname;
 
   if (reset) {
+    state.headers.editingId = null;
+    siteAccessPreflight.hide();
     clearHeaderForm();
+    configureComposer();
   }
 
   if (focusFirstField && expanded) {
@@ -184,17 +378,22 @@ function setHeaderComposerExpanded(expanded, {
     const firstField = domainInput.value.trim()
       ? document.getElementById('headerName')
       : domainInput;
-    firstField.focus();
+    composer.scrollTop = 0;
+    firstField.focus({ preventScroll: true });
   } else if (returnFocus && !expanded) {
     toggle.focus();
   }
+}
+
+function configureComposer() {
+  const editing = Boolean(state.headers.editingId);
+  siteAccessPreflight.syncSubmitLabel(editing ? 'Update rule' : 'Add rule');
 }
 
 function initializeCurrentSite(activeTab) {
   const tabUrl = activeTab?.url || '';
   if (!/^https:\/\//i.test(tabUrl)) {
     state.headers.currentHostname = '';
-    state.headers.view = 'all';
     return;
   }
 
@@ -203,226 +402,42 @@ function initializeCurrentSite(activeTab) {
   document.getElementById('domain').value = state.headers.currentHostname;
 }
 
-function renderRules() {
-  const { rules, currentHostname, view, editingId } = state.headers;
-  const container = document.getElementById('ruleListContainer');
-  const conflictMap = createConflictMap(getActiveRuleConflicts(rules));
-  const conflictingIds = new Set(conflictMap.keys());
-  updateCurrentSiteControls();
-
-  const rulesForView = view === 'current' && currentHostname
-    ? filterRulesByHost(rules, currentHostname)
-    : rules;
-  const visibleRules = filterRulesBySearch(rulesForView, state.headers.searchQuery, view);
-
-  if (!visibleRules.length) {
-    container.innerHTML = getEmptyRulesMessage();
+function handleScopeTabClick(event) {
+  const tab = event.target.closest('[data-rule-scope]');
+  if (!tab || tab.disabled) {
     return;
   }
 
-  if (view === 'current') {
-    const sortedRules = sortRulesForDisplay(visibleRules, conflictingIds);
-    container.innerHTML = `
-      <div class="current-rule-list" aria-label="Rules for ${escapeHtml(currentHostname)}">
-        ${sortedRules.map((rule) => renderRuleRow(rule, conflictMap.get(rule.id) || [])).join('')}
-      </div>
-    `;
+  setRuleScope(tab.dataset.ruleScope);
+}
+
+function handleScopeTabKeydown(event) {
+  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
     return;
   }
 
-  const groups = sortDomainGroups(groupRulesByDomain(visibleRules), conflictingIds, currentHostname);
-  container.innerHTML = groups.map(({ domain, rules: domainRules }, index) => (
-    renderDomainGroup(domain, domainRules, index, conflictMap, editingId, currentHostname)
-  )).join('');
-}
-
-function renderDomainGroup(domain, domainRules, index, conflictMap, editingId, currentHostname) {
-  const conflictingIds = new Set(conflictMap.keys());
-  const sortedRules = sortRulesForDisplay(domainRules, conflictingIds);
-  const hasEditingRule = domainRules.some((rule) => rule.id === editingId);
-  const isCollapsed = state.headers.collapsedDomains.has(domain) && !hasEditingRule;
-  const activeCount = domainRules.filter((rule) => rule.enabled).length;
-  const pausedCount = domainRules.length - activeCount;
-  const conflictCount = domainRules.reduce((count, rule) => (
-    count + (conflictMap.get(rule.id)?.length || 0)
-  ), 0) / 2;
-  const groupId = `domainRuleGroup-${index}`;
-  const summary = [
-    activeCount ? `${activeCount} active` : '',
-    pausedCount ? `${pausedCount} paused` : ''
-  ].filter(Boolean).join(' · ');
-
-  return `
-    <section class="rule-group${conflictCount ? ' has-conflict' : ''}">
-      <button class="rule-group-toggle" type="button" data-rule-action="toggle-domain" data-domain="${escapeHtml(domain)}" aria-expanded="${String(!isCollapsed)}" aria-controls="${groupId}">
-        <span class="rule-group-heading">
-          <span class="rule-domain">${escapeHtml(domain)}</span>
-          ${domain === currentHostname ? '<span class="current-site-badge">Current site</span>' : ''}
-        </span>
-        <span class="rule-group-meta">
-          <span class="rule-group-summary">${summary}</span>
-          ${conflictCount ? `<span class="rule-group-conflict">${conflictCount} ${conflictCount === 1 ? 'conflict' : 'conflicts'}</span>` : ''}
-          <svg class="rule-group-chevron" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="m4.2 6.1 3.8 3.8 3.8-3.8 1.05 1.05L8 12 3.15 7.15 4.2 6.1Z"/></svg>
-        </span>
-      </button>
-      <div id="${groupId}" class="domain-rule-list"${isCollapsed ? ' hidden' : ''}>
-        ${sortedRules.map((rule) => renderRuleRow(rule, conflictMap.get(rule.id) || [])).join('')}
-      </div>
-    </section>
-  `;
-}
-
-function renderRuleRow(rule, conflictingRules) {
-  if (rule.id === state.headers.editingId) {
-    return renderRuleEditForm(rule);
-  }
-
-  const toggleTitle = `${rule.enabled ? 'Pause' : 'Enable'} ${rule.headerName} rule`;
-  const isSensitive = isSensitiveHeaderName(rule.headerName);
-  const isRevealed = state.headers.revealedRuleIds.has(rule.id);
-  const displayValue = isSensitive && !isRevealed ? '••••••••••••••••' : rule.headerValue;
-  const hasConflict = conflictingRules.length > 0;
-
-  return `
-    <article class="domain-rule-row${rule.enabled ? '' : ' is-paused'}${hasConflict ? ' has-conflict' : ''}">
-      <div class="domain-rule-content">
-        <div class="rule-row-head">
-          <div class="rule-identification">
-            <code class="rule-header-name">${escapeHtml(rule.headerName)}</code>
-          </div>
-          <div class="rule-row-controls">
-            <button class="rule-enable-control" type="button" role="switch" aria-checked="${String(rule.enabled)}" data-rule-action="toggle" data-id="${rule.id}" aria-label="${toggleTitle}" title="${toggleTitle}">
-              <span class="rule-switch-track" aria-hidden="true"><span class="rule-switch-thumb"></span></span>
-              <span class="rule-enable-label">${rule.enabled ? 'On' : 'Off'}</span>
-            </button>
-            <button class="rule-action-btn" type="button" data-rule-action="edit" data-id="${rule.id}" aria-label="Edit ${escapeHtml(rule.headerName)} rule" title="Edit rule"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="m11.85 1.65 2.5 2.5a1.2 1.2 0 0 1 0 1.7l-7.8 7.8-4.05.85.85-4.05 7.8-7.8a1.2 1.2 0 0 1 1.7 0ZM4.7 11.2l-.35 1.45 1.45-.35 7.45-7.45-2.5-2.5L4.7 11.2Z"/></svg></button>
-            <button class="rule-action-btn danger" type="button" data-rule-action="delete" data-id="${rule.id}" aria-label="Delete ${escapeHtml(rule.headerName)} rule" title="Delete rule"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.25 2.5h3.5l.5 1H13a.75.75 0 0 1 0 1.5h-.6l-.55 7.14A1.5 1.5 0 0 1 10.35 13.5h-4.7a1.5 1.5 0 0 1-1.5-1.36L3.6 5H3a.75.75 0 0 1 0-1.5h2.75l.5-1Zm-.46 2.5.5 6.5h3.42l.5-6.5H5.79Z"/></svg></button>
-          </div>
-        </div>
-        <div class="rule-value-row">
-          <code class="rule-header-value${isSensitive && !isRevealed ? ' is-masked' : ''}">${escapeHtml(displayValue)}</code>
-          ${isSensitive ? `<button class="rule-value-btn" type="button" data-rule-action="reveal" data-id="${rule.id}" aria-label="${isRevealed ? 'Hide' : 'Reveal'} ${escapeHtml(rule.headerName)} value" title="${isRevealed ? 'Hide value' : 'Reveal value'}"><svg viewBox="0 0 16 16" aria-hidden="true">${isRevealed ? '<path fill="currentColor" d="m2.3 1.25 12.45 12.46-1.06 1.06-2.2-2.2A7.94 7.94 0 0 1 8 13.4c-3.65 0-6.25-2.7-7.2-4.14a2.28 2.28 0 0 1 0-2.52A10.4 10.4 0 0 1 3.2 4.1L1.24 2.31 2.3 1.25Zm1.99 3.94A8.8 8.8 0 0 0 2.05 7.5a.78.78 0 0 0 0 .98C2.85 9.67 4.89 11.9 8 11.9c.83 0 1.58-.16 2.25-.42l-1.2-1.2A2.5 2.5 0 0 1 5.72 6.95L4.29 5.19ZM8 2.6c3.65 0 6.25 2.7 7.2 4.14.5.76.5 1.76 0 2.52a10.7 10.7 0 0 1-1.53 1.85l-1.06-1.06a9.1 9.1 0 0 0 1.34-1.57.78.78 0 0 0 0-.98C13.15 6.33 11.11 4.1 8 4.1c-.36 0-.7.03-1.03.08L5.7 2.91A8.2 8.2 0 0 1 8 2.6Z"/>' : '<path fill="currentColor" d="M8 2.6c3.65 0 6.25 2.7 7.2 4.14.5.76.5 1.76 0 2.52C14.25 10.7 11.65 13.4 8 13.4S1.75 10.7.8 9.26a2.28 2.28 0 0 1 0-2.52C1.75 5.3 4.35 2.6 8 2.6Zm0 1.5c-3.11 0-5.15 2.23-5.95 3.4a.78.78 0 0 0 0 .98C2.85 9.67 4.89 11.9 8 11.9s5.15-2.23 5.95-3.42a.78.78 0 0 0 0-.98C13.15 6.33 11.11 4.1 8 4.1Zm0 1.4a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5Zm0 1.5a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z"/>'}</svg></button>` : ''}
-        </div>
-        ${hasConflict ? renderConflictNotice(conflictingRules) : ''}
-      </div>
-    </article>
-  `;
-}
-
-function renderConflictNotice(conflictingRules) {
-  const detail = conflictingRules.length === 1
-    ? 'Overlaps with another active rule using a different value.'
-    : `Overlaps with ${conflictingRules.length} active rules using different values.`;
-
-  return `
-    <div class="rule-conflict-notice" role="note">
-      <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M7.14 2.1a1 1 0 0 1 1.72 0l5.72 9.9a1 1 0 0 1-.86 1.5H2.28a1 1 0 0 1-.86-1.5l5.72-9.9ZM8 5a.75.75 0 0 0-.75.75v3a.75.75 0 0 0 1.5 0v-3A.75.75 0 0 0 8 5Zm0 6a.88.88 0 1 0 0 1.75A.88.88 0 0 0 8 11Z"/></svg>
-      <span><strong>Conflict.</strong> ${escapeHtml(detail)}</span>
-    </div>
-  `;
-}
-
-function createConflictMap(conflicts) {
-  const conflictMap = new Map();
-
-  conflicts.forEach(({ leftRule, rightRule }) => {
-    conflictMap.set(leftRule.id, [...(conflictMap.get(leftRule.id) || []), rightRule]);
-    conflictMap.set(rightRule.id, [...(conflictMap.get(rightRule.id) || []), leftRule]);
-  });
-
-  return conflictMap;
-}
-
-function filterRulesBySearch(rules, query, view) {
-  const normalizedQuery = view === 'all' ? String(query || '').trim().toLowerCase() : '';
-  if (!normalizedQuery) {
-    return rules;
-  }
-
-  return rules.filter((rule) => [
-    rule.domain,
-    rule.headerName
-  ].some((value) => String(value).toLowerCase().includes(normalizedQuery)));
-}
-
-export function sortRulesForDisplay(rules, conflictingIds = new Set()) {
-  return [...rules].sort((leftRule, rightRule) => {
-    const conflictDifference = Number(conflictingIds.has(rightRule.id)) - Number(conflictingIds.has(leftRule.id));
-    if (conflictDifference) {
-      return conflictDifference;
-    }
-
-    return Number(rightRule.enabled) - Number(leftRule.enabled);
-  });
-}
-
-function sortDomainGroups(groups, conflictingIds, currentHostname) {
-  return [...groups].sort((leftGroup, rightGroup) => {
-    const leftHasConflict = leftGroup.rules.some((rule) => conflictingIds.has(rule.id));
-    const rightHasConflict = rightGroup.rules.some((rule) => conflictingIds.has(rule.id));
-    const conflictDifference = Number(rightHasConflict) - Number(leftHasConflict);
-    if (conflictDifference) {
-      return conflictDifference;
-    }
-
-    const currentSiteDifference = Number(rightGroup.domain === currentHostname) - Number(leftGroup.domain === currentHostname);
-    if (currentSiteDifference) {
-      return currentSiteDifference;
-    }
-
-    return leftGroup.domain.localeCompare(rightGroup.domain);
-  });
-}
-
-export function isSensitiveHeaderName(headerName) {
-  return /(authorization|cookie|token|secret|api[-_]?key)/i.test(String(headerName || ''));
-}
-
-function renderRuleEditForm(rule) {
-  return `
-    <div class="domain-rule-row">
-      <form class="rule-edit-form" data-id="${rule.id}">
-        <div class="rule-edit-grid">
-          <div class="rule-edit-field">
-            <label for="editDomain-${rule.id}">Exact HTTPS host</label>
-            <input id="editDomain-${rule.id}" type="text" value="${escapeHtml(rule.domain)}" autocapitalize="off" autocorrect="off" spellcheck="false">
-          </div>
-          <div class="rule-edit-field">
-            <label for="editHeaderName-${rule.id}">Header name</label>
-            <input id="editHeaderName-${rule.id}" type="text" value="${escapeHtml(rule.headerName)}" autocapitalize="off" autocorrect="off" spellcheck="false">
-          </div>
-          <div class="rule-edit-field">
-            <label for="editHeaderValue-${rule.id}">Header value</label>
-            <input id="editHeaderValue-${rule.id}" type="text" value="${escapeHtml(rule.headerValue)}" autocapitalize="off" autocorrect="off" spellcheck="false">
-          </div>
-        </div>
-        <div id="ruleEditStatus-${rule.id}" class="status-msg rule-edit-status" aria-live="polite"></div>
-        <div class="action-row rule-edit-actions">
-          <button class="primary-btn save-edit-rule-btn" type="submit">Save changes</button>
-          <button class="secondary-btn" type="button" data-rule-action="cancel-edit" data-id="${rule.id}">Cancel</button>
-        </div>
-      </form>
-    </div>
-  `;
-}
-
-function startEditingRule(id) {
-  const rule = state.headers.rules.find((candidate) => candidate.id === id);
-  if (!rule) {
+  const tabs = [...event.currentTarget.querySelectorAll('[data-rule-scope]:not(:disabled)')];
+  const currentIndex = tabs.indexOf(event.target.closest('[data-rule-scope]'));
+  if (currentIndex < 0 || tabs.length < 2) {
     return;
   }
 
-  state.headers.editingId = id;
-  state.headers.collapsedDomains.delete(rule.domain);
+  event.preventDefault();
+  const nextIndex = event.key === 'Home'
+    ? 0
+    : event.key === 'End'
+      ? tabs.length - 1
+      : (currentIndex + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+  setRuleScope(tabs[nextIndex].dataset.ruleScope);
+  tabs[nextIndex].focus();
+}
+
+function setRuleScope(scope) {
+  state.headers.scope = scope === 'all' ? 'all' : 'site';
   renderRules();
-  focusEditDomain(id);
 }
 
-function toggleDomainGroup(domain) {
-  if (!domain) {
-    return;
-  }
-
+function toggleDomain(domain) {
   if (state.headers.collapsedDomains.has(domain)) {
     state.headers.collapsedDomains.delete(domain);
   } else {
@@ -431,131 +446,129 @@ function toggleDomainGroup(domain) {
   renderRules();
 }
 
-function toggleRuleValueVisibility(id) {
-  if (state.headers.revealedRuleIds.has(id)) {
-    state.headers.revealedRuleIds.delete(id);
-  } else {
-    state.headers.revealedRuleIds.add(id);
-  }
-  renderRules();
-}
+function renderRules() {
+  const { rules, currentHostname } = state.headers;
+  const container = document.getElementById('ruleListContainer');
+  const conflictMap = createConflictMap(getActiveRuleConflicts(rules, getActivation()));
+  const conflictingIds = new Set(conflictMap.keys());
+  renderMasterSwitch();
+  renderActivationSummary();
+  updateCurrentSiteControls();
+  configureComposer();
 
-function confirmDeleteRule(id) {
-  const rule = state.headers.rules.find((candidate) => candidate.id === id);
-  if (!rule) {
+  const scopedRules = getScopedRules();
+  const visibleRules = state.headers.scope === 'all'
+    ? scopedRules
+    : (currentHostname ? filterRulesByHost(scopedRules, currentHostname) : []);
+  container.classList.toggle('is-empty', !visibleRules.length);
+  if (!visibleRules.length) {
+    container.innerHTML = getEmptyRulesMessage();
     return;
   }
 
-  if (globalThis.confirm(`Delete ${rule.headerName} for ${rule.domain}?`)) {
-    deleteRule(id);
-  }
-}
-
-function clearRuleSearch() {
-  state.headers.searchQuery = '';
-  const searchInput = document.getElementById('ruleSearchInput');
-  searchInput.value = '';
-  renderRules();
-  searchInput.focus();
-}
-
-function setRuleView(nextView) {
-  if (!['all', 'current'].includes(nextView)) {
+  if (state.headers.scope === 'all') {
+    const groups = sortDomainGroups(
+      groupRulesByDomain(visibleRules),
+      conflictingIds,
+      currentHostname
+    );
+    container.innerHTML = `<div class="all-rule-groups">${groups.map((group, index) => renderDomainGroup(
+      group.domain,
+      group.rules,
+      {
+        index,
+        conflictMap,
+        collapsed: state.headers.collapsedDomains.has(group.domain),
+        currentHostname,
+        revealedRuleIds: state.headers.revealedRuleIds,
+        describeRule
+      }
+    )).join('')}</div>`;
     return;
   }
 
-  if (nextView === 'current' && !state.headers.currentHostname) {
-    return;
-  }
-
-  state.headers.view = nextView;
-  state.headers.editingId = null;
-
-  const domainInput = document.getElementById('domain');
-  if (nextView === 'current' && !domainInput.value.trim()) {
-    domainInput.value = state.headers.currentHostname;
-  }
-
-  renderRules();
+  const sortedRules = sortRulesForDisplay(visibleRules, conflictingIds);
+  container.innerHTML = `
+    <div class="current-rule-list" aria-label="Rules for ${escapeHtml(currentHostname)}">
+      ${sortedRules.map((rule) => renderRuleRow(rule, {
+    conflictingRules: conflictMap.get(rule.id) || [],
+    revealed: state.headers.revealedRuleIds.has(rule.id),
+    ...describeRule(rule)
+  })).join('')}
+    </div>
+  `;
 }
 
 function updateCurrentSiteControls() {
-  const { rules, currentHostname, view } = state.headers;
-  const currentSiteButton = document.getElementById('currentSiteViewBtn');
-  const allHostsButton = document.getElementById('allHostsViewBtn');
+  const { rules, currentHostname } = state.headers;
   const currentSiteHost = document.getElementById('currentSiteHost');
-  const currentSiteToolbar = document.querySelector('.current-site-toolbar');
-  const currentSiteCount = rules.filter((rule) => rule.domain === currentHostname).length;
+  const scopedRules = getScopedRules();
+  const currentSiteCount = currentHostname
+    ? filterRulesByHost(scopedRules, currentHostname).length
+    : 0;
+  const currentSiteTab = document.getElementById('currentSiteTab');
 
-  currentSiteHost.textContent = currentHostname || 'Unavailable on this page';
+  currentSiteHost.textContent = currentHostname || 'Current site unavailable';
   currentSiteHost.classList.toggle('is-unavailable', !currentHostname);
-  currentSiteToolbar.classList.toggle('is-unavailable', !currentHostname);
+  document.getElementById('currentSiteRuleCount').textContent = currentSiteCount;
+  document.getElementById('allRulesCount').textContent = scopedRules.length;
+  currentSiteTab.disabled = !currentHostname;
 
-  currentSiteButton.disabled = !currentHostname;
-  currentSiteButton.classList.toggle('active', view === 'current');
-  currentSiteButton.setAttribute('aria-pressed', String(view === 'current'));
-  currentSiteButton.setAttribute('aria-label', currentHostname
-    ? `Show ${currentSiteCount} rules for ${currentHostname}`
-    : 'Current site is unavailable');
-  document.getElementById('currentSiteViewCount').textContent = String(currentSiteCount);
-
-  allHostsButton.classList.toggle('active', view === 'all');
-  allHostsButton.setAttribute('aria-pressed', String(view === 'all'));
-  allHostsButton.setAttribute('aria-label', `Show all ${rules.length} rules`);
-  document.getElementById('allHostsViewCount').textContent = String(rules.length);
-
-  document.getElementById('headerComposerHint').textContent = view === 'current' && currentHostname
-    ? `For ${currentHostname}`
-    : 'Choose an exact host';
-
-  const searchContainer = document.getElementById('ruleSearchContainer');
-  const searchInput = document.getElementById('ruleSearchInput');
-  const searchEnabled = view === 'all' && rules.length >= 8;
-  searchContainer.hidden = !searchEnabled;
-  if (!searchEnabled) {
-    state.headers.searchQuery = '';
+  if (!currentHostname && state.headers.scope === 'site') {
+    state.headers.scope = 'all';
   }
-  if (searchInput.value !== state.headers.searchQuery) {
-    searchInput.value = state.headers.searchQuery;
-  }
+
+  document.querySelectorAll('[data-rule-scope]').forEach((tab) => {
+    const selected = tab.dataset.ruleScope === state.headers.scope;
+    tab.setAttribute('aria-selected', String(selected));
+    tab.tabIndex = selected ? 0 : -1;
+  });
+
+  document.getElementById('headerComposerToggle').disabled = !currentHostname || state.headers.composerOpen;
+
+  document.getElementById('manageRulesLink').textContent = getManagerLinkLabel(rules.length);
 }
 
 function getEmptyRulesMessage() {
-  const { currentHostname, searchQuery, view } = state.headers;
-  if (view === 'all' && searchQuery.trim()) {
+  const { currentHostname, rules } = state.headers;
+
+  if (state.headers.scope === 'all') {
     return `
       <div class="empty-state">
-        <div class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 16 16"><path fill="currentColor" d="M7 2a5 5 0 1 0 3.16 8.87l2.98 2.98 1.06-1.06-2.98-2.98A5 5 0 0 0 7 2Zm-3.5 5a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0Z"/></svg></div>
-        <p class="empty-state-title">No matching rules</p>
-        <p>Try a different host or header.</p>
-        <button class="secondary-btn empty-state-action" type="button" data-rule-action="clear-search">Clear search</button>
+        <div class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 16 16"><path fill="currentColor" d="M7.25 2.5h1.5v4.75h4.75v1.5H8.75v4.75h-1.5V8.75H2.5v-1.5h4.75V2.5Z"/></svg></div>
+        <p class="empty-state-title">No rules in this profile</p>
+        <p>Add a rule for the current HTTPS site, or manage profiles and rules.</p>
       </div>
     `;
   }
 
-  if (view === 'current' && currentHostname) {
+  if (currentHostname) {
     return `
       <div class="empty-state">
         <div class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 16 16"><path fill="currentColor" d="M7.25 2.5h1.5v4.75h4.75v1.5H8.75v4.75h-1.5V8.75H2.5v-1.5h4.75V2.5Z"/></svg></div>
         <p class="empty-state-title">No rules for <code>${escapeHtml(currentHostname)}</code></p>
         <p>Add a rule to modify requests sent to this HTTPS host.</p>
-        <button class="primary-btn empty-state-action" type="button" data-rule-action="open-composer">Add rule for this site</button>
       </div>
     `;
   }
 
   return `
     <div class="empty-state">
-      <div class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 16 16"><path fill="currentColor" d="M7.25 2.5h1.5v4.75h4.75v1.5H8.75v4.75h-1.5V8.75H2.5v-1.5h4.75V2.5Z"/></svg></div>
-      <p class="empty-state-title">No header rules yet</p>
-      <p>Add your first exact-host rule.</p>
-      <button class="primary-btn empty-state-action" type="button" data-rule-action="open-composer">Add header rule</button>
+      <div class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 16 16"><path fill="currentColor" d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm7.25-3.5h1.5V6h-1.5V4.5Zm0 3h1.5v4h-1.5v-4Z"/></svg></div>
+      <p class="empty-state-title">No site to work with</p>
+      <p>Open an HTTPS page to add or review its header rules.</p>
+      ${rules.length ? '<button class="secondary-btn empty-state-action" type="button" data-rule-action="open-manager">Open the rule manager</button>' : ''}
     </div>
   `;
 }
 
 async function addRule() {
-  const validation = validateRuleDraft(readCreateDraft(), state.headers.rules);
+  const activation = getActivation();
+  const profileId = getTargetProfileId(activation);
+  const validation = validateRuleDraft(readCreateDraft(), state.headers.rules, {
+    activation,
+    profileId
+  });
   if (!validation.ok) {
     showStatus('headerStatus', validation.error, 'error');
     return false;
@@ -564,21 +577,99 @@ async function addRule() {
   const newRule = {
     id: getNextRuleId(state.headers.rules),
     ...validation.rule,
-    enabled: true
+    enabled: true,
+    profileId
   };
   const updatedRules = [
     ...state.headers.rules,
     newRule
   ];
 
+  const needsAccess = !isRuleGranted(newRule, state.headers.grantedOrigins);
+  if (needsAccess && !siteAccessPreflight.isReadyFor(newRule)) {
+    siteAccessPreflight.show(newRule);
+    return false;
+  }
+
   try {
-    await ensureRulePermission(newRule);
-    await persistRules(updatedRules);
-    showStatus('headerStatus', 'Header rule added.', 'success');
+    if (needsAccess) {
+      const result = await saveRuleBeforePermissionPrompt(newRule, updatedRules, {
+        persistRules,
+        requestPermission: requestOriginPermission
+      });
+      state.headers.grantedOrigins = await readGrantedOrigins();
+
+      if (!result.granted) {
+        if (result.permissionError) {
+          console.error('Could not request site access.', result.permissionError);
+        }
+        renderRules();
+        showStatus(
+          'headerStatus',
+          `Rule saved, but site access to https://${newRule.domain} was not granted.`,
+          'error'
+        );
+        return true;
+      }
+
+      // Re-commit with the refreshed grant list when the popup remains open.
+      // The background permission listener covers the popup-close case.
+      await persistRules(state.headers.rules);
+    } else {
+      await persistRules(updatedRules);
+    }
+
+    showStatus(
+      'headerStatus',
+      needsAccess ? 'Site access granted and rule added.' : 'Header rule added.',
+      'success'
+    );
     return true;
   } catch (error) {
     console.error(error);
     showStatus('headerStatus', error.message || 'Chrome rejected the new rule.', 'error');
+    return false;
+  }
+}
+
+async function saveEditedRule(id) {
+  const currentRule = state.headers.rules.find((rule) => rule.id === id);
+  if (!currentRule) {
+    showStatus('headerStatus', 'That rule no longer exists.', 'error');
+    return false;
+  }
+
+  const profileId = getTargetProfileId(getActivation());
+  const validation = validateRuleDraft(readCreateDraft(), state.headers.rules, {
+    excludeId: id,
+    enabled: currentRule.enabled,
+    activation: getActivation(),
+    profileId
+  });
+  if (!validation.ok) {
+    showStatus('headerStatus', validation.error, 'error');
+    return false;
+  }
+
+  const updatedRules = state.headers.rules.map((rule) => (
+    rule.id === id ? { ...rule, ...validation.rule, profileId } : rule
+  ));
+  const updatedRule = updatedRules.find((rule) => rule.id === id);
+
+  try {
+    if (updatedRule.enabled) {
+      await ensureRulePermission(updatedRule);
+    }
+    await persistRules(updatedRules);
+    if (currentRule.domain !== updatedRule.domain) {
+      await releaseUnusedPermission(currentRule, updatedRules);
+    }
+    state.headers.revealedRuleIds.delete(id);
+    showStatus('headerStatus', 'Header rule updated.', 'success');
+    return true;
+  } catch (error) {
+    console.error(error);
+    showStatus('headerStatus', error.message || 'Could not update that rule.', 'error');
     return false;
   }
 }
@@ -593,7 +684,7 @@ async function toggleRule(id) {
     const conflictingRule = findActiveRuleConflict(
       { ...currentRule, enabled: true },
       state.headers.rules,
-      { excludeId: id }
+      { excludeId: id, activation: getActivation() }
     );
     if (conflictingRule) {
       showStatus('headerStatus', getRuleConflictMessage(conflictingRule), 'error');
@@ -623,6 +714,22 @@ async function toggleRule(id) {
   }
 }
 
+async function confirmDeleteRule(id) {
+  const rule = state.headers.rules.find((candidate) => candidate.id === id);
+  if (!rule) {
+    return;
+  }
+
+  const confirmed = await confirmDestructiveAction({
+    title: `Delete ${rule.headerName}?`,
+    message: `The rule for ${rule.domain} will be permanently removed.`,
+    confirmLabel: 'Delete rule'
+  });
+  if (confirmed) {
+    await deleteRule(id);
+  }
+}
+
 async function deleteRule(id) {
   const ruleToDelete = state.headers.rules.find((rule) => rule.id === id);
   if (!ruleToDelete) {
@@ -641,45 +748,30 @@ async function deleteRule(id) {
   }
 }
 
-async function saveEditedRule(id) {
-  const statusId = `ruleEditStatus-${id}`;
-  const currentRule = state.headers.rules.find((rule) => rule.id === id);
-  if (!currentRule) {
-    state.headers.editingId = null;
-    renderRules();
-    showStatus('headerStatus', 'That rule no longer exists.', 'error');
+function toggleRuleValueVisibility(id) {
+  if (state.headers.revealedRuleIds.has(id)) {
+    state.headers.revealedRuleIds.delete(id);
+  } else {
+    state.headers.revealedRuleIds.add(id);
+  }
+  renderRules();
+}
+
+async function grantRuleAccess(id) {
+  const rule = state.headers.rules.find((candidate) => candidate.id === id);
+  if (!rule) {
     return;
   }
-
-  const validation = validateRuleDraft(readEditDraft(id), state.headers.rules, {
-    excludeId: id,
-    enabled: currentRule.enabled
-  });
-  if (!validation.ok) {
-    showStatus(statusId, validation.error, 'error');
-    return;
-  }
-
-  const updatedRules = state.headers.rules.map((rule) => (
-    rule.id === id ? { ...rule, ...validation.rule } : rule
-  ));
-  const updatedRule = updatedRules.find((rule) => rule.id === id);
 
   try {
-    if (updatedRule.enabled) {
-      await ensureRulePermission(updatedRule);
-    }
-    state.headers.editingId = null;
-    state.headers.revealedRuleIds.delete(id);
-    await persistRules(updatedRules);
-    if (currentRule.domain !== updatedRule.domain) {
-      await releaseUnusedPermission(currentRule, updatedRules);
-    }
-    showStatus('headerStatus', 'Header rule updated.', 'success');
+    await ensureRulePermission(rule);
+    state.headers.grantedOrigins = await readGrantedOrigins();
+    // Re-commit so the worker rebuilds the rule set now that access exists.
+    await persistRules(state.headers.rules);
+    showStatus('headerStatus', `Site access granted for ${rule.domain}.`, 'success');
   } catch (error) {
-    state.headers.editingId = id;
     console.error(error);
-    showStatus(statusId, error.message || 'Could not update that rule.', 'error');
+    showStatus('headerStatus', error.message || 'Chrome denied site access.', 'error');
   }
 }
 
@@ -702,9 +794,18 @@ async function releaseUnusedPermission(rule, remainingRules) {
   }
 }
 
+/**
+ * The storage listener would otherwise fire on this page's own write and reset
+ * transient UI such as revealed values.
+ */
 async function persistRules(rules) {
-  state.headers.rules = await commitRules(rules);
-  renderRules();
+  state.headers.syncPaused = true;
+  try {
+    state.headers.rules = await commitRules(rules);
+    renderRules();
+  } finally {
+    state.headers.syncPaused = false;
+  }
 }
 
 function readCreateDraft() {
@@ -715,24 +816,8 @@ function readCreateDraft() {
   };
 }
 
-function readEditDraft(id) {
-  return {
-    domain: document.getElementById(`editDomain-${id}`).value,
-    headerName: document.getElementById(`editHeaderName-${id}`).value,
-    headerValue: document.getElementById(`editHeaderValue-${id}`).value
-  };
-}
-
 function clearHeaderForm() {
-  document.getElementById('domain').value = state.headers.view === 'current'
-    ? state.headers.currentHostname
-    : '';
+  document.getElementById('domain').value = state.headers.currentHostname;
   document.getElementById('headerName').value = '';
   document.getElementById('headerValue').value = '';
-}
-
-function focusEditDomain(id) {
-  const domainInput = document.getElementById(`editDomain-${id}`);
-  domainInput?.focus();
-  domainInput?.select();
 }

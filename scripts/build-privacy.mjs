@@ -26,7 +26,8 @@ async function writeExtensionPrivacyPage(target, renderedBody) {
 </head>
 <body>
   <main>
-    <header><img src="../icons/reqkit-128.png" width="64" height="64" alt="ReqKit"><div><span class="eyebrow">ReqKit</span><span>Privacy and data use</span></div></header>
+    <header><img src="../icons/reqkit-128.png" width="64" height="64" alt="ReqKit"><div><span class="eyebrow">ReqKit</span><span>Request-header privacy</span></div></header>
+    <span class="purpose-badge">Built for API and web-environment testing</span>
     ${renderedBody}
   </main>
 </body>
@@ -42,12 +43,14 @@ async function writeDocsPrivacyPage(target, renderedBody) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Learn how ReqKit handles URLs, request headers, Chrome permissions, and locally stored settings.">
+  <meta name="description" content="Learn how ReqKit handles request headers, Chrome permissions, and locally stored settings.">
   <meta name="theme-color" content="#eff6ff">
   <meta property="og:title" content="ReqKit Privacy Policy">
   <meta property="og:description" content="A clear account of ReqKit's local storage, permissions, and data handling.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://ranjanjharavi.github.io/ReqKit/privacy-policy.html">
+  <meta property="og:image" content="https://ranjanjharavi.github.io/ReqKit/assets/reqkit-headers-screenshot.png">
+  <meta property="og:image:alt" content="ReqKit showing exact-host request-header rules">
   <link rel="canonical" href="https://ranjanjharavi.github.io/ReqKit/privacy-policy.html">
   <link rel="icon" type="image/png" href="assets/reqkit-128.png">
   <link rel="stylesheet" href="assets/site.css">
@@ -72,9 +75,10 @@ async function writeDocsPrivacyPage(target, renderedBody) {
   <main class="privacy-main section-shell">
     <section class="privacy-hero">
       <div class="privacy-hero-copy">
-        <span class="section-kicker">Privacy &amp; data use</span>
+        <span class="section-kicker">Request-header privacy</span>
         <h1>Clear, local, user-controlled.</h1>
-        <p>ReqKit does not send data to its developer. Settings stay in Chrome, while URLs and headers reach destinations only through features you intentionally use.</p>
+        <p>ReqKit does not send data to its developer. Request-header profiles stay in Chrome, while configured values reach only the exact HTTPS destinations you approve.</p>
+        <span class="purpose-badge">Built for API and web-environment testing</span>
       </div>
       <div class="privacy-hero-mark" aria-hidden="true">
         <svg viewBox="0 0 64 64"><path d="M32 7 13 15v14c0 13 7.5 22.5 19 28 11.5-5.5 19-15 19-28V15L32 7Z"/><path d="m23 32 6 6 13-15"/></svg>
@@ -83,8 +87,8 @@ async function writeDocsPrivacyPage(target, renderedBody) {
 
     <section class="privacy-highlights" aria-label="Privacy highlights">
       <article class="privacy-highlight"><strong>No analytics</strong><span>No telemetry, advertising, account system, or developer-operated API.</span></article>
-      <article class="privacy-highlight"><strong>Local Chrome storage</strong><span>Your URL recipe, header rules, and privacy choice stay in <code>chrome.storage.local</code>.</span></article>
-      <article class="privacy-highlight"><strong>On-demand site access</strong><span>Header permissions are requested for exact HTTPS hosts that you choose.</span></article>
+      <article class="privacy-highlight"><strong>Local Chrome storage</strong><span>Your profiles, activation settings, header rules, and privacy choice stay in <code>chrome.storage.local</code>.</span></article>
+      <article class="privacy-highlight"><strong>On-demand site access</strong><span>Chrome asks for access only to the exact HTTPS hosts that you choose.</span></article>
     </section>
 
     <div class="privacy-layout">
@@ -109,7 +113,7 @@ async function writeDocsPrivacyPage(target, renderedBody) {
   <footer class="site-footer">
     <div class="footer-shell">
       <a class="brand" href="./"><img src="assets/reqkit-128.png" width="32" height="32" alt=""><span>ReqKit</span></a>
-      <p>Developer request tools with a deliberately small footprint.</p>
+      <p>Focused request-header tooling for API and web-environment testing.</p>
       <div class="footer-links"><a href="privacy-policy.html">Privacy</a><a href="https://github.com/ranjanjharavi/ReqKit/issues">Support</a><a href="https://github.com/ranjanjharavi/ReqKit">Source</a></div>
     </div>
   </footer>
@@ -191,13 +195,14 @@ function slugify(value) {
 
 function getExtensionStyles() {
   return `
-:root{color-scheme:light;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#0f172a;background:#eff6ff}
+:root{color-scheme:light;--blue:#2563eb;--blue-deep:#1d4ed8;--blue-soft:#eff6ff;--border:#bfdbfe;--ink:#0f172a;--ink-soft:#334155;--muted:#64748b;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);background:var(--blue-soft)}
 *{box-sizing:border-box}body{margin:0;padding:40px 20px;background:linear-gradient(145deg,#eaf3ff,#f8fbff 48%,#eaf2ff)}
-main{max-width:760px;margin:0 auto;padding:40px;border:1px solid #bfdbfe;border-radius:18px;background:#fff;box-shadow:0 24px 70px rgba(30,64,175,.13)}
-header{display:flex;align-items:center;gap:16px;padding-bottom:22px;border-bottom:1px solid #dbeafe;color:#64748b;font-size:13px}header img{border-radius:14px}
-.eyebrow{display:block;margin-bottom:4px;color:#2563eb;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+main{max-width:760px;margin:0 auto;padding:40px;border:1px solid var(--border);border-radius:18px;background:#fff;box-shadow:0 24px 70px rgba(30,64,175,.13)}
+header{display:flex;align-items:center;gap:16px;padding-bottom:22px;border-bottom:1px solid #dbeafe;color:var(--muted);font-size:13px}header img{border-radius:14px}
+.eyebrow{display:block;margin-bottom:4px;color:var(--blue);font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.purpose-badge{display:inline-flex;margin-top:20px;padding:7px 10px;border:1px solid var(--border);border-radius:12px;background:var(--blue-soft);color:var(--blue-deep);font-size:11px;font-weight:700;line-height:1.35}
 h1{margin:28px 0 4px;font-size:30px;letter-spacing:-.02em}h1+p{margin-top:0;color:#64748b;font-size:13px}h2{margin:30px 0 10px;font-size:18px}
-p,li{color:#334155;font-size:15px;line-height:1.65}li+li{margin-top:8px}code{padding:2px 5px;border-radius:5px;background:#eff6ff;color:#1e40af}a{color:#1d4ed8}
+p,li{color:var(--ink-soft);font-size:15px;line-height:1.65}li+li{margin-top:8px}code{padding:2px 5px;border-radius:5px;background:var(--blue-soft);color:#1e40af;overflow-wrap:anywhere}a{color:var(--blue-deep)}
 @media(max-width:600px){body{padding:0}main{padding:26px 20px;border:0;border-radius:0}}
 `;
 }

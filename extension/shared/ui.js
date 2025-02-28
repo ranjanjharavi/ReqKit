@@ -5,10 +5,11 @@ export function showStatus(elementId, message, type) {
   }
 
   element.textContent = message;
-  element.className = `status-msg visible ${type}`;
+  element.classList.remove('visible', 'success', 'error');
+  element.classList.add('visible', type);
   globalThis.clearTimeout(element._statusTimer);
   element._statusTimer = globalThis.setTimeout(() => {
-    element.className = 'status-msg';
+    element.classList.remove('visible', 'success', 'error');
   }, 2800);
 }
 

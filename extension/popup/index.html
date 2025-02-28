@@ -11,172 +11,121 @@
     <img class="privacy-gate-icon" src="../icons/reqkit-128.png" width="72" height="72" alt="ReqKit">
     <span class="privacy-gate-kicker">Before you begin</span>
     <h1 id="privacyGateTitle">Choose when ReqKit handles your data</h1>
-    <p>ReqKit reads the active tab URL locally and stores your default URL recipe and header rules in this Chrome profile. Query values are added only when you transform a URL; header values are sent only to exact HTTPS sites you approve.</p>
-    <p>ReqKit has no analytics or developer server. Query values may be visible in browser and destination logs.</p>
+    <p>ReqKit reads the active tab URL locally to identify the current host and stores profiles, activation settings, and header rules in this Chrome profile.</p>
+    <p>ReqKit has no analytics or developer server. Header values are sent only to the exact HTTPS sites you approve and may be visible in destination or intermediary logs.</p>
     <a class="privacy-policy-link" href="../privacy/index.html" target="_blank" rel="noreferrer">Read the privacy policy</a>
     <button id="privacyConsentBtn" class="primary-btn privacy-consent-btn" type="button">Accept and continue</button>
     <div id="privacyConsentStatus" class="status-msg privacy-consent-status" role="status" aria-live="polite"></div>
   </section>
 
   <div id="appShell" class="shell" hidden>
-    <main class="tabs-shell">
-      <div class="tabs-list" role="tablist" aria-label="Utility features">
-        <button id="transformer-tab" class="tab-btn active" type="button" role="tab" aria-selected="true" aria-controls="transformer-panel" data-tab="transformer">URL transform</button>
-        <button id="headers-tab" class="tab-btn" type="button" role="tab" aria-selected="false" aria-controls="headers-panel" data-tab="headers">Headers</button>
-      </div>
-
-      <section id="transformer-panel" class="tab-panel active" data-panel="transformer" role="tabpanel" aria-labelledby="transformer-tab">
-        <article class="panel">
-          <div class="panel-head">
-            <h2 class="panel-title">Transform a URL</h2>
-            <span class="panel-brand">ReqKit</span>
-          </div>
-
-          <div class="content-stack">
-            <div class="field">
-              <label for="sourceUrl">Source URL</label>
-              <div class="transformer-source-row">
-                <input type="text" id="sourceUrl" placeholder="https://example.com/path or http://localhost:3000/path" autocapitalize="off" autocorrect="off" spellcheck="false">
-                <button id="transformUrlBtn" class="primary-btn transformer-inline-action" type="button">Transform</button>
-              </div>
-              <p class="helper-text">HTTPS is required, except HTTP on localhost and loopback addresses.</p>
-            </div>
-
-            <section id="recipeCard" class="recipe-card" aria-labelledby="recipeCardTitle">
-              <header class="recipe-card-header">
-                <h3 id="recipeCardTitle">URL recipe</h3>
-                <div id="recipeViewActions" class="icon-actions" role="group" aria-label="Recipe actions">
-                  <button id="editRecipeBtn" class="icon-btn" type="button" aria-label="Edit URL recipe" title="Edit URL recipe"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="m11.7 1.3 3 3-8.9 8.9-3.8.8.8-3.8 8.9-8.9ZM4.15 10.95l-.27 1.17 1.17-.27 7.53-7.53-.9-.9-7.53 7.53Z"/></svg></button>
-                  <button id="resetRecipeBtn" class="icon-btn" type="button" aria-label="Reset URL recipe" title="Reset URL recipe"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M3.1 4.3A6 6 0 1 1 2 9.5h1.55a4.5 4.5 0 1 0 .75-4.1L6 7H1V2l2.1 2.3Z"/></svg></button>
-                </div>
-              </header>
-
-              <div id="recipeSummary" class="recipe-summary" aria-live="polite"></div>
-
-              <section id="recipeEditor" class="recipe-editor" aria-label="Edit URL recipe" hidden>
-                <form id="recipeForm">
-                  <div class="recipe-editor-section">
-                    <div class="recipe-editor-section-head">
-                      <span class="recipe-section-title">Path capture</span>
-                      <label class="recipe-capture-switch" for="capturePathToggle" title="Enable path capture"><input id="capturePathToggle" type="checkbox" aria-label="Enable path capture"><span class="switch-control" aria-hidden="true"></span></label>
-                    </div>
-                    <div id="capturePathKeyField" class="field compact-field" hidden><label for="capturePathKey">Query key</label><input id="capturePathKey" type="text" placeholder="redirect" autocomplete="off"></div>
-                  </div>
-
-                  <div class="recipe-editor-section">
-                    <div class="recipe-editor-section-head">
-                      <span class="recipe-section-title">Query parameters</span>
-                      <button id="addParameterBtn" class="recipe-add-btn" type="button" aria-label="Add query parameter" title="Add query parameter"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M7.25 2.5h1.5v4.75h4.75v1.5H8.75v4.75h-1.5V8.75H2.5v-1.5h4.75V2.5Z"/></svg></button>
-                    </div>
-                    <div id="parameterEditorList" class="parameter-editor-list"></div>
-                  </div>
-
-                  <footer class="recipe-editor-footer">
-                    <div id="recipeEditorStatus" class="status-msg" role="status" aria-live="polite"></div>
-                    <div class="recipe-editor-actions">
-                      <button id="cancelRecipeBtn" class="recipe-editor-action secondary" type="button">Cancel</button>
-                      <button class="recipe-editor-action primary" type="submit">Save</button>
-                    </div>
-                  </footer>
-                </form>
-              </section>
-            </section>
-
-            <div id="sensitiveWarning" class="inline-warning" hidden><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1 15 14H1L8 1Zm-.75 4v5h1.5V5h-1.5Zm0 6.5V13h1.5v-1.5h-1.5Z"/></svg>Query values may appear in browser and server logs.</div>
-
-            <div id="transformedUrlField" class="field transformer-output" hidden>
-              <div class="transformer-output-head">
-                <label for="transformedUrl">Transformed URL</label>
-                <div class="transformer-output-actions" role="group" aria-label="Transformed URL actions">
-                  <button id="copyUrlBtn" class="transformer-output-action" type="button" aria-label="Copy transformed URL" title="Copy URL" disabled>
-                    <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M5.5 2A1.5 1.5 0 0 0 4 3.5v7A1.5 1.5 0 0 0 5.5 12h5A1.5 1.5 0 0 0 12 10.5v-7A1.5 1.5 0 0 0 10.5 2h-5ZM3 3.5A2.5 2.5 0 0 1 5.5 1h5A2.5 2.5 0 0 1 13 3.5v7a2.5 2.5 0 0 1-2.5 2.5h-5A2.5 2.5 0 0 1 3 10.5v-7Z"/><path fill="currentColor" d="M1 5.5A2.5 2.5 0 0 1 3.5 3H4v1h-.5A1.5 1.5 0 0 0 2 5.5v7A1.5 1.5 0 0 0 3.5 14h5A1.5 1.5 0 0 0 10 12.5V12h1v.5A2.5 2.5 0 0 1 8.5 15h-5A2.5 2.5 0 0 1 1 12.5v-7Z"/></svg>
-                  </button>
-                  <button id="openUrlBtn" class="transformer-output-action" type="button" aria-label="Open transformed URL in a new tab" title="Open in new tab" disabled>
-                    <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M9 2h5v5h-1.5V4.56L7.03 10.03 5.97 8.97l5.47-5.47H9V2Z"/><path fill="currentColor" d="M3.5 3h4v1.5h-4v8h8v-4H13v4a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 2 12.5v-8A1.5 1.5 0 0 1 3.5 3Z"/></svg>
-                  </button>
-                </div>
-              </div>
-              <textarea id="transformedUrl" rows="4" readonly></textarea>
-            </div>
-
-            <div id="transformerStatus" class="status-msg"></div>
-          </div>
-        </article>
-      </section>
-
-      <section id="headers-panel" class="tab-panel" data-panel="headers" role="tabpanel" aria-labelledby="headers-tab" hidden>
-        <article class="panel">
-          <div class="panel-head">
-            <h2 class="panel-title">Manage request headers</h2>
-            <span class="panel-brand">ReqKit</span>
-          </div>
-
-          <div class="content-stack">
-            <div class="current-site-toolbar">
-              <div class="current-site-summary">
-                <span class="current-site-dot" aria-hidden="true"></span>
-                <div class="current-site-copy">
-                  <span class="current-site-label">Current host</span>
-                  <span id="currentSiteHost" class="current-site-host" aria-live="polite">Detecting current site…</span>
-                </div>
-              </div>
-              <div class="rule-view-toggle" role="group" aria-label="Filter header rules">
-                <button id="currentSiteViewBtn" class="rule-view-btn active" type="button" data-rule-view="current" aria-pressed="true">Current site <span id="currentSiteViewCount" class="rule-view-count">0</span></button>
-                <button id="allHostsViewBtn" class="rule-view-btn" type="button" data-rule-view="all" aria-pressed="false">All hosts <span id="allHostsViewCount" class="rule-view-count">0</span></button>
-              </div>
-            </div>
-
-            <div id="headerComposer" class="header-composer">
-              <button id="headerComposerToggle" class="header-composer-toggle" type="button" aria-expanded="false" aria-controls="headerComposerBody">
-                <span class="header-composer-icon" aria-hidden="true">
-                  <svg viewBox="0 0 16 16"><path fill="currentColor" d="M7.25 2.5h1.5v4.75h4.75v1.5H8.75v4.75h-1.5V8.75H2.5v-1.5h4.75V2.5Z"/></svg>
-                </span>
-                <span class="header-composer-copy">
-                  <span class="header-composer-title">Add header rule</span>
-                  <span id="headerComposerHint" class="header-composer-hint">Create an exact-host rule</span>
-                </span>
-                <svg class="header-composer-chevron" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="m4.2 6.1 3.8 3.8 3.8-3.8 1.05 1.05L8 12 3.15 7.15 4.2 6.1Z"/></svg>
+    <main id="headers-panel" class="popup-shell">
+      <article class="panel">
+        <div class="panel-head">
+          <div class="panel-heading">
+            <span class="product-kicker">ReqKit</span>
+            <h2 class="panel-title">Headers</h2>
+            <div class="panel-profile-summary" aria-label="Active profile and duration">
+              <button id="changeActiveSetupBtn" class="panel-profile-btn" type="button">
+                <span id="activeProfileName">Default</span>
+                <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="m4.2 6.1 3.8 3.8 3.8-3.8 1.05 1.05L8 12 3.15 7.15 4.2 6.1Z"/></svg>
               </button>
-
-              <div id="headerComposerBody" class="header-composer-body" hidden>
-                <form id="headerComposerForm" class="header-composer-form">
-                  <div class="field">
-                    <label for="domain">Exact HTTPS host</label>
-                    <input type="text" id="domain" placeholder="https://api.example.com">
-                    <p class="helper-text">HTTPS is required. Only the exact hostname is used; paths are ignored.</p>
-                  </div>
-
-                  <div class="field">
-                    <label for="headerName">Header name</label>
-                    <input type="text" id="headerName" placeholder="X-ReqKit-Debug">
-                  </div>
-
-                  <div class="field">
-                    <label for="headerValue">Header value</label>
-                    <input type="text" id="headerValue" placeholder="enabled">
-                    <p class="helper-text disclosure-text">Stored in this Chrome profile and sent only to the exact HTTPS host you approve. Use only authorized systems.</p>
-                  </div>
-
-                  <div class="action-row header-composer-actions">
-                    <button id="addHeaderBtn" class="primary-btn" type="submit">Add rule</button>
-                    <button id="cancelHeaderComposerBtn" class="secondary-btn" type="button">Cancel</button>
-                  </div>
-                </form>
-              </div>
+              <span aria-hidden="true">·</span>
+              <span id="activeUntilLabel">Until turned off</span>
             </div>
-
-            <div id="headerStatus" class="status-msg"></div>
-            <div id="ruleSearchContainer" class="rule-search" hidden>
-              <label class="sr-only" for="ruleSearchInput">Search header rules</label>
-              <svg class="rule-search-icon" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M7 2a5 5 0 1 0 3.16 8.87l2.98 2.98 1.06-1.06-2.98-2.98A5 5 0 0 0 7 2Zm-3.5 5a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0Z"/></svg>
-              <input id="ruleSearchInput" type="search" placeholder="Search hosts and headers" autocomplete="off" spellcheck="false">
-            </div>
-            <div id="ruleListContainer" class="rule-list"></div>
           </div>
-        </article>
-      </section>
+          <button id="masterSwitch" class="master-switch" type="button" role="switch" aria-checked="true" aria-label="Pause all header rules">
+            <span class="master-switch-track" aria-hidden="true"><span class="master-switch-thumb"></span></span>
+            <span id="masterSwitchLabel" class="master-switch-label">On</span>
+          </button>
+        </div>
 
+        <div class="content-stack">
+          <div id="masterPausedBanner" class="master-paused-banner" role="status" hidden>
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1a7 7 0 1 1 0 14A7 7 0 0 1 8 1Zm0 1.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM6.5 5.5h1.25v5H6.5v-5Zm1.75 0h1.25v5H8.25v-5Z"/></svg>
+            <div class="master-paused-copy">
+              <strong id="masterPausedTitle">All header rules are paused</strong>
+              <span id="masterPausedDetail">No headers are being applied to any site.</span>
+            </div>
+            <button id="resumeMasterBtn" class="master-resume-btn" type="button">Resume</button>
+          </div>
+
+          <div id="ruleScopeTabs" class="rule-scope-tabs" role="tablist" aria-label="Rule scope">
+            <button id="currentSiteTab" class="rule-scope-tab" type="button" role="tab" aria-selected="true" tabindex="0" data-rule-scope="site">
+              <span id="currentSiteHost" class="rule-scope-label" aria-live="polite">Detecting current site…</span>
+              <span id="currentSiteRuleCount" class="rule-scope-count">0</span>
+            </button>
+            <button id="allRulesTab" class="rule-scope-tab" type="button" role="tab" aria-selected="false" tabindex="-1" data-rule-scope="all">
+              <span class="rule-scope-label">All</span>
+              <span id="allRulesCount" class="rule-scope-count">0</span>
+            </button>
+          </div>
+
+          <div id="headerComposer" class="header-composer" hidden>
+            <div class="header-composer-body">
+              <form id="headerComposerForm" class="header-composer-form">
+                <div class="field">
+                  <label for="domain">Exact HTTPS host</label>
+                  <input type="text" id="domain" placeholder="https://api.example.com">
+                  <p class="helper-text">HTTPS is required. Only the exact hostname is used; paths are ignored.</p>
+                </div>
+
+                <div class="field">
+                  <label for="headerName">Header name</label>
+                  <input type="text" id="headerName" placeholder="X-ReqKit-Debug">
+                </div>
+
+                <div class="field">
+                  <label for="headerValue">Header value</label>
+                  <input type="text" id="headerValue" placeholder="enabled">
+                  <p class="helper-text disclosure-text">Stored in this Chrome profile and sent only to the exact HTTPS host you approve. Use only authorized systems.</p>
+                </div>
+
+                <div id="siteAccessPreflight" class="site-access-preflight" role="note" aria-live="polite" hidden>
+                  <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1.25 13 3v3.85c0 3.38-2.08 6.43-5 7.9-2.92-1.47-5-4.52-5-7.9V3l5-1.75Zm0 1.59L4.5 4.07v2.78c0 2.58 1.47 4.99 3.5 6.21 2.03-1.22 3.5-3.63 3.5-6.21V4.07L8 2.84Zm-.75 2.41h1.5V8h-1.5V5.25Zm0 3.75h1.5v1.5h-1.5V9Z"/></svg>
+                  <div>
+                    <strong>Site access required for <code id="siteAccessPreflightHost"></code></strong>
+                    <p>Chrome will ask you to approve this exact HTTPS host. ReqKit will not request access to other sites.</p>
+                  </div>
+                </div>
+
+                <div class="action-row header-composer-actions">
+                  <button id="addHeaderBtn" class="primary-btn" type="submit">Add rule</button>
+                  <button id="cancelHeaderComposerBtn" class="secondary-btn" type="button">Cancel</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div id="headerStatus" class="status-msg"></div>
+          <div id="ruleListContainer" class="rule-list"></div>
+          <footer class="panel-footer">
+            <button id="headerComposerToggle" class="primary-btn footer-add-rule-btn" type="button" aria-expanded="false" aria-controls="headerComposer">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M7.25 2.5h1.5v4.75h4.75v1.5H8.75v4.75h-1.5V8.75H2.5v-1.5h4.75V2.5Z"/></svg>
+              Add rule for this site
+            </button>
+            <a id="manageRulesLink" class="manage-rules-link" href="#" role="button">Manage profiles and rules →</a>
+          </footer>
+        </div>
+      </article>
     </main>
+
+    <dialog id="confirmationDialog" class="confirmation-dialog" aria-labelledby="confirmationTitle" aria-describedby="confirmationMessage">
+      <div class="confirmation-dialog-shell">
+        <div class="confirmation-dialog-icon" aria-hidden="true">
+          <svg viewBox="0 0 16 16"><path fill="currentColor" d="M6.25 2.5h3.5l.5 1H13a.75.75 0 0 1 0 1.5h-.6l-.55 7.14A1.5 1.5 0 0 1 10.35 13.5h-4.7a1.5 1.5 0 0 1-1.5-1.36L3.6 5H3a.75.75 0 0 1 0-1.5h2.75l.5-1Zm-.46 2.5.5 6.5h3.42l.5-6.5H5.79Z"/></svg>
+        </div>
+        <div class="confirmation-dialog-copy">
+          <span class="product-kicker">ReqKit</span>
+          <h2 id="confirmationTitle">Delete this item?</h2>
+          <p id="confirmationMessage">This cannot be undone.</p>
+        </div>
+        <div class="confirmation-dialog-actions">
+          <button id="confirmationCancelBtn" class="secondary-btn" type="button">Cancel</button>
+          <button id="confirmationConfirmBtn" class="danger-btn" type="button">Delete</button>
+        </div>
+      </div>
+    </dialog>
   </div>
 
   <script type="module" src="main.js"></script>

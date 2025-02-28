@@ -1,6 +1,7 @@
-import { getActiveRuleConflicts, normalizeRules } from './rules.js';
+import { getRuleIdentityKey, normalizeRules } from './rules.js';
 
 export async function commitRuleSet(nextRules, {
+  profileIds = null,
   getCurrentRules,
   applyRules,
   storeRules
@@ -9,15 +10,23 @@ export async function commitRuleSet(nextRules, {
     throw new Error('Header rules must be an array.');
   }
 
-  const normalizedRules = normalizeRules(nextRules);
+  const normalizedRules = normalizeRules(nextRules, { profileIds });
   if (normalizedRules.length !== nextRules.length) {
     throw new Error('One or more header rules are invalid.');
   }
 
-  const [conflict] = getActiveRuleConflicts(normalizedRules);
-  if (conflict) {
+  const identities = new Set();
+  const duplicateRule = normalizedRules.find((rule) => {
+    const identity = getRuleIdentityKey(rule);
+    if (identities.has(identity)) {
+      return true;
+    }
+    identities.add(identity);
+    return false;
+  });
+  if (duplicateRule) {
     throw new Error(
-      `Active ${conflict.leftRule.headerName} rules for ${conflict.leftRule.domain} conflict because they use different values.`
+      `${duplicateRule.headerName} already exists for ${duplicateRule.domain} in this profile.`
     );
   }
 

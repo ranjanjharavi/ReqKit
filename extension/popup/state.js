@@ -1,17 +1,15 @@
 export const state = {
   headers: {
     rules: [],
-    editingId: null,
+    profiles: [],
+    activation: null,
+    grantedOrigins: null,
     composerOpen: false,
-    currentHostname: '',
-    view: 'current',
+    editingId: null,
+    scope: 'site',
     collapsedDomains: new Set(),
+    currentHostname: '',
     revealedRuleIds: new Set(),
-    searchQuery: ''
-  },
-  transformer: {
-    result: null,
-    recipe: null,
-    editor: { open: false, draft: null }
+    syncPaused: false
   }
 };

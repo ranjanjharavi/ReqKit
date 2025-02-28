@@ -1,3 +1,6 @@
+import { createDefaultActivation, isRuleLive } from './activation.js';
+import { DEFAULT_PROFILE_ID, resolveProfileId } from './profiles.js';
+
 export const RULE_STORAGE_KEY = 'headerRules';
 
 const REQUEST_RESOURCE_TYPES = [
@@ -15,16 +18,21 @@ const REQUEST_RESOURCE_TYPES = [
   'other'
 ];
 
-export function normalizeRules(rules) {
+export function normalizeRules(rules, { profileIds = null } = {}) {
   const usedIds = new Set();
   let nextId = 1;
 
   return (Array.isArray(rules) ? rules : [])
-    .map((rule) => normalizeRule(rule, usedIds, () => nextId++))
+    .map((rule) => normalizeRule(rule, usedIds, () => nextId++, profileIds))
     .filter(Boolean);
 }
 
-function normalizeRule(rule, usedIds = new Set(), getNextId = createSequentialIdFactory()) {
+function normalizeRule(
+  rule,
+  usedIds = new Set(),
+  getNextId = createSequentialIdFactory(),
+  profileIds = null
+) {
   if (!rule) {
     return null;
   }
@@ -52,8 +60,19 @@ function normalizeRule(rule, usedIds = new Set(), getNextId = createSequentialId
     domain,
     headerName,
     headerValue,
-    enabled: rule.enabled !== false
+    enabled: rule.enabled !== false,
+    profileId: normalizeRuleProfileId(rule.profileId, profileIds)
   };
+}
+
+/**
+ * An unrecognized profile is repaired rather than dropped. `commitRuleSet`
+ * rejects a set whose normalized length shrank, so dropping here would turn one
+ * stale reference into a permanent commit failure.
+ */
+function normalizeRuleProfileId(value, profileIds) {
+  const resolvedId = resolveProfileId(value);
+  return !profileIds || profileIds.has(resolvedId) ? resolvedId : DEFAULT_PROFILE_ID;
 }
 
 export function normalizeDomain(value) {
@@ -79,13 +98,18 @@ export function normalizeDomain(value) {
 
 export function validateRuleDraft(draft, existingRules, {
   excludeId = null,
-  enabled = true
+  enabled = true,
+  activation = createDefaultActivation(),
+  profileId = undefined
 } = {}) {
   const rule = {
     domain: normalizeDomain(draft?.domain),
     headerName: String(draft?.headerName || '').trim(),
     headerValue: String(draft?.headerValue || '').trim()
   };
+  const draftProfileId = resolveProfileId(
+    profileId ?? draft?.profileId ?? activation?.profileId ?? DEFAULT_PROFILE_ID
+  );
 
   if (!rule.domain || !rule.headerName || !rule.headerValue) {
     return { ok: false, error: 'A valid HTTPS host, header name, and header value are required.' };
@@ -99,21 +123,21 @@ export function validateRuleDraft(draft, existingRules, {
     return { ok: false, error: 'Header values cannot contain line breaks.' };
   }
 
+  // A profile can set a header only once for a host. The value and enabled
+  // state do not change that identity; edit the existing rule instead.
+  const identity = getRuleIdentityKey({ ...rule, profileId: draftProfileId });
   const duplicateRule = (Array.isArray(existingRules) ? existingRules : []).some((existingRule) => (
-    existingRule.id !== excludeId
-    && existingRule.domain === rule.domain
-    && existingRule.headerName.toLowerCase() === rule.headerName.toLowerCase()
-    && existingRule.headerValue === rule.headerValue
+    existingRule.id !== excludeId && getRuleIdentityKey(existingRule) === identity
   ));
 
   if (duplicateRule) {
-    return { ok: false, error: 'That rule already exists.' };
+    return { ok: false, error: 'That header already exists for this host in this profile.' };
   }
 
   const conflictingRule = findActiveRuleConflict(
-    { ...rule, enabled },
+    { ...rule, enabled, profileId: draftProfileId },
     existingRules,
-    { excludeId }
+    { excludeId, activation }
   );
   if (conflictingRule) {
     return {
@@ -124,6 +148,14 @@ export function validateRuleDraft(draft, existingRules, {
   }
 
   return { ok: true, rule };
+}
+
+export function getRuleIdentityKey(rule) {
+  return [
+    resolveProfileId(rule?.profileId),
+    String(rule?.domain || '').toLowerCase(),
+    String(rule?.headerName || '').toLowerCase()
+  ].join('\n');
 }
 
 function isValidHeaderName(value) {
@@ -144,18 +176,19 @@ export function getNextRuleId(rules) {
 }
 
 export function findActiveRuleConflict(candidate, rules, {
-  excludeId = candidate?.id ?? null
+  excludeId = candidate?.id ?? null,
+  activation = createDefaultActivation()
 } = {}) {
-  if (!candidate || candidate.enabled === false) {
+  if (!isRuleLive(candidate, activation)) {
     return null;
   }
 
   return (Array.isArray(rules) ? rules : []).find((existingRule) => (
-    existingRule?.id !== excludeId && areRulesConflicting(candidate, existingRule)
+    existingRule?.id !== excludeId && areRulesConflicting(candidate, existingRule, activation)
   )) || null;
 }
 
-export function getActiveRuleConflicts(rules) {
+export function getActiveRuleConflicts(rules, activation = createDefaultActivation()) {
   const normalizedRules = Array.isArray(rules) ? rules : [];
   const conflicts = [];
 
@@ -163,7 +196,7 @@ export function getActiveRuleConflicts(rules) {
     for (let rightIndex = leftIndex + 1; rightIndex < normalizedRules.length; rightIndex += 1) {
       const leftRule = normalizedRules[leftIndex];
       const rightRule = normalizedRules[rightIndex];
-      if (areRulesConflicting(leftRule, rightRule)) {
+      if (areRulesConflicting(leftRule, rightRule, activation)) {
         conflicts.push({ leftRule, rightRule });
       }
     }
@@ -172,8 +205,12 @@ export function getActiveRuleConflicts(rules) {
   return conflicts;
 }
 
-export function areRulesConflicting(leftRule, rightRule) {
-  if (!leftRule || !rightRule || leftRule.enabled === false || rightRule.enabled === false) {
+/**
+ * Only rules that reach the network at the same time can conflict, so two rules
+ * in different profiles never do — that is exactly what profiles are for.
+ */
+export function areRulesConflicting(leftRule, rightRule, activation = createDefaultActivation()) {
+  if (!isRuleLive(leftRule, activation) || !isRuleLive(rightRule, activation)) {
     return false;
   }
 
@@ -197,6 +234,13 @@ export function filterRulesByHost(rules, hostname) {
   }
 
   return (Array.isArray(rules) ? rules : []).filter((rule) => rule.domain === normalizedHostname);
+}
+
+export function filterRulesByProfile(rules, profileId) {
+  const resolvedId = resolveProfileId(profileId);
+  return (Array.isArray(rules) ? rules : []).filter((rule) => (
+    resolveProfileId(rule?.profileId) === resolvedId
+  ));
 }
 
 export function groupRulesByDomain(rules) {

@@ -3,12 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Learn how ReqKit handles URLs, request headers, Chrome permissions, and locally stored settings.">
+  <meta name="description" content="Learn how ReqKit handles request headers, Chrome permissions, and locally stored settings.">
   <meta name="theme-color" content="#eff6ff">
   <meta property="og:title" content="ReqKit Privacy Policy">
   <meta property="og:description" content="A clear account of ReqKit's local storage, permissions, and data handling.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://ranjanjharavi.github.io/ReqKit/privacy-policy.html">
+  <meta property="og:image" content="https://ranjanjharavi.github.io/ReqKit/assets/reqkit-headers-screenshot.png">
+  <meta property="og:image:alt" content="ReqKit showing exact-host request-header rules">
   <link rel="canonical" href="https://ranjanjharavi.github.io/ReqKit/privacy-policy.html">
   <link rel="icon" type="image/png" href="assets/reqkit-128.png">
   <link rel="stylesheet" href="assets/site.css">
@@ -33,9 +35,10 @@
   <main class="privacy-main section-shell">
     <section class="privacy-hero">
       <div class="privacy-hero-copy">
-        <span class="section-kicker">Privacy &amp; data use</span>
+        <span class="section-kicker">Request-header privacy</span>
         <h1>Clear, local, user-controlled.</h1>
-        <p>ReqKit does not send data to its developer. Settings stay in Chrome, while URLs and headers reach destinations only through features you intentionally use.</p>
+        <p>ReqKit does not send data to its developer. Request-header profiles stay in Chrome, while configured values reach only the exact HTTPS destinations you approve.</p>
+        <span class="purpose-badge">Built for API and web-environment testing</span>
       </div>
       <div class="privacy-hero-mark" aria-hidden="true">
         <svg viewBox="0 0 64 64"><path d="M32 7 13 15v14c0 13 7.5 22.5 19 28 11.5-5.5 19-15 19-28V15L32 7Z"/><path d="m23 32 6 6 13-15"/></svg>
@@ -44,8 +47,8 @@
 
     <section class="privacy-highlights" aria-label="Privacy highlights">
       <article class="privacy-highlight"><strong>No analytics</strong><span>No telemetry, advertising, account system, or developer-operated API.</span></article>
-      <article class="privacy-highlight"><strong>Local Chrome storage</strong><span>Your URL recipe, header rules, and privacy choice stay in <code>chrome.storage.local</code>.</span></article>
-      <article class="privacy-highlight"><strong>On-demand site access</strong><span>Header permissions are requested for exact HTTPS hosts that you choose.</span></article>
+      <article class="privacy-highlight"><strong>Local Chrome storage</strong><span>Your profiles, activation settings, header rules, and privacy choice stay in <code>chrome.storage.local</code>.</span></article>
+      <article class="privacy-highlight"><strong>On-demand site access</strong><span>Chrome asks for access only to the exact HTTPS hosts that you choose.</span></article>
     </section>
 
     <div class="privacy-layout">
@@ -62,32 +65,32 @@
         </nav>
       </aside>
       <article class="privacy-prose">
-        <p>Last updated: August 9, 2026</p>
-    <p>ReqKit is a Chrome developer utility for transforming URLs and applying user-created request headers to exact HTTPS hosts. ReqKit has no analytics, advertising, telemetry, remote code, developer-operated API, or account system.</p>
+        <p>Last updated: August 23, 2026</p>
+    <p>ReqKit is a Chrome extension for creating, organizing, and temporarily applying user-created request-header rules to exact HTTPS hosts. It is built for API and web-environment testing. ReqKit has no analytics, advertising, telemetry, remote code, developer-operated API, or account system.</p>
     <h2 id="data-reqkit-handles">Data ReqKit handles</h2>
     <ul>
-    <li><strong>Active tab URL:</strong> after you open the popup, ReqKit reads the active tab URL locally to prefill the transformer and identify the current host. It does not read page content or retain browsing history.</li>
-    <li><strong>Default URL recipe:</strong> path-capture settings, query keys, query values, and parameter states are stored in <code>chrome.storage.local</code> in your Chrome profile.</li>
-    <li><strong>Header rules:</strong> exact HTTPS hosts, header names, header values, and enabled states are stored in <code>chrome.storage.local</code> in your Chrome profile.</li>
+    <li><strong>Active tab URL:</strong> after you open the popup, ReqKit reads the active tab URL locally to identify the current host. It does not read page content or retain browsing history.</li>
+    <li><strong>Profiles and activation settings:</strong> profile names, the selected profile, pause state, and optional activation timing are stored in <code>chrome.storage.local</code> in your Chrome profile.</li>
+    <li><strong>Header rules:</strong> exact HTTPS hosts, header names, header values, profile assignments, and enabled states are stored in <code>chrome.storage.local</code> in your Chrome profile.</li>
     <li><strong>Privacy choice:</strong> acceptance of the first-use disclosure is stored locally.</li>
     </ul>
     <h2 id="how-data-is-used-and-transmitted">How data is used and transmitted</h2>
-    <p>ReqKit sends no data to its developer. A transformed URL is built locally and is transmitted only if you choose to copy, open, or otherwise use it. Query values can appear in browser history and in destination, proxy, or server logs.</p>
-    <p>While an enabled header rule is active, Chrome sends its configured value only in requests to the exact HTTPS host you approved. Destination services process URLs and request headers under their own policies.</p>
+    <p>ReqKit sends no data to its developer. While an enabled header rule is active, Chrome sends its configured value only in requests to the exact HTTPS host you approved. Destination services process request headers under their own policies, and those values may appear in destination or intermediary logs.</p>
     <h2 id="retention-and-deletion">Retention and deletion</h2>
-    <p>The default URL recipe and header rules remain in this Chrome profile until you reset or delete them, clear extension data, or uninstall ReqKit. Deleting the last header rule for a host asks Chrome to remove ReqKit&#039;s access to that host.</p>
+    <p>Profiles, activation settings, header rules, and the privacy choice remain in this Chrome profile until you change or delete them, clear extension data, or uninstall ReqKit. Deleting a profile also deletes the header rules assigned to it. Deleting the last header rule for a host asks Chrome to remove ReqKit&#039;s access to that host.</p>
     <h2 id="permissions">Permissions</h2>
     <ul>
-    <li><code>activeTab</code> reads only the active tab URL after you invoke ReqKit.</li>
-    <li><code>storage</code> retains the local settings described above.</li>
-    <li><code>declarativeNetRequestWithHostAccess</code> applies enabled header rules.</li>
-    <li>Optional <code>https://*/*</code> host access lets Chrome ask you for a specific exact-site permission when you create or enable a header rule. ReqKit does not receive required access to every website.</li>
+    <li><code>activeTab</code> reads the active tab URL locally only after you open ReqKit, so the popup can identify the current hostname and show matching rules. It does not read page content or general browsing history.</li>
+    <li><code>alarms</code> runs the user-selected automatic expiry so active request-header rules stop applying even when no ReqKit page is open.</li>
+    <li><code>storage</code> retains privacy consent, profiles, activation settings, and request-header rules locally in the current Chrome profile.</li>
+    <li><code>declarativeNetRequestWithHostAccess</code> applies user-created request-header rules to approved HTTPS hosts without injecting scripts or reading response bodies.</li>
+    <li>Optional <code>https://*/*</code> host access lets ReqKit ask Chrome for access to the exact HTTPS host you choose when creating or enabling a rule. This optional pattern enables exact-host prompts; it does not grant ReqKit required access to every website.</li>
     </ul>
     <h2 id="security-and-responsible-use">Security and responsible use</h2>
-    <p>ReqKit requires HTTPS except for explicit local-development URLs on <code>localhost</code>, <code>127.0.0.1</code>, or <code>[::1]</code>. It rejects URLs containing embedded usernames or passwords, flags sensitive-looking query data, masks sensitive-looking header values, and detects conflicting active header rules. Warnings do not prevent you from using data you are authorized to use.</p>
-    <p>Use ReqKit only with systems and data you are authorized to access. Avoid placing long-lived credentials in URLs because URLs are commonly logged.</p>
+    <p>ReqKit limits rules to exact HTTPS hosts, masks sensitive-looking header values in the popup, and detects conflicting active header rules. These protections do not prevent you from using data you are authorized to use.</p>
+    <p>Use ReqKit only with systems and data you are authorized to access. Avoid using long-lived production credentials as test header values.</p>
     <h2 id="data-sharing-and-sale">Data sharing and sale</h2>
-    <p>ReqKit does not sell or rent user data, and it does not send data to the developer, advertisers, or data brokers. It transmits data only to destinations selected by the user as described above. It does not use data for advertising, creditworthiness, or any purpose unrelated to its user-facing features.</p>
+    <p>ReqKit does not sell or rent user data, and it does not send data to the developer, advertisers, or data brokers. It transmits configured header values only to destinations selected by the user as described above. It does not use data for advertising, creditworthiness, or any purpose unrelated to its user-facing features.</p>
     <p>The use of information received from Google APIs adheres to the Chrome Web Store User Data Policy, including the Limited Use requirements.</p>
     <h2 id="contact">Contact</h2>
     <p>For questions or support, open an issue at <a href="https://github.com/ranjanjharavi/ReqKit/issues">github.com/ranjanjharavi/ReqKit</a>.</p>
@@ -98,7 +101,7 @@
   <footer class="site-footer">
     <div class="footer-shell">
       <a class="brand" href="./"><img src="assets/reqkit-128.png" width="32" height="32" alt=""><span>ReqKit</span></a>
-      <p>Developer request tools with a deliberately small footprint.</p>
+      <p>Focused request-header tooling for API and web-environment testing.</p>
       <div class="footer-links"><a href="privacy-policy.html">Privacy</a><a href="https://github.com/ranjanjharavi/ReqKit/issues">Support</a><a href="https://github.com/ranjanjharavi/ReqKit">Source</a></div>
     </div>
   </footer>

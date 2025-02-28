@@ -1,53 +1,8 @@
 # ReqKit
 
-ReqKit is a lightweight Chrome developer extension for transforming URLs with one saved recipe and applying request headers to user-approved HTTPS hosts.
+ReqKit is a lightweight Chrome extension for creating, organizing, and temporarily applying profile-based request-header rules to exact HTTPS hosts. It is built for API and web-environment testing.
 
 ## Features
-
-### URL transformer
-
-- Prefills the active tab URL while keeping it editable.
-- Stores one editable default recipe in the current Chrome profile.
-- Adds any number of independently enabled query parameters.
-- Replaces existing values when the source URL already contains the same query key.
-- Optionally captures the original path, query, and fragment in a configured query parameter.
-- Copies the transformed URL or opens it in a new tab.
-- Rejects duplicate keys, empty keys, empty values, embedded URL credentials, and unsupported protocols.
-- Requires HTTPS, except for local development on `localhost`, `127.0.0.1`, and `[::1]`.
-- Warns when query data looks sensitive because URLs may appear in browser, proxy, and server logs.
-
-The initial recipe enables these editable parameters:
-
-```text
-disableCustomJs=true
-disableCustomCss=true
-```
-
-These flags only affect applications that implement them.
-
-#### Standard transformation
-
-With path capture disabled, ReqKit preserves the source path, existing query parameters, and fragment while merging the enabled recipe parameters.
-
-```text
-Source:
-https://example.com/app?view=list#details
-
-Result:
-https://example.com/app?view=list&disableCustomJs=true&disableCustomCss=true#details
-```
-
-#### Path capture
-
-With path capture enabled using the key `redirect`, ReqKit moves the original path, query, and fragment into that query value and builds the result at the source origin root.
-
-```text
-Source:
-https://example.com/app?view=list#details
-
-Result:
-https://example.com/?redirect=/app%3Fview%3Dlist%23details&disableCustomJs=true&disableCustomCss=true
-```
 
 ### Request headers
 
@@ -58,9 +13,61 @@ https://example.com/?redirect=/app%3Fview%3Dlist%23details&disableCustomJs=true&
 - Detects conflicting active rules for the same host and header name.
 - Masks sensitive-looking header values in the popup until explicitly revealed.
 - Removes site access after the final rule for a hostname is deleted.
-- Provides current-host and all-host views, grouping and search for larger rule collections.
 
 Use header modification only with systems you are authorized to test.
+
+### Profiles
+
+Rules are grouped into profiles, and one profile is active at a time. Rules in the other
+profiles keep their own on/off state and are simply not applied, so the same header can hold
+a different value in each environment without the two ever colliding.
+
+- The popup shows the selected profile and how long it will apply. The adjacent **Change**
+  action opens the active setup in the rule manager.
+- The rule manager creates, renames, duplicates, and deletes profiles, and its edit form moves
+  a rule between them.
+- Duplicating a profile copies its rules paused, so nothing goes live by accident.
+- Deleting a profile also deletes every request-header rule assigned to it.
+- Switching to a profile asks for any site access it still needs in one prompt. If you
+  decline, the switch still happens and affected rules are flagged with a Grant button.
+
+### Auto-off timer
+
+Rules can be set to apply for **1 hour**, **8 hours**, **until Chrome closes**, or until you
+turn them off. When the time is up ReqKit parks the active profile: every rule stops being
+applied, but nothing is edited or deleted, so resuming is one click.
+
+The timer belongs to the activation rather than to a profile. Switching profiles disarms it,
+and choosing a duration arms a fresh one. The remaining time is rounded, and a Chrome alarm
+stops the rules even when no ReqKit page is open.
+
+### Pausing everything
+
+A single switch pauses every header rule without deleting anything or changing any rule's
+own on/off state. Resuming restores exactly what was there before.
+
+While rules are paused the toolbar badge reads `off`, and both the popup and the rule
+manager show a banner. The badge stays blank when there was nothing to apply anyway.
+
+The badge otherwise counts the rules active on the site you are looking at, falling back to
+the profile-wide count on pages whose address ReqKit has no access to read.
+
+### Popup and rule manager
+
+The popup answers one question: what ReqKit is doing to the current site. It lists that
+host's rules, adds new ones, and shows the selected profile and activation lifetime.
+
+The rule manager is a full page, opened from the popup or from **Extension options** in
+`chrome://extensions`. It manages profiles, activation timing, and all request-header rules.
+
+### Keyboard shortcuts
+
+| Shortcut | Action |
+|---|---|
+| `Alt+Shift+R` | Open the ReqKit popup. |
+| `Alt+Shift+X` | Pause or resume every header rule without opening the popup. The badge shows `off` while rules are paused. |
+
+Both are editable at `chrome://extensions/shortcuts`.
 
 ## Install locally
 
@@ -79,10 +86,11 @@ Changes to extension files require clicking **Reload** on the ReqKit card in `ch
 
 | Permission | Why ReqKit needs it |
 |---|---|
-| `activeTab` | Reads the invoked active tab URL to prefill the transformer and identify the current hostname. It does not read page content or general browsing history. |
-| `storage` | Stores privacy consent, the default URL recipe, and header rules locally in the current Chrome profile. |
-| `declarativeNetRequestWithHostAccess` | Applies enabled request-header rules without injecting scripts or reading response bodies. |
-| Optional `https://*/*` host access | Allows Chrome to prompt for a user-selected exact HTTPS hostname. ReqKit does not receive required access to every site. |
+| `activeTab` | Reads the active tab URL locally only after you open ReqKit, so the popup can identify the current hostname and show matching rules. It does not read page content or general browsing history. |
+| `alarms` | Runs the user-selected automatic expiry so active request-header rules stop applying even when no ReqKit page is open. |
+| `storage` | Stores privacy consent, profiles, activation settings, and request-header rules locally in the current Chrome profile. |
+| `declarativeNetRequestWithHostAccess` | Applies user-created request-header rules to approved HTTPS hosts without injecting scripts or reading response bodies. |
+| Optional `https://*/*` host access | Lets ReqKit ask Chrome for access to the exact HTTPS host you choose when creating or enabling a rule. This optional pattern enables exact-host prompts; it does not grant ReqKit required access to every website. |
 
 ## Privacy and security
 

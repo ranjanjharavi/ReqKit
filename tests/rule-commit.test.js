@@ -19,7 +19,7 @@ const nextRules = [{
   enabled: true
 }];
 
-const normalizedNextRules = [{ ...nextRules[0] }];
+const normalizedNextRules = [{ ...nextRules[0], profileId: 'default' }];
 
 test('commitRuleSet applies and stores normalized rules', async () => {
   const applied = [];
@@ -51,6 +51,56 @@ test('commitRuleSet restores dynamic rules when storage fails', async () => {
   assert.deepEqual(applied, [normalizedNextRules, previousRules]);
 });
 
+test('commitRuleSet permits the same header in different profiles', async () => {
+  const applied = [];
+  const profiledRules = [
+    { ...nextRules[0], profileId: 'staging' },
+    { ...nextRules[0], id: 3, headerValue: 'different', profileId: 'prod' }
+  ];
+
+  const result = await commitRuleSet(profiledRules, {
+    activation: { masterEnabled: true, profileId: 'staging' },
+    getCurrentRules: async () => previousRules,
+    applyRules: async (rules) => applied.push(rules),
+    storeRules: async () => {}
+  });
+
+  assert.equal(result.length, 2);
+  assert.deepEqual(result.map((rule) => rule.profileId), ['staging', 'prod']);
+  assert.equal(applied.length, 1);
+});
+
+test('commitRuleSet rejects duplicate headers inside a profile', async () => {
+  let applied = false;
+  const conflictingRules = [
+    { ...nextRules[0], profileId: 'staging' },
+    { ...nextRules[0], id: 3, headerValue: 'different', profileId: 'staging' }
+  ];
+
+  await assert.rejects(commitRuleSet(conflictingRules, {
+    activation: { masterEnabled: true, profileId: 'staging' },
+    getCurrentRules: async () => previousRules,
+    applyRules: async () => {
+      applied = true;
+    },
+    storeRules: async () => {}
+  }), /X-New already exists.*in this profile/);
+
+  assert.equal(applied, false);
+});
+
+test('commitRuleSet repairs unknown profiles instead of dropping rules', async () => {
+  const result = await commitRuleSet([{ ...nextRules[0], profileId: 'deleted-profile' }], {
+    profileIds: new Set(['default', 'staging']),
+    getCurrentRules: async () => previousRules,
+    applyRules: async () => {},
+    storeRules: async () => {}
+  });
+
+  assert.equal(result.length, 1);
+  assert.equal(result[0].profileId, 'default');
+});
+
 test('commitRuleSet rejects malformed rule collections before applying them', async () => {
   let applied = false;
 
@@ -78,7 +128,7 @@ test('commitRuleSet rejects malformed rule collections before applying them', as
   assert.equal(applied, false);
 });
 
-test('commitRuleSet rejects conflicting active rules before applying them', async () => {
+test('commitRuleSet rejects duplicate headers before applying them', async () => {
   let applied = false;
   const conflictingRules = [
     nextRules[0],
@@ -95,7 +145,7 @@ test('commitRuleSet rejects conflicting active rules before applying them', asyn
       applied = true;
     },
     storeRules: async () => {}
-  }), /Active X-New rules.*conflict/);
+  }), /X-New already exists.*in this profile/);
 
   assert.equal(applied, false);
 });

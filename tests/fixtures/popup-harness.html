@@ -8,13 +8,54 @@
       const storage = previewParameters.has('store')
         ? { privacyConsentVersion: 1 }
         : {};
-      let runtimeRules = [];
+
+      if (previewParameters.has('headers')) {
+        Object.assign(storage, {
+          profiles: [
+            { id: 'default', name: 'Default', createdAt: 0, defaultDurationMs: null },
+            { id: 'staging', name: 'Staging', createdAt: 1, defaultDurationMs: null }
+          ],
+          activation: {
+            masterEnabled: true,
+            profileId: 'default',
+            lastProfileId: 'default',
+            expiresAt: null,
+            durationMs: null,
+            untilBrowserClose: false
+          },
+          headerRules: [
+            { id: 1, domain: 'example.com', headerName: 'X-ReqKit-Review', headerValue: 'enabled', enabled: true, profileId: 'default' },
+            { id: 2, domain: 'example.com', headerName: 'X-Debug-Mode', headerValue: 'verbose', enabled: false, profileId: 'default' },
+            { id: 3, domain: 'staging.example.com', headerName: 'X-Environment', headerValue: 'staging', enabled: true, profileId: 'staging' }
+          ]
+        });
+      }
+
+      let runtimeRules = storage.headerRules || [];
+      let runtimeActivation = storage.activation;
+      const grantedOrigins = previewParameters.has('noaccess')
+        ? []
+        : ['https://example.com/*', 'https://staging.example.com/*'];
       window.__REQKIT_CHROME_STUB__ = {
         runtime: {
           lastError: null,
+          getURL(path) { return `/extension/${path}`; },
+          openOptionsPage(callback) { callback(); },
           sendMessage(message, callback) {
             if (message.type === 'reqkit:rules:commit') {
               runtimeRules = message.rules;
+              callback({ ok: true, rules: runtimeRules });
+              return;
+            }
+            if (message.type === 'reqkit:activation:set') {
+              runtimeActivation = message.activation;
+              storage.activation = runtimeActivation;
+              callback({ ok: true, activation: runtimeActivation });
+              return;
+            }
+            if (message.type === 'reqkit:activation:get') {
+              callback({ ok: true, activation: runtimeActivation });
+              return;
             }
             callback({ ok: true, rules: runtimeRules });
           }
@@ -32,15 +73,28 @@
               Object.assign(storage, value);
               callback();
             }
-          }
+          },
+          onChanged: { addListener() {} }
         },
         permissions: {
-          request(_details, callback) { callback(true); },
+          getAll(callback) {
+            callback({ origins: grantedOrigins });
+          },
+          request(details, callback) {
+            document.documentElement.dataset.permissionRequest = details.origins[0];
+            if (!grantedOrigins.includes(details.origins[0])) {
+              grantedOrigins.push(details.origins[0]);
+            }
+            callback(true);
+          },
           remove(_details, callback) { callback(true); }
         },
         tabs: {
           query(_details, callback) { callback([{ id: 1, url: 'https://example.com/app?view=list#details' }]); },
-          create(details, callback) { callback({ id: 2, ...details }); }
+          create(details, callback) {
+            document.documentElement.dataset.createdTabUrl = details.url;
+            callback({ id: 2, ...details });
+          }
         }
       };
       if (parent !== window) {
@@ -48,20 +102,13 @@
       }
       window.chrome = window.__REQKIT_CHROME_STUB__;
 
-      const markup = await fetch('/extension/popup/index.html').then((response) => response.text());
-      const previewAutomation = previewParameters.has('output')
-        ? `<script>addEventListener('DOMContentLoaded', () => setTimeout(() => {
-            document.getElementById('transformUrlBtn')?.click();
-            setTimeout(() => {
-              document.querySelector('.recipe-card')?.scrollIntoView({ block: 'start' });
-            }, 100);
-          }, 250));</` + `script>`
-        : '';
+      const cacheBust = Date.now();
+      const markup = await fetch('/extension/popup/index.html', { cache: 'no-store' }).then((response) => response.text());
       document.open();
       document.write(markup
         .replace('<head>', '<head><base href="/extension/popup/">')
-        .replace('<script type="module" src="main.js"></' + 'script>', '<script>window.chrome = window.__REQKIT_CHROME_STUB__ || parent.__REQKIT_CHROME_STUB__;</' + 'script><script type="module" src="main.js"></' + 'script>')
-        .replace('</body>', previewAutomation + '</body>'));
+        .replace('href="popup.css"', `href="popup.css?v=${cacheBust}"`)
+        .replace('<script type="module" src="main.js"></' + 'script>', '<script>window.chrome = window.__REQKIT_CHROME_STUB__ || parent.__REQKIT_CHROME_STUB__;</' + `script><script type="module" src="main.js?v=${cacheBust}"></` + 'script>'));
       document.close();
     })();
   </script>
