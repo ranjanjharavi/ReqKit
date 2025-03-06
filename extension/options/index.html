@@ -53,7 +53,6 @@
           <div class="profile-tabs-bar">
             <div id="profileTabs" class="profile-tabs" role="tablist" aria-label="Rule profiles"></div>
             <button id="manageProfilesBtn" class="quiet-action" type="button" aria-haspopup="dialog" aria-controls="profileManagerDialog">Manage profiles</button>
-            <select id="activeProfileSelect" hidden></select>
           </div>
 
           <section id="active-setup" class="active-setup-row" aria-label="Active setup" tabindex="-1">
@@ -120,11 +119,6 @@
           </div>
 
           <div id="rulesToolbar" class="rules-toolbar" hidden>
-            <div id="profileFilter" class="profile-filter" hidden>
-              <label for="profileFilterSelect">Showing</label>
-              <select id="profileFilterSelect" class="profile-select" aria-label="Filter rules by profile"></select>
-            </div>
-
             <div id="ruleSearchContainer" class="rule-search" hidden>
               <label class="sr-only" for="ruleSearchInput">Search header rules</label>
               <svg class="rule-search-icon" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M7 2a5 5 0 1 0 3.16 8.87l2.98 2.98 1.06-1.06-2.98-2.98A5 5 0 0 0 7 2Zm-3.5 5a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0Z"/></svg>
@@ -144,15 +138,27 @@
           <div>
             <span class="workspace-kicker">Profiles</span>
             <h2 id="profileManagerTitle">Manage profiles</h2>
-            <p>Organize rule sets without changing what is currently applied.</p>
+            <p id="profileManagerDescription">Organize rule sets without changing what is currently applied.</p>
           </div>
           <button id="closeProfileManagerBtn" class="dialog-close-btn" type="button" aria-label="Close profile manager">
             <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="m3.7 2.65 4.3 4.3 4.3-4.3 1.05 1.05-4.3 4.3 4.3 4.3-1.05 1.05-4.3-4.3-4.3 4.3-1.05-1.05 4.3-4.3-4.3-4.3L3.7 2.65Z"/></svg>
           </button>
         </header>
         <div id="profileList" class="profile-list"></div>
+        <form id="profileEditorForm" class="profile-editor-form" novalidate hidden>
+          <div class="field">
+            <label for="profileNameInput">Profile name</label>
+            <input id="profileNameInput" type="text" maxlength="40" autocomplete="off" required aria-describedby="profileNameHelp profileEditorError">
+            <p id="profileNameHelp" class="helper-text">Use a unique name up to 40 characters.</p>
+            <p id="profileEditorError" class="profile-editor-error" role="alert" hidden></p>
+          </div>
+          <footer class="profile-dialog-actions profile-editor-actions">
+            <button id="cancelProfileEditorBtn" class="secondary-btn" type="button">Cancel</button>
+            <button id="saveProfileEditorBtn" class="primary-btn" type="submit">Create profile</button>
+          </footer>
+        </form>
         <div id="profileStatus" class="status-msg" role="status" aria-live="polite"></div>
-        <footer class="profile-dialog-actions">
+        <footer id="profileManagerActions" class="profile-dialog-actions">
           <button id="newProfileBtn" class="secondary-btn" type="button">New profile</button>
           <button id="doneProfileManagerBtn" class="primary-btn" type="button">Done</button>
         </footer>

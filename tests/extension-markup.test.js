@@ -11,6 +11,8 @@ const optionsRulesSource = readFileSync(new URL('../extension/options/rules/cont
 const optionsProfilesSource = readFileSync(new URL('../extension/options/profiles/controller.js', import.meta.url), 'utf8');
 const sharedRuleRenderSource = readFileSync(new URL('../extension/shared/rule-render.js', import.meta.url), 'utf8');
 const backgroundSource = readFileSync(new URL('../extension/background.js', import.meta.url), 'utf8');
+const optionsStateSource = readFileSync(new URL('../extension/options/state.js', import.meta.url), 'utf8');
+const sharedUiSource = readFileSync(new URL('../extension/shared/ui.js', import.meta.url), 'utf8');
 
 test('popup keeps profile context in the header and scopes rules with tabs', () => {
   assert.match(popupMarkup, /<main id="headers-panel" class="popup-shell">/);
@@ -32,7 +34,7 @@ test('popup keeps profile context in the header and scopes rules with tabs', () 
 test('rule manager separates active setup, rules, and profile administration', () => {
   assert.match(optionsMarkup, /id="active-setup"/);
   assert.match(optionsMarkup, /id="profileTabs"[^>]*role="tablist"/);
-  assert.match(optionsMarkup, /id="activeProfileSelect"/);
+  assert.doesNotMatch(optionsMarkup, /activeProfileSelect|profileFilterSelect/);
   assert.match(optionsMarkup, /id="durationPills"[^>]*role="radiogroup"/);
   assert.equal((optionsMarkup.match(/class="duration-pill"/g) || []).length, 4);
   assert.doesNotMatch(optionsMarkup, /id="durationSelect"/);
@@ -42,8 +44,23 @@ test('rule manager separates active setup, rules, and profile administration', (
   assert.match(optionsMarkup, /id="siteAccessPreflight"[\s\S]*?ReqKit will not request access to other sites/);
   assert.match(optionsMarkup, /<dialog id="profileManagerDialog"/);
   assert.match(optionsMarkup, /id="manageProfilesBtn"/);
+  assert.match(optionsMarkup, /<form id="profileEditorForm"[^>]*novalidate[^>]*hidden>/);
+  assert.match(optionsMarkup, /id="profileNameInput"[^>]*maxlength="40"[^>]*required/);
+  assert.match(optionsMarkup, /id="profileEditorError"[^>]*role="alert"/);
+  assert.match(optionsMarkup, /id="cancelProfileEditorBtn"/);
+  assert.doesNotMatch(optionsProfilesSource, /globalThis\.prompt/);
+  assert.match(optionsProfilesSource, /validateProfileDraft/);
+  assert.match(optionsProfilesSource, /Copied rules start paused/);
   assert.match(optionsMarkup, /class="product-kicker">ReqKit</);
   assert.match(optionsMarkup, /id="confirmationDialog"[^>]*aria-labelledby="confirmationTitle"/);
+});
+
+test('obsolete profile filter and clipboard code are removed', () => {
+  assert.doesNotMatch(optionsStateSource, /profileFilter/);
+  assert.doesNotMatch(optionsRulesSource, /renderProfileFilter|resolveFilterValue/);
+  assert.doesNotMatch(optionsStyles, /profile-filter/);
+  assert.doesNotMatch(popupStyles, /profile-select/);
+  assert.doesNotMatch(sharedUiSource, /copyToClipboard/);
 });
 
 test('site permission changes immediately rebuild the applied rule set', () => {

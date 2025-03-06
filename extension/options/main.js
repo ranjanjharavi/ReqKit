@@ -41,6 +41,8 @@ function focusRequestedSection() {
   globalThis.setTimeout(() => {
     const section = document.getElementById('active-setup');
     section.scrollIntoView({ block: 'start' });
-    document.getElementById('activeProfileSelect').focus({ preventScroll: true });
+    const focusTarget = document.querySelector('#durationPills [data-duration][aria-checked="true"]:not(:disabled)')
+      || document.querySelector('#profileTabs [aria-selected="true"]');
+    focusTarget?.focus({ preventScroll: true });
   }, 0);
 }

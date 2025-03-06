@@ -256,6 +256,48 @@ body {
   overflow-y: auto;
 }
 
+.profile-list[hidden],
+#profileStatus[hidden],
+.profile-dialog-actions[hidden] {
+  display: none;
+}
+
+.profile-editor-form {
+  display: grid;
+  gap: 14px;
+}
+
+.profile-editor-form[hidden] {
+  display: none;
+}
+
+.profile-editor-form .field {
+  gap: 7px;
+}
+
+.profile-editor-form input {
+  min-height: 40px;
+}
+
+.profile-editor-form input[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.profile-editor-error {
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.profile-editor-error[hidden] {
+  display: none;
+}
+
+.profile-editor-actions {
+  justify-content: flex-end;
+  margin-top: 2px;
+}
+
 .profile-row {
   display: flex;
   align-items: center;
@@ -606,8 +648,7 @@ body {
   border: 0;
 }
 
-.rules-toolbar[hidden],
-.profile-filter {
+.rules-toolbar[hidden] {
   display: none;
 }
 

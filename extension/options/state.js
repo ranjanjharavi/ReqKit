@@ -8,6 +8,5 @@ export const state = {
   collapsedDomains: new Set(),
   revealedRuleIds: new Set(),
   searchQuery: '',
-  profileFilter: 'active',
   syncPaused: false
 };

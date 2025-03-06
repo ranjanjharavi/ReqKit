@@ -74,10 +74,6 @@ export function bindRuleEvents() {
   document.getElementById('ruleSearchInput').addEventListener('input', handleRuleSearchInput);
   document.getElementById('masterSwitch').addEventListener('click', () => toggleMaster());
   document.getElementById('resumeMasterBtn').addEventListener('click', resumeFromBanner);
-  document.getElementById('profileFilterSelect').addEventListener('change', (event) => {
-    state.profileFilter = event.target.value;
-    renderRules();
-  });
   const durationPills = document.getElementById('durationPills');
   durationPills.addEventListener('click', handleDurationClick);
   durationPills.addEventListener('keydown', handleDurationKeydown);
@@ -308,21 +304,8 @@ function describeDuration(value) {
   return `Rules will pause in ${formatRemainingTime(Number(value))}.`;
 }
 
-function renderProfileFilter() {
-  const filter = document.getElementById('profileFilter');
-  filter.hidden = true;
-  state.profileFilter = 'active';
-}
-
-function resolveFilterValue() {
-  return state.profileFilter === 'active'
-    ? getTargetProfileId(getActivation())
-    : state.profileFilter;
-}
-
 function getVisibleRules() {
-  const filterValue = resolveFilterValue();
-  return filterValue === 'all' ? state.rules : filterRulesByProfile(state.rules, filterValue);
+  return filterRulesByProfile(state.rules, getTargetProfileId(getActivation()));
 }
 
 /**
@@ -330,11 +313,8 @@ function getVisibleRules() {
  * rule as broken.
  */
 function describeRule(rule) {
-  const showProfile = state.profiles.length > 1 && resolveFilterValue() === 'all';
-
   return {
-    needsAccess: Boolean(state.grantedOrigins) && !isRuleGranted(rule, state.grantedOrigins),
-    profileName: showProfile ? getProfileName(state.profiles, rule.profileId) : ''
+    needsAccess: Boolean(state.grantedOrigins) && !isRuleGranted(rule, state.grantedOrigins)
   };
 }
 
@@ -510,7 +490,6 @@ function renderRules() {
   renderMasterSwitch();
   renderProfiles();
   renderDurationField();
-  renderProfileFilter();
   updateSummary();
 
   const visibleRules = filterRulesBySearch(getVisibleRules(), state.searchQuery);
@@ -640,10 +619,9 @@ function toggleRuleValueVisibility(id) {
 
 async function addRule() {
   const activation = getActivation();
-  const filterValue = resolveFilterValue();
-  // Add into the profile currently on screen, so the new rule appears where
-  // the user is looking rather than silently landing elsewhere.
-  const profileId = filterValue === 'all' ? getTargetProfileId(activation) : filterValue;
+  // New rules belong to the selected profile, which is also the profile shown
+  // in the manager's rule list.
+  const profileId = getTargetProfileId(activation);
   const validation = validateRuleDraft(readCreateDraft(), state.rules, { activation, profileId });
   if (!validation.ok) {
     showStatus('headerStatus', validation.error, 'error');
