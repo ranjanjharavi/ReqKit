@@ -26,7 +26,7 @@ export async function commitRuleSet(nextRules, {
   });
   if (duplicateRule) {
     throw new Error(
-      `${duplicateRule.headerName} already exists for ${duplicateRule.domain} in this profile.`
+      `${duplicateRule.headerName} already exists for ${duplicateRule.domain} with that request scope in this profile.`
     );
   }
 

@@ -296,6 +296,9 @@ function openRuleEditor(id) {
   document.getElementById('domain').value = rule.domain;
   document.getElementById('headerName').value = rule.headerName;
   document.getElementById('headerValue').value = rule.headerValue;
+  document.getElementById('pathPrefix').value = rule.pathPrefix || '';
+  document.getElementById('resourceType').value = rule.resourceType || 'all';
+  document.getElementById('requestScopeDetails').open = Boolean(rule.pathPrefix) || rule.resourceType === 'xmlhttprequest';
   configureComposer();
   setHeaderComposerExpanded(true, { focusFirstField: true });
 }
@@ -812,7 +815,9 @@ function readCreateDraft() {
   return {
     domain: document.getElementById('domain').value,
     headerName: document.getElementById('headerName').value,
-    headerValue: document.getElementById('headerValue').value
+    headerValue: document.getElementById('headerValue').value,
+    pathPrefix: document.getElementById('pathPrefix').value,
+    resourceType: document.getElementById('resourceType').value
   };
 }
 
@@ -820,4 +825,7 @@ function clearHeaderForm() {
   document.getElementById('domain').value = state.headers.currentHostname;
   document.getElementById('headerName').value = '';
   document.getElementById('headerValue').value = '';
+  document.getElementById('pathPrefix').value = '';
+  document.getElementById('resourceType').value = 'all';
+  document.getElementById('requestScopeDetails').open = false;
 }

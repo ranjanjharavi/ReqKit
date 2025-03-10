@@ -6,11 +6,11 @@ ReqKit is a lightweight Chrome extension for creating, organizing, and temporari
 
 ### Request headers
 
-- Creates request-header rules for exact HTTPS hostnames.
+- Creates request-header rules for exact HTTPS hostnames, with optional path-prefix and API (fetch/XHR) scoping.
 - Requests optional site access only when a rule is created or enabled.
 - Supports enabling, pausing, editing, and deleting rules.
-- Applies enabled rules through Chrome's `declarativeNetRequest` API.
-- Detects conflicting active rules for the same host and header name.
+- Applies enabled rules through Chrome's `declarativeNetRequest` API. By default, a rule matches all request types for that host; optional scopes can limit it to a path and nested paths, and/or fetch/XHR requests.
+- Detects conflicting active rules for the same host and header when their request scopes overlap.
 - Masks sensitive-looking header values in the popup until explicitly revealed.
 - Removes site access after the final rule for a hostname is deleted.
 

@@ -97,6 +97,7 @@ export function renderRuleRow(rule, {
           <code class="rule-header-value${isSensitive && !revealed ? ' is-masked' : ''}">${escapeHtml(displayValue)}</code>
           ${isSensitive ? renderRevealButton(rule, revealed) : ''}
         </div>
+        ${renderRuleScopeSummary(rule)}
         ${needsAccess ? renderAccessNotice(rule) : ''}
         ${hasConflict ? renderConflictNotice(conflictingRules) : ''}
       </div>
@@ -125,8 +126,8 @@ function renderRevealButton(rule, revealed) {
 
 export function renderConflictNotice(conflictingRules) {
   const detail = conflictingRules.length === 1
-    ? 'Overlaps with another active rule using a different value.'
-    : `Overlaps with ${conflictingRules.length} active rules using different values.`;
+    ? 'Request scope overlaps another active rule with a different value.'
+    : `Request scope overlaps ${conflictingRules.length} active rules with different values.`;
 
   return `
     <div class="rule-conflict-notice" role="note">
@@ -136,8 +137,24 @@ export function renderConflictNotice(conflictingRules) {
   `;
 }
 
+function renderRuleScopeSummary(rule) {
+  const parts = [];
+  if (rule.pathPrefix) {
+    parts.push(`Path <code>${escapeHtml(rule.pathPrefix)}</code> and subpaths`);
+  }
+  if (rule.resourceType === 'xmlhttprequest') {
+    parts.push('Fetch/XHR only');
+  }
+  if (!parts.length) {
+    return '';
+  }
+
+  return `<div class="rule-scope-summary" aria-label="Request scope">${parts.map((part) => `<span>${part}</span>`).join('<span aria-hidden="true">·</span>')}</div>`;
+}
+
 export function renderRuleEditForm(rule, profiles = null) {
   const showProfileField = Array.isArray(profiles) && profiles.length > 1;
+  const selectedResourceType = rule.resourceType === 'xmlhttprequest' ? 'xmlhttprequest' : 'all';
 
   return `
     <div class="domain-rule-row">
@@ -154,6 +171,17 @@ export function renderRuleEditForm(rule, profiles = null) {
           <div class="rule-edit-field rule-edit-field-value">
             <label for="editHeaderValue-${rule.id}">Header value</label>
             <input id="editHeaderValue-${rule.id}" type="text" value="${escapeHtml(rule.headerValue)}" autocapitalize="off" autocorrect="off" spellcheck="false">
+          </div>
+          <div class="rule-edit-field rule-edit-field-path">
+            <label for="editPathPrefix-${rule.id}">Path prefix (optional)</label>
+            <input id="editPathPrefix-${rule.id}" type="text" value="${escapeHtml(rule.pathPrefix || '')}" placeholder="/api/v1" maxlength="512" autocapitalize="off" autocorrect="off" spellcheck="false">
+          </div>
+          <div class="rule-edit-field rule-edit-field-resource-type">
+            <label for="editResourceType-${rule.id}">Request type</label>
+            <select id="editResourceType-${rule.id}">
+              <option value="all"${selectedResourceType === 'all' ? ' selected' : ''}>All requests</option>
+              <option value="xmlhttprequest"${selectedResourceType === 'xmlhttprequest' ? ' selected' : ''}>API calls (fetch/XHR)</option>
+            </select>
           </div>
           ${showProfileField ? renderProfileField(rule, profiles) : ''}
         </div>

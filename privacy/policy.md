@@ -8,12 +8,12 @@ ReqKit is a Chrome extension for creating, organizing, and temporarily applying 
 
 - **Active tab URL:** after you open the popup, ReqKit reads the active tab URL locally to identify the current host. It does not read page content or retain browsing history.
 - **Profiles and activation settings:** profile names, the selected profile, pause state, and optional activation timing are stored in `chrome.storage.local` in your Chrome profile.
-- **Header rules:** exact HTTPS hosts, header names, header values, profile assignments, and enabled states are stored in `chrome.storage.local` in your Chrome profile.
+- **Header rules:** exact HTTPS hosts, header names, header values, optional path prefixes and request-type scopes, profile assignments, and enabled states are stored in `chrome.storage.local` in your Chrome profile.
 - **Privacy choice:** acceptance of the first-use disclosure is stored locally.
 
 ## How data is used and transmitted
 
-ReqKit sends no data to its developer. While an enabled header rule is active, Chrome sends its configured value only in requests to the exact HTTPS host you approved. Destination services process request headers under their own policies, and those values may appear in destination or intermediary logs.
+ReqKit sends no data to its developer. While an enabled header rule is active, Chrome sends its configured value only to the exact HTTPS host you approved, and only on requests matching the rule's optional path and request-type scope. With no scope selected, the rule matches all request types on that host. Destination services process request headers under their own policies, and those values may appear in destination or intermediary logs.
 
 ## Retention and deletion
 
@@ -29,7 +29,7 @@ Profiles, activation settings, header rules, and the privacy choice remain in th
 
 ## Security and responsible use
 
-ReqKit limits rules to exact HTTPS hosts, masks sensitive-looking header values in the popup, and detects conflicting active header rules. These protections do not prevent you from using data you are authorized to use.
+ReqKit limits rules to exact HTTPS hosts, supports optional path and fetch/XHR request scoping, masks sensitive-looking header values in the popup, and detects conflicting active rules whose scopes overlap. These protections do not prevent you from using data you are authorized to use.
 
 Use ReqKit only with systems and data you are authorized to access. Avoid using long-lived production credentials as test header values.
 

@@ -790,6 +790,12 @@ body {
   min-width: 0;
 }
 
+.options-shell .rule-scope-summary {
+  grid-column: 1 / -1;
+  margin-top: -5px;
+  font-size: 11px;
+}
+
 .options-shell .rule-row-controls {
   grid-column: 3;
   grid-row: 1;
@@ -972,6 +978,7 @@ body {
   }
 
   .rules-composer .header-fields-row,
+  .request-scope-fields,
   .options-shell .rule-edit-grid {
     grid-template-columns: 1fr;
   }

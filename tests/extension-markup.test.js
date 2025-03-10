@@ -28,6 +28,7 @@ test('popup keeps profile context in the header and scopes rules with tabs', () 
   assert.doesNotMatch(popupMarkup, /id="durationSelect"/);
   assert.doesNotMatch(popupMarkup, /header-composer-heading|headerComposerTitle|headerComposerProfile/);
   assert.match(popupMarkup, /id="siteAccessPreflight"[\s\S]*?Chrome will ask you to approve this exact HTTPS host/);
+  assert.match(popupMarkup, /id="requestScopeDetails"[\s\S]*?id="pathPrefix"[\s\S]*?id="resourceType"/);
   assert.match(popupMarkup, /id="confirmationDialog"[^>]*aria-labelledby="confirmationTitle"/);
 });
 
@@ -42,6 +43,9 @@ test('rule manager separates active setup, rules, and profile administration', (
   assert.match(optionsMarkup, /class="header-fields-row"[\s\S]*?for="headerName"[\s\S]*?for="headerValue"/);
   assert.match(optionsMarkup, /class="helper-text disclosure-text composer-disclosure"/);
   assert.match(optionsMarkup, /id="siteAccessPreflight"[\s\S]*?ReqKit will not request access to other sites/);
+  assert.match(optionsMarkup, /id="requestScopeDetails"[\s\S]*?id="pathPrefix"[\s\S]*?id="resourceType"/);
+  assert.match(sharedRuleRenderSource, /editPathPrefix/);
+  assert.match(sharedRuleRenderSource, /editResourceType/);
   assert.match(optionsMarkup, /<dialog id="profileManagerDialog"/);
   assert.match(optionsMarkup, /id="manageProfilesBtn"/);
   assert.match(optionsMarkup, /<form id="profileEditorForm"[^>]*novalidate[^>]*hidden>/);

@@ -318,12 +318,15 @@ label {
 }
 
 input,
-button {
+button,
+select {
   font: inherit;
 }
 
-input {
+input,
+select {
   width: 100%;
+  min-height: 36px;
   padding: var(--input-padding);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -337,11 +340,13 @@ input::placeholder {
   color: #8ca0bc;
 }
 
-input:hover {
+input:hover,
+select:hover {
   border-color: var(--border-strong);
 }
 
-input:focus {
+input:focus,
+select:focus {
   outline: none;
   border-color: var(--focus-border);
   box-shadow: 0 0 0 4px var(--ring);
@@ -454,6 +459,47 @@ button:disabled {
 .header-composer-form {
   display: grid;
   gap: var(--space-3);
+}
+
+.request-scope-options {
+  padding: 7px 10px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-subtle);
+}
+
+.request-scope-options summary {
+  min-height: 28px;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.request-scope-options summary:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.scope-default-label {
+  margin-left: 6px;
+  color: var(--muted-foreground);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.request-scope-options[open] summary {
+  margin-bottom: 8px;
+}
+
+.request-scope-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.request-scope-fields .field {
+  gap: 6px;
 }
 
 .header-composer-actions {
@@ -1135,6 +1181,22 @@ button:disabled {
   gap: 4px;
 }
 
+.rule-scope-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 7px;
+  padding: 2px 0 3px;
+  color: var(--muted-foreground);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.rule-scope-summary code {
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
 .rule-header-name {
   overflow: hidden;
   color: var(--active-header);
@@ -1160,6 +1222,10 @@ button:disabled {
   display: grid;
   gap: 6px;
   min-width: 0;
+}
+
+.rule-edit-field select {
+  align-self: start;
 }
 
 .rule-edit-actions {

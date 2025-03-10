@@ -846,7 +846,9 @@ function readCreateDraft() {
   return {
     domain: document.getElementById('domain').value,
     headerName: document.getElementById('headerName').value,
-    headerValue: document.getElementById('headerValue').value
+    headerValue: document.getElementById('headerValue').value,
+    pathPrefix: document.getElementById('pathPrefix').value,
+    resourceType: document.getElementById('resourceType').value
   };
 }
 
@@ -855,6 +857,8 @@ function readEditDraft(id) {
     domain: document.getElementById(`editDomain-${id}`).value,
     headerName: document.getElementById(`editHeaderName-${id}`).value,
     headerValue: document.getElementById(`editHeaderValue-${id}`).value,
+    pathPrefix: document.getElementById(`editPathPrefix-${id}`).value,
+    resourceType: document.getElementById(`editResourceType-${id}`).value,
     profileId: document.getElementById(`editProfile-${id}`)?.value
   };
 }
@@ -863,4 +867,7 @@ function clearHeaderForm() {
   document.getElementById('domain').value = '';
   document.getElementById('headerName').value = '';
   document.getElementById('headerValue').value = '';
+  document.getElementById('pathPrefix').value = '';
+  document.getElementById('resourceType').value = 'all';
+  document.getElementById('requestScopeDetails').open = false;
 }
