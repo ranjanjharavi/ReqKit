@@ -73,6 +73,17 @@ test('site permission changes immediately rebuild the applied rule set', () => {
   assert.match(backgroundSource, /refreshAfterPermissionChange/);
 });
 
+test('background state changes and reads share a serial queue', () => {
+  assert.match(backgroundSource, /const enqueueBackgroundTask = createSerialQueue\(\)/);
+  assert.match(backgroundSource, /enqueueBackgroundTask\(\(\) => handleRuleMessage\(message\)\)/);
+  assert.match(backgroundSource, /enqueueBackgroundTask\(\(\) => handleActivationMessage\(message\)\)/);
+  assert.match(backgroundSource, /enqueueBackgroundTask\(\(\) => initialize\(\{ newBrowserSession: true \}\)\)/);
+  assert.match(backgroundSource, /enqueueBackgroundTask\(\(\) => applyExpiry\(\)\)/);
+  assert.match(backgroundSource, /enqueueBackgroundTask\(\(\) => toggleMasterSwitch\(\)\)/);
+  assert.match(backgroundSource, /enqueueBackgroundTask\(\(\) => refreshAfterPermissionChange\(\)\)/);
+  assert.match(backgroundSource, /enqueueBackgroundTask\(\(\) => refreshTabBadge\(tabId/);
+});
+
 test('empty popup state relies on the footer add action', () => {
   assert.match(popupRulesSource, /container\.classList\.toggle\('is-empty', !visibleRules\.length\)/);
   assert.doesNotMatch(popupRulesSource, /empty-state-action[^\n]*data-rule-action="open-composer"/);

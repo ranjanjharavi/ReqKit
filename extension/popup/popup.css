@@ -469,7 +469,6 @@ button:disabled {
 }
 
 .request-scope-options summary {
-  min-height: 28px;
   color: var(--primary);
   font-size: 12px;
   font-weight: 650;
