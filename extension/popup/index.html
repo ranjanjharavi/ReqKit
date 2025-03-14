@@ -70,25 +70,6 @@
                   <p class="helper-text">Host access is exact; use optional request scoping below to narrow which requests receive this header.</p>
                 </div>
 
-                <details id="requestScopeDetails" class="request-scope-options">
-                  <summary>Optional request scoping <span class="scope-default-label">Defaults: all paths · all requests</span></summary>
-                  <div class="request-scope-fields">
-                    <div class="field">
-                      <label for="pathPrefix">Path prefix</label>
-                      <input type="text" id="pathPrefix" placeholder="/api/v1" maxlength="512" autocapitalize="off" autocorrect="off" spellcheck="false">
-                      <p class="helper-text">Blank matches every path. A prefix also matches nested paths, not similar names.</p>
-                    </div>
-                    <div class="field">
-                      <label for="resourceType">Request type</label>
-                      <select id="resourceType">
-                        <option value="all">All requests</option>
-                        <option value="xmlhttprequest">API calls (fetch/XHR)</option>
-                      </select>
-                      <p class="helper-text">Fetch/XHR excludes page loads and static assets.</p>
-                    </div>
-                  </div>
-                </details>
-
                 <div class="field">
                   <label for="headerName">Header name</label>
                   <input type="text" id="headerName" placeholder="X-ReqKit-Debug">
@@ -100,6 +81,23 @@
                   <p class="helper-text disclosure-text">Stored in this Chrome profile and sent only to the exact HTTPS host you approve. Use only authorized systems.</p>
                 </div>
 
+                <details id="requestScopeDetails" class="request-scope-options">
+                  <summary>Optional request scoping <span class="scope-default-label">Defaults: all paths · all requests</span></summary>
+                  <div class="request-scope-fields">
+                    <div class="field">
+                      <label for="pathPrefix">Path prefix</label>
+                      <input type="text" id="pathPrefix" placeholder="/api/v1" maxlength="512" autocapitalize="off" autocorrect="off" spellcheck="false">
+                    </div>
+                    <div class="field">
+                      <label for="resourceType">Request type</label>
+                      <select id="resourceType">
+                        <option value="all">All requests</option>
+                        <option value="xmlhttprequest">API calls (fetch/XHR)</option>
+                      </select>
+                    </div>
+                    <p class="helper-text request-scope-hint">Blank matches all paths. Prefixes include nested paths, not similar names. Fetch/XHR excludes page loads and static assets.</p>
+                  </div>
+                </details>
                 <div id="siteAccessPreflight" class="site-access-preflight" role="note" aria-live="polite" hidden>
                   <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1.25 13 3v3.85c0 3.38-2.08 6.43-5 7.9-2.92-1.47-5-4.52-5-7.9V3l5-1.75Zm0 1.59L4.5 4.07v2.78c0 2.58 1.47 4.99 3.5 6.21 2.03-1.22 3.5-3.63 3.5-6.21V4.07L8 2.84Zm-.75 2.41h1.5V8h-1.5V5.25Zm0 3.75h1.5v1.5h-1.5V9Z"/></svg>
                   <div>

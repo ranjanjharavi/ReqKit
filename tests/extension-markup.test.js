@@ -32,6 +32,27 @@ test('popup keeps profile context in the header and scopes rules with tabs', () 
   assert.match(popupMarkup, /id="confirmationDialog"[^>]*aria-labelledby="confirmationTitle"/);
 });
 
+test('popup keeps optional scope secondary and aligns its paired controls', () => {
+  const form = popupMarkup.match(/<form id="headerComposerForm"[\s\S]*?<\/form>/)?.[0];
+  assert.ok(form);
+
+  const landmarks = [
+    'for="domain"',
+    'for="headerName"',
+    'for="headerValue"',
+    'id="requestScopeDetails"',
+    'id="siteAccessPreflight"',
+    'id="addHeaderBtn"'
+  ];
+  const positions = landmarks.map((landmark) => form.indexOf(landmark));
+  assert.ok(positions.every((position) => position >= 0));
+  assert.deepEqual(positions, [...positions].sort((left, right) => left - right));
+
+  assert.match(form, /id="resourceType"[\s\S]*?class="helper-text request-scope-hint"/);
+  assert.match(popupStyles, /\.request-scope-fields\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(popupStyles, /\.request-scope-fields \.field > input,[\s\S]*?height:\s*var\(--control-height\)/);
+});
+
 test('rule manager separates active setup, rules, and profile administration', () => {
   assert.match(optionsMarkup, /id="active-setup"/);
   assert.match(optionsMarkup, /id="profileTabs"[^>]*role="tablist"/);

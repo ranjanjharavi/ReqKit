@@ -62,8 +62,8 @@
 
 html,
 body {
-  width: 480px;
-  height: 560px;
+  width: 520px;
+  height: 600px;
 }
 
 body {
@@ -499,6 +499,20 @@ button:disabled {
 
 .request-scope-fields .field {
   gap: 6px;
+}
+.request-scope-fields .field label {
+  height: 18px;
+}
+
+.request-scope-fields .field > input,
+.request-scope-fields .field > select {
+  height: var(--control-height);
+  min-height: var(--control-height);
+  padding-block: 8px;
+}
+
+.request-scope-hint {
+  grid-column: 1 / -1;
 }
 
 .header-composer-actions {
