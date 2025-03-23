@@ -13,7 +13,12 @@ export function getProfileOrigins(rules, profileId) {
 
 export function isOriginGranted(origin, grantedOrigins) {
   const granted = grantedOrigins instanceof Set ? grantedOrigins : new Set(grantedOrigins || []);
-  return BROAD_ORIGIN_PATTERNS.some((pattern) => granted.has(pattern)) || granted.has(origin);
+  return [...granted].some((pattern) => originPatternCovers(pattern, origin));
+}
+
+export function getRulesForOriginGrant(rules, origin) {
+  const grant = new Set([origin]);
+  return (Array.isArray(rules) ? rules : []).filter((rule) => isRuleGranted(rule, grant));
 }
 
 export function isRuleGranted(rule, grantedOrigins) {
@@ -40,4 +45,20 @@ export function filterGrantedRules(rules, grantedOrigins) {
   }
 
   return (Array.isArray(rules) ? rules : []).filter((rule) => isRuleGranted(rule, grantedOrigins));
+}
+
+function originPatternCovers(grantedPattern, requestedOrigin) {
+  if (BROAD_ORIGIN_PATTERNS.includes(grantedPattern) || grantedPattern === requestedOrigin) {
+    return true;
+  }
+
+  const wildcardMatch = /^https:\/\/\*\.([^/*]+)\/\*$/.exec(grantedPattern);
+  const requestedMatch = /^https:\/\/([^/*]+)\/\*$/.exec(requestedOrigin);
+  if (!wildcardMatch || !requestedMatch) {
+    return false;
+  }
+
+  const wildcardDomain = wildcardMatch[1].toLowerCase();
+  const requestedDomain = requestedMatch[1].toLowerCase();
+  return requestedDomain === wildcardDomain || requestedDomain.endsWith(`.${wildcardDomain}`);
 }

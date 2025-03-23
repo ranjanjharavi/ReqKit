@@ -1,6 +1,12 @@
 import { requirePrivacyConsent } from '../shared/privacy.js';
-import { bindRuleEvents, initializeRules, refreshFromStorage } from './rules/controller.js';
+import {
+  bindRuleEvents,
+  initializeRules,
+  refreshFromStorage,
+  renderRules
+} from './rules/controller.js';
 import { bindProfileEvents } from './profiles/controller.js';
+import { bindSiteAccessEvents } from './site-access/controller.js';
 import { showStatus } from '../shared/ui.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -15,6 +21,7 @@ async function start() {
   await requirePrivacyConsent();
   bindRuleEvents();
   bindProfileEvents({ onChanged: refreshFromStorage });
+  bindSiteAccessEvents({ onRefreshState: refreshFromStorage, onRenderRules: renderRules });
 
   await initializeRules({ editRuleId: readEditRuleId() }).catch((error) => {
     console.error('Could not load header rules.', error);

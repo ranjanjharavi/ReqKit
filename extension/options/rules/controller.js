@@ -53,6 +53,7 @@ import { confirmDestructiveAction } from '../../shared/confirmation-dialog.js';
 import { state } from '../state.js';
 import { showStatus } from '../../shared/ui.js';
 import { getRuleWorkspaceSummary } from '../view-model.js';
+import { renderSiteAccessOverview } from '../site-access/controller.js';
 
 const SEARCH_VISIBLE_FROM = 5;
 const DURATION_OPTIONS = [3_600_000, 28_800_000];
@@ -483,7 +484,7 @@ function setHeaderComposerExpanded(expanded, {
   }
 }
 
-function renderRules() {
+export function renderRules() {
   const container = document.getElementById('ruleListContainer');
   const conflictMap = createConflictMap(getActiveRuleConflicts(state.rules, getActivation()));
   const conflictingIds = new Set(conflictMap.keys());
@@ -491,6 +492,7 @@ function renderRules() {
   renderProfiles();
   renderDurationField();
   updateSummary();
+  renderSiteAccessOverview();
 
   const visibleRules = filterRulesBySearch(getVisibleRules(), state.searchQuery);
   if (!visibleRules.length) {
