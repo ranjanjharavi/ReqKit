@@ -9,6 +9,7 @@ const optionsStyles = readFileSync(new URL('../extension/options/options.css', i
 const popupRulesSource = readFileSync(new URL('../extension/popup/headers/controller.js', import.meta.url), 'utf8');
 const optionsRulesSource = readFileSync(new URL('../extension/options/rules/controller.js', import.meta.url), 'utf8');
 const optionsProfilesSource = readFileSync(new URL('../extension/options/profiles/controller.js', import.meta.url), 'utf8');
+const siteAccessControllerSource = readFileSync(new URL('../extension/options/site-access/controller.js', import.meta.url), 'utf8');
 const sharedRuleRenderSource = readFileSync(new URL('../extension/shared/rule-render.js', import.meta.url), 'utf8');
 const backgroundSource = readFileSync(new URL('../extension/background.js', import.meta.url), 'utf8');
 const optionsStateSource = readFileSync(new URL('../extension/options/state.js', import.meta.url), 'utf8');
@@ -86,6 +87,17 @@ test('obsolete profile filter and clipboard code are removed', () => {
   assert.doesNotMatch(optionsStyles, /profile-filter/);
   assert.doesNotMatch(popupStyles, /profile-select/);
   assert.doesNotMatch(sharedUiSource, /copyToClipboard/);
+});
+
+test('site access overview audits grants and revokes without deleting rules', () => {
+  assert.match(optionsMarkup, /id="siteAccessBtn"[^>]*aria-controls="siteAccessDialog"/);
+  assert.match(optionsMarkup, /<dialog id="siteAccessDialog"[^>]*aria-labelledby="siteAccessTitle"/);
+  assert.match(optionsMarkup, /id="siteAccessList"[^>]*aria-busy="false"/);
+  assert.match(siteAccessControllerSource, /getRulesForOriginGrant/);
+  assert.match(siteAccessControllerSource, /removeOriginPermission\(origin\)/);
+  assert.match(siteAccessControllerSource, /confirmDestructiveAction/);
+  assert.match(siteAccessControllerSource, /Saved rules were kept/);
+  assert.doesNotMatch(siteAccessControllerSource, /headerValue/);
 });
 
 test('site permission changes immediately rebuild the applied rule set', () => {

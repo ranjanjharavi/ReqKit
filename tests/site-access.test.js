@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   filterGrantedRules,
   getMissingProfileOrigins,
+  getRulesForOriginGrant,
   getProfileOrigins,
   isOriginGranted,
   isRuleGranted
@@ -41,6 +42,22 @@ test('a broad grant covers every host', () => {
   assert.equal(isOriginGranted('https://anything.example.com/*', new Set(['https://*/*'])), true);
   assert.equal(isOriginGranted('https://anything.example.com/*', new Set(['<all_urls>'])), true);
   assert.deepEqual(getMissingProfileOrigins(rules, 'default', new Set(['https://*/*'])), []);
+});
+
+test('host-specific grants cover only the matching host rules', () => {
+  assert.deepEqual(getRulesForOriginGrant(rules, 'https://api.example.com/*').map((rule) => rule.id), [1, 2]);
+  assert.deepEqual(getRulesForOriginGrant(rules, 'https://unused.example.com/*'), []);
+});
+
+test('broad and wildcard grants report every host they cover', () => {
+  assert.deepEqual(getRulesForOriginGrant(rules, 'https://*/*').map((rule) => rule.id), [1, 2, 3, 4]);
+  assert.deepEqual(getRulesForOriginGrant(rules, '<all_urls>').map((rule) => rule.id), [1, 2, 3, 4]);
+  assert.deepEqual(
+    getRulesForOriginGrant(rules, 'https://*.example.com/*').map((rule) => rule.id),
+    [1, 2]
+  );
+  assert.equal(isOriginGranted('https://api.example.com/*', new Set(['https://*.example.com/*'])), true);
+  assert.equal(isOriginGranted('https://badexample.com/*', new Set(['https://*.example.com/*'])), false);
 });
 
 test('a rule is granted only when its own host is', () => {

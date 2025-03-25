@@ -13,6 +13,7 @@ ReqKit is a lightweight Chrome extension for creating, organizing, and temporari
 - Detects conflicting active rules for the same host and header when their request scopes overlap.
 - Masks sensitive-looking header values in the popup until explicitly revealed.
 - Removes site access after the final rule for a hostname is deleted.
+- Includes a site-access overview to audit granted hosts, see the saved rules covered by each grant, and revoke access without deleting those rules.
 
 Use header modification only with systems you are authorized to test.
 
@@ -90,7 +91,7 @@ Changes to extension files require clicking **Reload** on the ReqKit card in `ch
 | `alarms` | Runs the user-selected automatic expiry so active request-header rules stop applying even when no ReqKit page is open. |
 | `storage` | Stores privacy consent, profiles, activation settings, and request-header rules locally in the current Chrome profile. |
 | `declarativeNetRequestWithHostAccess` | Applies user-created request-header rules to approved HTTPS hosts without injecting scripts or reading response bodies. |
-| Optional `https://*/*` host access | Lets ReqKit ask Chrome for access to the exact HTTPS host you choose when creating or enabling a rule. This optional pattern enables exact-host prompts; it does not grant ReqKit required access to every website. |
+| Optional `https://*/*` host access | Lets ReqKit ask Chrome for access to the exact HTTPS host you choose when creating or enabling a rule. This optional pattern enables exact-host prompts; it does not grant ReqKit required access to every website. Review and revoke granted hosts from the rule manager's **Site access** overview. |
 
 ## Privacy and security
 

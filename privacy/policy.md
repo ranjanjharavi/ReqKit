@@ -17,7 +17,7 @@ ReqKit sends no data to its developer. While an enabled header rule is active, C
 
 ## Retention and deletion
 
-Profiles, activation settings, header rules, and the privacy choice remain in this Chrome profile until you change or delete them, clear extension data, or uninstall ReqKit. Deleting a profile also deletes the header rules assigned to it. Deleting the last header rule for a host asks Chrome to remove ReqKit's access to that host.
+Profiles, activation settings, header rules, and the privacy choice remain in this Chrome profile until you change or delete them, clear extension data, or uninstall ReqKit. Deleting a profile also deletes the header rules assigned to it. Deleting the last header rule for a host asks Chrome to remove ReqKit's access to that host. You can also review and revoke granted host access from the rule manager; revoking access keeps affected rules saved but prevents them from applying until access is granted again.
 
 ## Permissions
 
@@ -25,7 +25,7 @@ Profiles, activation settings, header rules, and the privacy choice remain in th
 - `alarms` runs the user-selected automatic expiry so active request-header rules stop applying even when no ReqKit page is open.
 - `storage` retains privacy consent, profiles, activation settings, and request-header rules locally in the current Chrome profile.
 - `declarativeNetRequestWithHostAccess` applies user-created request-header rules to approved HTTPS hosts without injecting scripts or reading response bodies.
-- Optional `https://*/*` host access lets ReqKit ask Chrome for access to the exact HTTPS host you choose when creating or enabling a rule. This optional pattern enables exact-host prompts; it does not grant ReqKit required access to every website.
+- Optional `https://*/*` host access lets ReqKit ask Chrome for access to the exact HTTPS host you choose when creating or enabling a rule. This optional pattern enables exact-host prompts; it does not grant ReqKit required access to every website. The Site access overview shows the grants ReqKit currently holds and lets you revoke them.
 
 ## Security and responsible use
 
