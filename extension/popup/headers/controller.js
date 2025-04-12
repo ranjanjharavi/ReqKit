@@ -211,9 +211,6 @@ function renderMasterSwitch() {
       ? `Resume to switch back to ${getProfileName(state.headers.profiles, getTargetProfileId(activation))}.`
       : 'No headers are being applied to any site.';
   }
-
-  document.querySelector('#headers-panel .content-stack')
-    .classList.toggle('is-master-paused', status !== 'live');
 }
 
 function renderActivationSummary() {

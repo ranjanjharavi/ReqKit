@@ -17,7 +17,7 @@ const sharedUiSource = readFileSync(new URL('../extension/shared/ui.js', import.
 
 test('popup keeps profile context in the header and scopes rules with tabs', () => {
   assert.match(popupMarkup, /<main id="headers-panel" class="popup-shell">/);
-  assert.match(popupMarkup, /class="product-kicker">ReqKit</);
+  assert.doesNotMatch(popupMarkup, /class="product-kicker"/);
   assert.match(popupMarkup, /id="activeProfileName"/);
   assert.match(popupMarkup, /id="activeUntilLabel"/);
   assert.match(popupMarkup, /id="changeActiveSetupBtn"/);
@@ -31,6 +31,17 @@ test('popup keeps profile context in the header and scopes rules with tabs', () 
   assert.match(popupMarkup, /id="siteAccessPreflight"[\s\S]*?Chrome will ask you to approve this exact HTTPS host/);
   assert.match(popupMarkup, /id="requestScopeDetails"[\s\S]*?id="pathPrefix"[\s\S]*?id="resourceType"/);
   assert.match(popupMarkup, /id="confirmationDialog"[^>]*aria-labelledby="confirmationTitle"/);
+});
+
+test('popup and manager use readable supporting text and contrast tokens', () => {
+  const styles = `${popupStyles}\n${optionsStyles}`;
+  assert.match(popupStyles, /--type-body:\s*14px/);
+  assert.match(popupStyles, /--type-label:\s*13px/);
+  assert.match(popupStyles, /--type-support:\s*12px/);
+  assert.match(popupStyles, /input::placeholder\s*\{[^}]*color:\s*#64748b/s);
+  assert.match(optionsStyles, /--manager-subtle:\s*#5f6b7a/);
+  assert.doesNotMatch(styles, /font-size:\s*(?:9(?:\.5)?|10(?:\.5)?|11(?:\.5)?)px/);
+  assert.doesNotMatch(styles, /font-size:\s*0\.\d+em/);
 });
 
 test('popup keeps optional scope secondary and aligns its paired controls', () => {
@@ -77,7 +88,7 @@ test('rule manager separates active setup, rules, and profile administration', (
   assert.doesNotMatch(optionsProfilesSource, /globalThis\.prompt/);
   assert.match(optionsProfilesSource, /validateProfileDraft/);
   assert.match(optionsProfilesSource, /Copied rules start paused/);
-  assert.match(optionsMarkup, /class="product-kicker">ReqKit</);
+  assert.doesNotMatch(optionsMarkup, /class="product-kicker"|class="workspace-kicker"/);
   assert.match(optionsMarkup, /id="confirmationDialog"[^>]*aria-labelledby="confirmationTitle"/);
 });
 

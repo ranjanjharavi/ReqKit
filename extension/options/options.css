@@ -10,8 +10,7 @@
   --manager-divider: #edf0f5;
   --manager-row-divider: #f3f5f9;
   --manager-muted: #5a6474;
-  --manager-subtle: #8a93a3;
-  --manager-faint: #b4bcc8;
+  --manager-subtle: #5f6b7a;
   --manager-active-header: #1e40af;
   --manager-pill-surface: var(--surface-muted);
   --manager-pill-border: var(--manager-divider);
@@ -93,7 +92,7 @@ body {
 .profile-dialog-head p {
   margin: 0;
   color: var(--muted-foreground);
-  font-size: 12.5px;
+  font-size: 13px;
   line-height: 1.5;
 }
 
@@ -112,7 +111,7 @@ body {
   background: transparent;
   color: var(--primary);
   font-family: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 650;
   text-decoration: none;
   cursor: pointer;
@@ -138,14 +137,6 @@ body {
   display: grid;
 }
 
-.workspace-kicker {
-  color: var(--primary);
-  font-size: 9.5px;
-  font-weight: 750;
-  letter-spacing: 0.11em;
-  text-transform: uppercase;
-}
-
 .profile-dialog-head h2 {
   margin: 0;
   color: var(--foreground);
@@ -155,7 +146,7 @@ body {
 }
 
 .quiet-action {
-  min-height: 34px;
+  min-height: 36px;
   padding: 0 4px;
 }
 
@@ -336,7 +327,7 @@ body {
   border-radius: var(--radius-pill);
   background: var(--primary);
   color: var(--primary-foreground);
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -344,7 +335,7 @@ body {
 
 .profile-row-count {
   color: var(--muted-foreground);
-  font-size: 11.5px;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -353,14 +344,14 @@ body {
 }
 
 .profile-action-btn {
-  min-height: 30px;
+  min-height: 34px;
   padding: 0 10px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
   background: var(--manager-surface);
   color: var(--muted-foreground);
   font-family: inherit;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 650;
   cursor: pointer;
 }
@@ -402,7 +393,7 @@ body {
 .site-access-summary {
   margin: 0;
   color: var(--manager-muted);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
 }
 
@@ -479,7 +470,7 @@ body {
 .site-access-grant-name code {
   color: var(--manager-muted);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   overflow-wrap: anywhere;
 }
 
@@ -490,7 +481,7 @@ body {
   border-radius: var(--radius-pill);
   background: var(--manager-surface-subtle);
   color: var(--manager-muted);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
 }
 
@@ -503,7 +494,7 @@ body {
 .site-access-rule-count {
   margin: 9px 0 0;
   color: var(--manager-muted);
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 600;
 }
 
@@ -534,15 +525,15 @@ body {
   flex: none;
   color: var(--manager-subtle);
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .site-access-rule-list li p,
 .site-access-unused {
   margin: 0;
   color: var(--manager-subtle);
-  font-size: 11px;
-  line-height: 1.4;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .site-access-revoke-btn {
@@ -725,7 +716,7 @@ body {
 }
 
 .profile-tab-count {
-  color: var(--manager-faint);
+  color: var(--manager-subtle);
   font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
@@ -771,12 +762,12 @@ body {
 }
 
 .summary-separator {
-  color: var(--manager-faint);
+  color: var(--manager-subtle);
 }
 
 .options-summary {
   color: var(--manager-subtle);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .setup-duration-control {
@@ -794,14 +785,14 @@ body {
 }
 
 .duration-pill {
-  min-height: 26px;
+  min-height: 28px;
   padding: 0 9px;
   border: 1px solid var(--manager-pill-border);
   border-radius: var(--radius-pill);
   background: var(--manager-pill-surface);
   color: var(--manager-subtle);
   font: inherit;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
@@ -896,10 +887,6 @@ body {
 .rule-list {
   gap: var(--manager-compact-gap);
   padding: var(--manager-section-space) var(--manager-inline-space) 16px;
-}
-
-.options-workspace.is-master-paused .rule-list {
-  opacity: 0.55;
 }
 
 .options-shell .rule-group {
@@ -1013,7 +1000,7 @@ body {
 .options-shell .rule-scope-summary {
   grid-column: 1 / -1;
   margin-top: -5px;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .options-shell .rule-row-controls {

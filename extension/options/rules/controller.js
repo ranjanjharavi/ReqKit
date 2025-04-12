@@ -183,9 +183,6 @@ function renderMasterSwitch() {
       ? `Resume to switch back to ${getProfileName(state.profiles, getTargetProfileId(activation))}.`
       : 'No headers are being applied to any site. Rules keep their own on/off state.';
   }
-
-  document.querySelector('.options-workspace')
-    .classList.toggle('is-master-paused', status !== 'live');
 }
 
 /**
