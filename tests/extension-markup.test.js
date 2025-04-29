@@ -22,8 +22,10 @@ test('popup keeps profile context in the header and scopes rules with tabs', () 
   assert.match(popupMarkup, /id="activeUntilLabel"/);
   assert.match(popupMarkup, /id="changeActiveSetupBtn"/);
   assert.match(popupMarkup, /id="ruleScopeTabs"[^>]*role="tablist"/);
-  assert.match(popupMarkup, /id="currentSiteTab"[^>]*role="tab"/);
-  assert.match(popupMarkup, /id="allRulesTab"[^>]*role="tab"/);
+  assert.match(popupMarkup, /id="currentSiteTab"[^>]*role="tab"[^>]*aria-controls="ruleListContainer"/);
+  assert.match(popupMarkup, /id="allRulesTab"[^>]*role="tab"[^>]*aria-controls="ruleListContainer"/);
+  assert.match(popupMarkup, /id="ruleListContainer"[^>]*role="tabpanel"[^>]*aria-labelledby="currentSiteTab"[^>]*tabindex="0"/);
+  assert.match(popupMarkup, /id="headerStatus"[^>]*role="status"[^>]*aria-live="polite"[^>]*aria-atomic="true"/);
   assert.match(popupMarkup, /id="headerComposerToggle"[\s\S]*?Add rule for this site/);
   assert.doesNotMatch(popupMarkup, /id="profileSelect"/);
   assert.doesNotMatch(popupMarkup, /id="durationSelect"/);
@@ -42,6 +44,14 @@ test('popup and manager use readable supporting text and contrast tokens', () =>
   assert.match(optionsStyles, /--manager-subtle:\s*#5f6b7a/);
   assert.doesNotMatch(styles, /font-size:\s*(?:9(?:\.5)?|10(?:\.5)?|11(?:\.5)?)px/);
   assert.doesNotMatch(styles, /font-size:\s*0\.\d+em/);
+});
+
+test('keyboard focus and dynamic tab panels expose consistent accessible state', () => {
+  assert.match(popupStyles, /button:focus-visible,[\s\S]*?summary:focus-visible,[\s\S]*?outline:\s*2px solid var\(--primary\)/);
+  assert.doesNotMatch(`${popupStyles}\n${optionsStyles}`, /\.focus-visible\s*\{[^}]*outline:\s*(?:0|none)/s);
+  assert.match(popupRulesSource, /setAttribute\([\s\S]*?'aria-labelledby',[\s\S]*?state\.headers\.scope === 'all'/);
+  assert.match(optionsProfilesSource, /id="profileTab-\$\{index\}"[\s\S]*?aria-controls="profilePanel"/);
+  assert.match(optionsProfilesSource, /setAttribute\('aria-labelledby', `profileTab-\$\{selectedTabIndex\}`\)/);
 });
 
 test('popup keeps optional scope secondary and aligns its paired controls', () => {
@@ -68,6 +78,7 @@ test('popup keeps optional scope secondary and aligns its paired controls', () =
 test('rule manager separates active setup, rules, and profile administration', () => {
   assert.match(optionsMarkup, /id="active-setup"/);
   assert.match(optionsMarkup, /id="profileTabs"[^>]*role="tablist"/);
+  assert.match(optionsMarkup, /id="profilePanel"[^>]*role="tabpanel"[^>]*aria-labelledby="profileTab-0"/);
   assert.doesNotMatch(optionsMarkup, /activeProfileSelect|profileFilterSelect/);
   assert.match(optionsMarkup, /id="durationPills"[^>]*role="radiogroup"/);
   assert.equal((optionsMarkup.match(/class="duration-pill"/g) || []).length, 4);

@@ -49,11 +49,11 @@
           </div>
 
           <div id="ruleScopeTabs" class="rule-scope-tabs" role="tablist" aria-label="Rule scope">
-            <button id="currentSiteTab" class="rule-scope-tab" type="button" role="tab" aria-selected="true" tabindex="0" data-rule-scope="site">
+            <button id="currentSiteTab" class="rule-scope-tab" type="button" role="tab" aria-selected="true" aria-controls="ruleListContainer" tabindex="0" data-rule-scope="site">
               <span id="currentSiteHost" class="rule-scope-label" aria-live="polite">Detecting current site…</span>
               <span id="currentSiteRuleCount" class="rule-scope-count">0</span>
             </button>
-            <button id="allRulesTab" class="rule-scope-tab" type="button" role="tab" aria-selected="false" tabindex="-1" data-rule-scope="all">
+            <button id="allRulesTab" class="rule-scope-tab" type="button" role="tab" aria-selected="false" aria-controls="ruleListContainer" tabindex="-1" data-rule-scope="all">
               <span class="rule-scope-label">All</span>
               <span id="allRulesCount" class="rule-scope-count">0</span>
             </button>
@@ -112,8 +112,8 @@
             </div>
           </div>
 
-          <div id="headerStatus" class="status-msg"></div>
-          <div id="ruleListContainer" class="rule-list"></div>
+          <div id="headerStatus" class="status-msg" role="status" aria-live="polite" aria-atomic="true"></div>
+          <div id="ruleListContainer" class="rule-list" role="tabpanel" aria-labelledby="currentSiteTab" tabindex="0"></div>
           <footer class="panel-footer">
             <button id="headerComposerToggle" class="primary-btn footer-add-rule-btn" type="button" aria-expanded="false" aria-controls="headerComposer">
               <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M7.25 2.5h1.5v4.75h4.75v1.5H8.75v4.75h-1.5V8.75H2.5v-1.5h4.75V2.5Z"/></svg>

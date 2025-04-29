@@ -63,6 +63,9 @@ function handleProfileTabClick(event) {
   activateProfile(tab.dataset.profileTab).finally(() => {
     tab.disabled = false;
     renderProfiles();
+    const selectedTab = [...document.querySelectorAll('#profileTabs [data-profile-tab]')]
+      .find((profileTab) => profileTab.getAttribute('aria-selected') === 'true');
+    selectedTab?.focus();
   });
 }
 
@@ -117,20 +120,28 @@ function handleProfileListClick(event) {
 export function renderProfiles() {
   const { profiles, rules } = state;
   const activeProfileId = getTargetProfileId(getActivation());
+  const selectedTabIndex = profiles.findIndex((profile) => profile.id === activeProfileId);
   const tabs = document.getElementById('profileTabs');
   const list = document.getElementById('profileList');
 
-  tabs.innerHTML = profiles.map((profile) => {
+  tabs.innerHTML = profiles.map((profile, index) => {
     const isActive = profile.id === activeProfileId;
     const ruleCount = countRulesInProfile(rules, profile.id);
 
     return `
-      <button class="profile-tab" type="button" role="tab" aria-selected="${String(isActive)}" tabindex="${isActive ? '0' : '-1'}" data-profile-tab="${escapeHtml(profile.id)}">
+      <button id="profileTab-${index}" class="profile-tab" type="button" role="tab" aria-selected="${String(isActive)}" aria-controls="profilePanel" tabindex="${isActive ? '0' : '-1'}" data-profile-tab="${escapeHtml(profile.id)}">
         <span>${escapeHtml(profile.name)}</span>
         <span class="profile-tab-count">${ruleCount}</span>
       </button>
     `;
   }).join('');
+
+  const profilePanel = document.getElementById('profilePanel');
+  if (selectedTabIndex >= 0) {
+    profilePanel.setAttribute('aria-labelledby', `profileTab-${selectedTabIndex}`);
+  } else {
+    profilePanel.removeAttribute('aria-labelledby');
+  }
 
   document.getElementById('activeProfileRunLabel').textContent = `${getProfileName(profiles, activeProfileId)} runs until`;
 

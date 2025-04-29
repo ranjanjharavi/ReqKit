@@ -523,6 +523,10 @@ function updateCurrentSiteControls() {
     tab.setAttribute('aria-selected', String(selected));
     tab.tabIndex = selected ? 0 : -1;
   });
+  document.getElementById('ruleListContainer').setAttribute(
+    'aria-labelledby',
+    state.headers.scope === 'all' ? 'allRulesTab' : 'currentSiteTab'
+  );
 
   document.getElementById('headerComposerToggle').disabled = !currentHostname || state.headers.composerOpen;
 

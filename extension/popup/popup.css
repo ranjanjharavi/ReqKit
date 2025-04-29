@@ -259,10 +259,6 @@ h1 {
   background: var(--secondary);
 }
 
-.panel-profile-btn:focus-visible {
-  box-shadow: 0 0 0 3px var(--ring);
-}
-
 .panel-profile-btn span {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -386,8 +382,13 @@ select:focus {
 }
 
 button:focus-visible,
-input:focus-visible {
-  outline: none;
+input:focus-visible,
+select:focus-visible,
+a:focus-visible,
+summary:focus-visible,
+[role='tabpanel']:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
 button:disabled {
@@ -458,11 +459,6 @@ button:disabled {
   font-size: var(--type-support);
   font-weight: 650;
   cursor: pointer;
-}
-
-.request-scope-options summary:focus-visible {
-  outline: 0;
-  box-shadow: 0 0 0 3px var(--ring);
 }
 
 .scope-default-label {
@@ -713,10 +709,6 @@ button:disabled {
   box-shadow: var(--shadow-xs);
 }
 
-.rule-scope-tab:focus-visible {
-  box-shadow: inset 0 0 0 2px var(--focus-border);
-}
-
 .rule-scope-label {
   min-width: 0;
   overflow: hidden;
@@ -756,11 +748,6 @@ button:disabled {
 
 .master-switch:hover {
   border-color: var(--primary);
-}
-
-.master-switch:focus-visible {
-  outline: 0;
-  box-shadow: 0 0 0 3px var(--ring);
 }
 
 .master-switch-track {
@@ -849,11 +836,6 @@ button:disabled {
   background: #fef3c7;
 }
 
-.master-resume-btn:focus-visible {
-  outline: 0;
-  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.3);
-}
-
 .session-count {
   flex: none;
   min-width: 46px;
@@ -934,11 +916,6 @@ button:disabled {
   background: #fef3c7;
 }
 
-.rule-access-btn:focus-visible {
-  outline: 0;
-  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.3);
-}
-
 .panel-footer {
   display: grid;
   gap: var(--space-2);
@@ -974,11 +951,6 @@ button:disabled {
 
 .manage-rules-link:hover {
   text-decoration: underline;
-}
-
-.manage-rules-link:focus-visible {
-  outline: 0;
-  box-shadow: 0 0 0 3px var(--ring);
 }
 
 .current-rule-list,
@@ -1018,10 +990,6 @@ button:disabled {
 
 .rule-group-toggle:hover {
   background: rgba(239, 246, 255, 0.72);
-}
-
-.rule-group-toggle:focus-visible {
-  box-shadow: inset 0 0 0 3px var(--ring);
 }
 
 .rule-group-heading,
@@ -1243,12 +1211,6 @@ button:disabled {
 
 .rule-enable-control:hover {
   background: var(--secondary);
-}
-
-.rule-enable-control:focus-visible,
-.rule-action-btn:focus-visible,
-.rule-value-btn:focus-visible {
-  box-shadow: 0 0 0 3px var(--ring);
 }
 
 .rule-switch-track {

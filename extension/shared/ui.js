@@ -4,9 +4,9 @@ export function showStatus(elementId, message, type) {
     return;
   }
 
-  element.textContent = message;
-  element.classList.remove('visible', 'success', 'error');
+  element.classList.remove('success', 'error');
   element.classList.add('visible', type);
+  element.textContent = message;
   globalThis.clearTimeout(element._statusTimer);
   element._statusTimer = globalThis.setTimeout(() => {
     element.classList.remove('visible', 'success', 'error');
