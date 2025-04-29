@@ -49,15 +49,15 @@ export function renderSiteAccessOverview() {
 
   const origins = [...state.grantedOrigins].sort((left, right) => left.localeCompare(right));
   document.getElementById('siteAccessSummary').textContent = origins.length
-    ? `${origins.length} ${origins.length === 1 ? 'permission' : 'permissions'} currently granted.`
-    : 'No site permissions are currently granted.';
+    ? `${origins.length} site access ${origins.length === 1 ? 'grant is' : 'grants are'} active.`
+    : 'No site access grants are active.';
   list.setAttribute('aria-busy', 'false');
 
   if (!origins.length) {
     list.innerHTML = `
       <div class="site-access-empty">
-        <strong>No sites approved</strong>
-        <p>ReqKit asks for host access only when you create or enable a rule.</p>
+        <strong>No sites to review</strong>
+        <p>ReqKit asks for site access only when you create or resume a rule.</p>
       </div>
     `;
     restoreListFocus(focusedControl);
@@ -112,7 +112,7 @@ async function revokeOrigin(origin, button) {
 
   const rules = getRulesForOriginGrant(state.rules, origin);
   const confirmed = await confirmDestructiveAction({
-    title: `Revoke access to ${getOriginLabel(origin)}?`,
+    title: `Revoke site access for ${getOriginLabel(origin)}?`,
     message: getRevokeMessage(origin, rules.length),
     confirmLabel: 'Revoke access'
   });
@@ -129,7 +129,7 @@ async function revokeOrigin(origin, button) {
   try {
     const removed = await removeOriginPermission(origin);
     if (!removed) {
-      throw new Error('Chrome did not revoke this site permission.');
+      throw new Error('Chrome did not remove this site access grant.');
     }
 
     try {
@@ -146,12 +146,12 @@ async function revokeOrigin(origin, button) {
     renderRules();
     showStatus(
       'siteAccessStatus',
-      `Access revoked for ${getOriginLabel(origin)}. Saved rules were kept.`,
+      `Site access grant revoked for ${getOriginLabel(origin)}. Saved rules were kept.`,
       'success'
     );
   } catch (error) {
     console.error('Could not revoke site access.', error);
-    showStatus('siteAccessStatus', error.message || 'Could not revoke this site permission.', 'error');
+    showStatus('siteAccessStatus', error.message || 'Could not revoke this site access grant.', 'error');
   } finally {
     revokingOrigins.delete(origin);
     renderSiteAccessOverview();
@@ -188,7 +188,7 @@ function refreshAfterPermissionChange() {
   refreshCurrentState()
     .then(() => renderSiteAccessOverview())
     .catch((error) => {
-      console.error('Could not refresh site permissions.', error);
+      console.error('Could not refresh site access grants.', error);
       if (document.getElementById('siteAccessDialog').open) {
         renderLoadError();
       }
@@ -200,10 +200,10 @@ function refreshCurrentState() {
 }
 
 function renderLoading() {
-  document.getElementById('siteAccessSummary').textContent = 'Checking approved host access…';
+  document.getElementById('siteAccessSummary').textContent = 'Checking site access…';
   const list = document.getElementById('siteAccessList');
   list.setAttribute('aria-busy', 'true');
-  list.innerHTML = '<p class="site-access-loading">Loading site permissions…</p>';
+  list.innerHTML = '<p class="site-access-loading">Loading site access grants…</p>';
 }
 
 function clearSiteAccessStatus() {
@@ -214,7 +214,7 @@ function clearSiteAccessStatus() {
 }
 
 function renderLoadError() {
-  document.getElementById('siteAccessSummary').textContent = 'Site permissions are unavailable.';
+  document.getElementById('siteAccessSummary').textContent = 'Site access is unavailable.';
   const list = document.getElementById('siteAccessList');
   const focusedControl = list.contains(document.activeElement)
     ? {
@@ -226,7 +226,7 @@ function renderLoadError() {
   list.innerHTML = `
     <div class="site-access-empty">
       <strong>Could not read site access</strong>
-      <p>Reload the permission list to try again.</p>
+      <p>Reload the site access list to try again.</p>
       <button class="secondary-btn" type="button" data-site-access-action="retry">Try again</button>
     </div>
   `;
@@ -236,9 +236,11 @@ function renderLoadError() {
 function renderOriginGrant(origin) {
   const isBroad = isBroadOrigin(origin);
   const rules = getRulesForOriginGrant(state.rules, origin);
-  const revokeLabel = `Revoke access for ${getOriginLabel(origin)}`;
+  const revokeLabel = `Revoke site access for ${getOriginLabel(origin)}`;
   const revokeText = revokingOrigins.has(origin) ? 'Revoking…' : 'Revoke access';
-  const ruleSummary = `${rules.length} saved ${rules.length === 1 ? 'rule' : 'rules'} covered`;
+  const ruleSummary = rules.length
+    ? `This grant covers ${rules.length} saved ${rules.length === 1 ? 'rule' : 'rules'}.`
+    : 'No saved rules use this grant.';
 
   return `
     <article class="site-access-row">
@@ -248,12 +250,10 @@ function renderOriginGrant(origin) {
             <h3>${escapeHtml(getOriginLabel(origin))}</h3>
             <code>${escapeHtml(origin)}</code>
           </div>
-          <span class="site-access-kind${isBroad ? ' is-broad' : ''}">${isBroad ? 'Broad grant' : 'Host grant'}</span>
+          <span class="site-access-kind${isBroad ? ' is-broad' : ''}">${isBroad ? 'Broad site access' : 'Host-specific site access'}</span>
         </div>
         <p class="site-access-rule-count">${ruleSummary}</p>
-        ${rules.length
-    ? `<ul class="site-access-rule-list">${rules.map(renderCoveredRule).join('')}</ul>`
-    : '<p class="site-access-unused">No saved rules match this grant.</p>'}
+        ${rules.length ? `<ul class="site-access-rule-list">${rules.map(renderCoveredRule).join('')}</ul>` : ''}
       </div>
       <button class="secondary-btn site-access-revoke-btn" type="button" data-site-access-action="revoke" data-origin="${escapeHtml(origin)}" aria-label="${escapeHtml(revokeLabel)}"${revokingOrigins.has(origin) ? ' disabled' : ''}>${revokeText}</button>
     </article>
@@ -265,7 +265,7 @@ function renderCoveredRule(rule) {
     rule.pathPrefix || 'All paths',
     rule.resourceType === 'xmlhttprequest' ? 'Fetch/XHR' : 'All requests'
   ].join(' · ');
-  const ruleState = rule.enabled ? 'Enabled' : 'Paused';
+  const ruleState = rule.enabled ? 'On' : 'Paused';
 
   return `
     <li>
@@ -298,12 +298,14 @@ function getRevokeMessage(origin, ruleCount) {
   const label = getOriginLabel(origin);
   const savedRules = `${ruleCount} saved ${ruleCount === 1 ? 'rule' : 'rules'}`;
   if (isBroadOrigin(origin)) {
-    const coverage = ruleCount ? ` It currently covers ${savedRules}.` : '';
-    return `Revoking this broad permission removes ReqKit's access pattern.${coverage} Rules will remain saved, and another grant may still cover them.`;
+    const coverage = ruleCount
+      ? ` It covers ${savedRules}. The rules stay saved. Enabled rules on hosts no other grant covers will stop applying.`
+      : '';
+    return `This broad site access grant covers multiple hosts. Revoking it removes the grant.${coverage}`;
   }
   if (!ruleCount) {
-    return `No saved rules match ${label}. Revoking removes ReqKit's permission for this host.`;
+    return `No saved rules are covered by this grant. Revoking it removes this grant; broader site access may still cover ${label}.`;
   }
 
-  return `${savedRules} match ${label}. They will remain saved but cannot apply without another grant that covers this host.`;
+  return `This grant covers ${savedRules}. The rules will stay saved. Enabled rules won't apply unless another grant still covers ${label}.`;
 }

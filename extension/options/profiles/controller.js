@@ -197,7 +197,9 @@ function openProfileEditor(mode, id = null, returnFocus = null) {
     input.value = source.name;
   } else {
     title.textContent = `Duplicate ${source.name}`;
-    description.textContent = 'Copied rules start paused, so the new profile will not change your active requests.';
+    description.textContent = countRulesInProfile(state.rules, source.id)
+      ? 'Copied rules start paused and remain editable, so the copy will not change your active requests.'
+      : 'This profile has no rules to copy, so the new profile will be empty.';
     submitButton.textContent = 'Create copy';
     input.value = suggestedName;
   }
@@ -339,11 +341,12 @@ async function handleProfileEditorSubmit(event) {
     }
 
     showProfileList({ focusAction: 'duplicate', profileId: id });
-    showStatus(
-      'profileStatus',
-      `Copied ${clonedRules.length} ${clonedRules.length === 1 ? 'rule' : 'rules'} into ${newProfile.name}, paused.`,
-      'success'
-    );
+    const copyMessage = clonedRules.length === 0
+      ? `Created an empty copy of ${source.name} as ${newProfile.name}.`
+      : clonedRules.length === 1
+        ? `Copied 1 rule into ${newProfile.name}. It remains paused and editable.`
+        : `Copied ${clonedRules.length} rules into ${newProfile.name}. They remain paused and editable.`;
+    showStatus('profileStatus', copyMessage, 'success');
   } catch (error) {
     console.error(error);
     showProfileEditorError(error.message || 'Could not save that profile.');

@@ -12,8 +12,9 @@
     <img class="privacy-gate-icon" src="../icons/reqkit-128.png" width="72" height="72" alt="ReqKit">
     <h1 id="privacyGateTitle">Choose when ReqKit handles your data</h1>
     <p>ReqKit reads the active tab URL locally to identify the current host and stores profiles, activation settings, and header rules in this Chrome profile.</p>
-    <p>ReqKit has no analytics or developer server. Header values are sent only to the exact HTTPS sites you approve and may be visible in destination or intermediary logs.</p>
+    <p>ReqKit has no analytics or developer server. Header values are sent only to each rule's exact HTTPS host, and only when a site access grant covers it. Destination or intermediary logs may include those values.</p>
     <a class="privacy-policy-link" href="../privacy/index.html">Read the privacy policy</a>
+    <p>You must accept this notice to use ReqKit. You can review the privacy policy before continuing.</p>
     <button id="privacyConsentBtn" class="primary-btn privacy-consent-btn" type="button">Accept and continue</button>
     <div id="privacyConsentStatus" class="status-msg privacy-consent-status" role="status" aria-live="polite"></div>
   </section>
@@ -43,7 +44,7 @@
           <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1a7 7 0 1 1 0 14A7 7 0 0 1 8 1Zm0 1.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM6.5 5.5h1.25v5H6.5v-5Zm1.75 0h1.25v5H8.25v-5Z"/></svg>
           <div class="master-paused-copy">
             <strong id="masterPausedTitle">All header rules are paused</strong>
-            <span id="masterPausedDetail">No headers are being applied to any site. Rules keep their own on/off state.</span>
+            <span id="masterPausedDetail">No headers are being applied. Your rules stay saved and editable, with their own On or Paused settings.</span>
           </div>
           <button id="resumeMasterBtn" class="master-resume-btn" type="button">Resume</button>
         </div>
@@ -85,7 +86,7 @@
                   <div class="field">
                     <label for="domain">Exact HTTPS host</label>
                     <input type="text" id="domain" placeholder="https://api.example.com" autocapitalize="off" autocorrect="off" spellcheck="false">
-                    <p class="helper-text">Host access is exact; use optional request scoping below to narrow which requests receive this header.</p>
+                    <p class="helper-text">ReqKit applies this rule only to the exact HTTPS host you enter. Use optional request scoping below to narrow which requests receive the header.</p>
                   </div>
 
                   <details id="requestScopeDetails" class="request-scope-options">
@@ -124,8 +125,8 @@
                   <div id="siteAccessPreflight" class="site-access-preflight" role="note" aria-live="polite" hidden>
                     <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1.25 13 3v3.85c0 3.38-2.08 6.43-5 7.9-2.92-1.47-5-4.52-5-7.9V3l5-1.75Zm0 1.59L4.5 4.07v2.78c0 2.58 1.47 4.99 3.5 6.21 2.03-1.22 3.5-3.63 3.5-6.21V4.07L8 2.84Zm-.75 2.41h1.5V8h-1.5V5.25Zm0 3.75h1.5v1.5h-1.5V9Z"/></svg>
                     <div>
-                      <strong>Site access required for <code id="siteAccessPreflightHost"></code></strong>
-                      <p>Chrome will ask you to approve this exact HTTPS host. ReqKit will not request access to other sites.</p>
+                      <strong>Site access needed for <code id="siteAccessPreflightHost"></code></strong>
+                      <p>Chrome will ask you to grant ReqKit site access to this exact HTTPS host. No other sites are included in the request.</p>
                     </div>
                   </div>
 
@@ -189,15 +190,15 @@
         <header class="profile-dialog-head">
           <div>
             <h2 id="siteAccessTitle">Site access</h2>
-            <p id="siteAccessDescription">Review the host access ReqKit currently holds. Revoking access keeps rules saved but prevents them from applying unless another grant covers the host. Broader grants can cover rules listed under exact hosts.</p>
+            <p id="siteAccessDescription">Review ReqKit's site access grants. Revoking a grant keeps rules saved but stops them from applying unless another grant still covers the host. A broad grant can cover rules listed under exact hosts.</p>
           </div>
           <button id="closeSiteAccessBtn" class="dialog-close-btn" type="button" aria-label="Close site access overview">
             <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="m3.7 2.65 4.3 4.3 4.3-4.3 1.05 1.05-4.3 4.3 4.3 4.3-1.05 1.05-4.3-4.3-4.3 4.3-1.05-1.05 4.3-4.3-4.3-4.3L3.7 2.65Z"/></svg>
           </button>
         </header>
-        <p id="siteAccessSummary" class="site-access-summary" aria-live="polite">Checking approved host access…</p>
+        <p id="siteAccessSummary" class="site-access-summary" aria-live="polite">Checking site access…</p>
         <div id="siteAccessStatus" class="status-msg site-access-status" role="status" aria-live="polite"></div>
-        <div id="siteAccessList" class="site-access-list" role="region" aria-label="Granted site permissions" aria-busy="false"></div>
+        <div id="siteAccessList" class="site-access-list" role="region" aria-label="Site access grants" aria-busy="false"></div>
         <footer class="profile-dialog-actions site-access-dialog-actions">
           <button id="doneSiteAccessBtn" class="primary-btn" type="button">Done</button>
         </footer>

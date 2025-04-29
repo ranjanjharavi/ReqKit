@@ -70,7 +70,7 @@ export function renderRuleRow(rule, {
     return renderRuleEditForm(rule, editProfiles);
   }
 
-  const toggleTitle = `${rule.enabled ? 'Pause' : 'Enable'} ${rule.headerName} rule`;
+  const toggleTitle = `${rule.enabled ? 'Pause' : 'Resume'} ${rule.headerName} rule`;
   const isSensitive = isSensitiveHeaderName(rule.headerName);
   const displayValue = isSensitive && !revealed ? MASKED_VALUE : rule.headerValue;
   const hasConflict = conflictingRules.length > 0;
@@ -87,7 +87,7 @@ export function renderRuleRow(rule, {
           <div class="rule-row-controls">
             <button class="rule-enable-control" type="button" role="switch" aria-checked="${String(rule.enabled)}" data-rule-action="toggle" data-id="${rule.id}" aria-label="${toggleTitle}" title="${toggleTitle}">
               <span class="rule-switch-track" aria-hidden="true"><span class="rule-switch-thumb"></span></span>
-              <span class="rule-enable-label">${rule.enabled ? 'On' : 'Off'}</span>
+              <span class="rule-enable-label">${rule.enabled ? 'On' : 'Paused'}</span>
             </button>
             <button class="rule-action-btn" type="button" data-rule-action="edit" data-id="${rule.id}" aria-label="${editTitle}: ${escapeHtml(rule.headerName)}" title="${editTitle}">${ICON_EDIT}</button>
             <button class="rule-action-btn danger" type="button" data-rule-action="delete" data-id="${rule.id}" aria-label="Delete ${escapeHtml(rule.headerName)} rule" title="Delete rule">${ICON_DELETE}</button>
@@ -113,7 +113,7 @@ function renderAccessNotice(rule) {
   return `
     <div class="rule-access-notice" role="note">
       ${ICON_WARNING}
-      <span>ReqKit has no access to <code>${escapeHtml(rule.domain)}</code>, so this rule is not being applied.</span>
+      <span>ReqKit doesn't have site access to <code>${escapeHtml(rule.domain)}</code>, so this rule isn't being applied.</span>
       <button class="rule-access-btn" type="button" data-rule-action="grant" data-id="${rule.id}">Grant</button>
     </div>
   `;
