@@ -1,7 +1,7 @@
 import { confirmDestructiveAction } from '../../shared/confirmation-dialog.js';
 import { removeOriginPermission } from '../../shared/chrome-api.js';
 import { getProfileName } from '../../shared/profiles.js';
-import { getRulesForOriginGrant } from '../../shared/site-access.js';
+import { filterOriginGrants, getRulesForOriginGrant, isBroadOrigin } from '../../shared/site-access.js';
 import { createSerialQueue } from '../../shared/serial-queue.js';
 import { escapeHtml, showStatus } from '../../shared/ui.js';
 import { state } from '../state.js';
@@ -24,6 +24,7 @@ export function bindSiteAccessEvents({ onRefreshState, onRenderRules }) {
     }
   });
   document.getElementById('siteAccessList').addEventListener('click', handleSiteAccessListClick);
+  document.getElementById('siteAccessSearch').addEventListener('input', filterSiteAccessGrants);
 
   chrome.permissions.onAdded.addListener(refreshAfterPermissionChange);
   chrome.permissions.onRemoved.addListener(refreshAfterPermissionChange);
@@ -47,13 +48,17 @@ export function renderSiteAccessOverview() {
     return;
   }
 
-  const origins = [...state.grantedOrigins].sort((left, right) => left.localeCompare(right));
-  document.getElementById('siteAccessSummary').textContent = origins.length
-    ? `${origins.length} site access ${origins.length === 1 ? 'grant is' : 'grants are'} active.`
-    : 'No site access grants are active.';
+  const search = document.getElementById('siteAccessSearch');
+  const origins = [...state.grantedOrigins].sort((left, right) => (
+    Number(isBroadOrigin(right)) - Number(isBroadOrigin(left)) || left.localeCompare(right)
+  ));
   list.setAttribute('aria-busy', 'false');
 
   if (!origins.length) {
+    search.value = '';
+    search.disabled = true;
+    search.closest('.site-access-search').hidden = true;
+    document.getElementById('siteAccessSummary').textContent = 'No site access grants are active.';
     list.innerHTML = `
       <div class="site-access-empty">
         <strong>No sites to review</strong>
@@ -64,7 +69,14 @@ export function renderSiteAccessOverview() {
     return;
   }
 
-  list.innerHTML = origins.map(renderOriginGrant).join('');
+  search.disabled = false;
+  search.closest('.site-access-search').hidden = false;
+  list.innerHTML = `${origins.map(renderOriginGrant).join('')}
+    <div class="site-access-empty site-access-filter-empty" hidden>
+      <strong>No matching grants</strong>
+      <p>Try another host or grant pattern.</p>
+    </div>`;
+  filterSiteAccessGrants();
   restoreListFocus(focusedControl);
 }
 
@@ -159,12 +171,35 @@ async function revokeOrigin(origin, button) {
   }
 }
 
+function filterSiteAccessGrants() {
+  const search = document.getElementById('siteAccessSearch');
+  const list = document.getElementById('siteAccessList');
+  const rows = [...list.querySelectorAll('.site-access-row')];
+  const origins = rows.map((row) => row.dataset.siteAccessOrigin);
+  const matchingOrigins = new Set(filterOriginGrants(origins, search.value));
+  const matchCount = rows.reduce((count, row) => {
+    const matches = matchingOrigins.has(row.dataset.siteAccessOrigin);
+    row.hidden = !matches;
+    return count + Number(matches);
+  }, 0);
+  const query = search.value.trim();
+  const emptyState = list.querySelector('.site-access-filter-empty');
+  emptyState.hidden = !query || matchCount > 0;
+
+  document.getElementById('siteAccessSummary').textContent = query
+    ? matchCount
+      ? `${matchCount} of ${rows.length} grants match or cover “${query}”.`
+      : `No grants match or cover “${query}”.`
+    : `${rows.length} site access ${rows.length === 1 ? 'grant is' : 'grants are'} active.`;
+}
+
 function restoreListFocus(focusedControl) {
   if (!focusedControl) {
     return;
   }
 
-  const controls = [...document.querySelectorAll('#siteAccessList [data-site-access-action]')];
+  const controls = [...document.querySelectorAll('#siteAccessList [data-site-access-action]')]
+    .filter((control) => !control.closest('.site-access-row')?.hidden);
   const target = controls.find((control) => (
     control.dataset.siteAccessAction === focusedControl.action
       && control.dataset.origin === focusedControl.origin
@@ -177,7 +212,8 @@ function focusAfterRevocation(origin) {
     return;
   }
 
-  const controls = [...document.querySelectorAll('#siteAccessList [data-site-access-action="revoke"]')];
+  const controls = [...document.querySelectorAll('#siteAccessList [data-site-access-action="revoke"]')]
+    .filter((control) => !control.closest('.site-access-row')?.hidden);
   const target = controls.find((control) => control.dataset.origin === origin)
     || controls[0]
     || document.getElementById('closeSiteAccessBtn');
@@ -201,6 +237,9 @@ function refreshCurrentState() {
 
 function renderLoading() {
   document.getElementById('siteAccessSummary').textContent = 'Checking site access…';
+  const search = document.getElementById('siteAccessSearch');
+  search.disabled = true;
+  search.closest('.site-access-search').hidden = true;
   const list = document.getElementById('siteAccessList');
   list.setAttribute('aria-busy', 'true');
   list.innerHTML = '<p class="site-access-loading">Loading site access grants…</p>';
@@ -215,6 +254,9 @@ function clearSiteAccessStatus() {
 
 function renderLoadError() {
   document.getElementById('siteAccessSummary').textContent = 'Site access is unavailable.';
+  const search = document.getElementById('siteAccessSearch');
+  search.disabled = true;
+  search.closest('.site-access-search').hidden = true;
   const list = document.getElementById('siteAccessList');
   const focusedControl = list.contains(document.activeElement)
     ? {
@@ -238,12 +280,15 @@ function renderOriginGrant(origin) {
   const rules = getRulesForOriginGrant(state.rules, origin);
   const revokeLabel = `Revoke site access for ${getOriginLabel(origin)}`;
   const revokeText = revokingOrigins.has(origin) ? 'Revoking…' : 'Revoke access';
-  const ruleSummary = rules.length
-    ? `This grant covers ${rules.length} saved ${rules.length === 1 ? 'rule' : 'rules'}.`
-    : 'No saved rules use this grant.';
+  const ruleDetails = rules.length
+    ? `<details class="site-access-rules">
+        <summary>${rules.length} saved ${rules.length === 1 ? 'rule' : 'rules'}</summary>
+        <ul class="site-access-rule-list">${rules.map(renderCoveredRule).join('')}</ul>
+      </details>`
+    : '<p class="site-access-no-rules">No saved rules use this grant.</p>';
 
   return `
-    <article class="site-access-row">
+    <article class="site-access-row${isBroad ? ' is-broad' : ''}" data-site-access-origin="${escapeHtml(origin)}">
       <div class="site-access-row-main">
         <div class="site-access-row-heading">
           <div class="site-access-grant-name">
@@ -252,8 +297,7 @@ function renderOriginGrant(origin) {
           </div>
           <span class="site-access-kind${isBroad ? ' is-broad' : ''}">${isBroad ? 'Broad site access' : 'Host-specific site access'}</span>
         </div>
-        <p class="site-access-rule-count">${ruleSummary}</p>
-        ${rules.length ? `<ul class="site-access-rule-list">${rules.map(renderCoveredRule).join('')}</ul>` : ''}
+        ${ruleDetails}
       </div>
       <button class="secondary-btn site-access-revoke-btn" type="button" data-site-access-action="revoke" data-origin="${escapeHtml(origin)}" aria-label="${escapeHtml(revokeLabel)}"${revokingOrigins.has(origin) ? ' disabled' : ''}>${revokeText}</button>
     </article>
@@ -288,10 +332,6 @@ function getOriginLabel(origin) {
 
   const match = /^https:\/\/(\*\.)?([^/*]+)\/\*$/.exec(origin);
   return match ? `${match[1] || ''}${match[2]}` : origin;
-}
-
-function isBroadOrigin(origin) {
-  return origin === 'https://*/*' || origin === '<all_urls>';
 }
 
 function getRevokeMessage(origin, ruleCount) {

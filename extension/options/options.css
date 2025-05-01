@@ -369,9 +369,25 @@ body {
 }
 
 .site-access-dialog-shell {
-  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto auto minmax(0, 1fr) auto;
   gap: 12px;
   overflow: hidden;
+}
+
+.site-access-search {
+  display: grid;
+  gap: 6px;
+  color: var(--manager-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.site-access-search[hidden] {
+  display: none;
+}
+
+.site-access-search input {
+  min-height: 38px;
 }
 
 .site-access-summary {
@@ -424,6 +440,19 @@ body {
   border-bottom: 1px solid var(--manager-row-divider);
 }
 
+.site-access-row[hidden],
+.site-access-filter-empty[hidden] {
+  display: none;
+}
+
+.site-access-row.is-broad {
+  margin: 8px 0;
+  padding: 12px;
+  border: 1px solid var(--notice-border);
+  border-radius: var(--radius-md);
+  background: var(--notice-soft);
+}
+
 .site-access-row-main {
   min-width: 0;
 }
@@ -470,16 +499,22 @@ body {
 }
 
 .site-access-kind.is-broad {
-  border-color: var(--notice-border);
-  background: var(--notice-soft);
+  border-color: var(--notice);
+  background: #ffffff;
   color: var(--notice);
+  font-weight: 700;
 }
 
-.site-access-rule-count {
-  margin: 9px 0 0;
-  color: var(--manager-muted);
+.site-access-rules {
+  margin-top: 9px;
+}
+
+.site-access-rules > summary {
+  width: fit-content;
+  color: var(--manager-active-header);
   font-size: 12px;
   font-weight: 600;
+  cursor: pointer;
 }
 
 .site-access-rule-list {
@@ -513,11 +548,15 @@ body {
 }
 
 .site-access-rule-list li p,
-.site-access-unused {
+.site-access-no-rules {
   margin: 0;
   color: var(--manager-subtle);
   font-size: 12px;
   line-height: 1.45;
+}
+
+.site-access-no-rules {
+  margin-top: 9px;
 }
 
 .site-access-revoke-btn {

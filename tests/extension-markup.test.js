@@ -119,6 +119,8 @@ test('site access overview audits grants and revokes without deleting rules', ()
   assert.match(optionsMarkup, /id="siteAccessBtn"[^>]*aria-controls="siteAccessDialog"/);
   assert.match(optionsMarkup, /<dialog id="siteAccessDialog"[^>]*aria-labelledby="siteAccessTitle"/);
   assert.match(optionsMarkup, /id="siteAccessList"[^>]*aria-busy="false"/);
+  assert.match(optionsMarkup, /class="site-access-search"[^>]*hidden[\s\S]*?id="siteAccessSearch" type="search"[\s\S]*?aria-controls="siteAccessList"/);
+  assert.match(siteAccessControllerSource, /filterOriginGrants\(origins, search\.value\)/);
   assert.match(siteAccessControllerSource, /getRulesForOriginGrant/);
   assert.match(siteAccessControllerSource, /removeOriginPermission\(origin\)/);
   assert.match(siteAccessControllerSource, /confirmDestructiveAction/);
@@ -126,7 +128,11 @@ test('site access overview audits grants and revokes without deleting rules', ()
   assert.match(optionsMarkup, /Review ReqKit's site access grants/);
   assert.match(siteAccessControllerSource, /Broad site access/);
   assert.match(siteAccessControllerSource, /Host-specific site access/);
-  assert.doesNotMatch(siteAccessControllerSource, /No site permissions|Loading site permissions|Broad grant|Host grant/);
+  assert.match(siteAccessControllerSource, /<details class="site-access-rules">[\s\S]*?<summary>\$\{rules\.length} saved/);
+  assert.doesNotMatch(siteAccessControllerSource, /<details[^>]*open|No site permissions|Loading site permissions|Broad grant|Host grant/);
+  assert.match(optionsStyles, /\.site-access-row\.is-broad/);
+  assert.match(optionsStyles, /\.site-access-row\[hidden\]/);
+  assert.match(siteAccessControllerSource, /Number\(isBroadOrigin\(right\)\)/);
   assert.doesNotMatch(siteAccessControllerSource, /headerValue/);
 });
 

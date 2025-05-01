@@ -21,6 +21,46 @@ export function getRulesForOriginGrant(rules, origin) {
   return (Array.isArray(rules) ? rules : []).filter((rule) => isRuleGranted(rule, grant));
 }
 
+export function isBroadOrigin(origin) {
+  return BROAD_ORIGIN_PATTERNS.includes(origin) || /^https:\/\/\*\.[^/*]+\/\*$/.test(origin);
+}
+
+export function filterOriginGrants(origins, query) {
+  const terms = String(query || '').trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+  const grants = Array.isArray(origins) ? origins : [];
+
+  if (!terms.length) {
+    return [...grants];
+  }
+
+  const requestedOrigin = getHostSearchOrigin(query);
+  return grants.filter((origin) => {
+    const pattern = String(origin || '');
+    const host = /^https:\/\/([^/]+)\/\*$/.exec(pattern)?.[1]?.replace(/^\*\./, '') || '';
+    const label = pattern === '<all_urls>'
+      ? 'all websites'
+      : pattern === 'https://*/*'
+        ? 'all https sites'
+        : '';
+    const searchableText = `${pattern} ${host} ${label}`.toLocaleLowerCase();
+    return terms.every((term) => searchableText.includes(term))
+      || (requestedOrigin && originPatternCovers(pattern, requestedOrigin));
+  });
+}
+
+function getHostSearchOrigin(query) {
+  const host = String(query || '')
+    .trim()
+    .toLocaleLowerCase()
+    .replace(/^https:\/\//, '')
+    .replace(/\/\*?$/, '');
+  if (!host || /[/?#\s]/.test(host)) {
+    return null;
+  }
+
+  return `https://${host}/*`;
+}
+
 export function isRuleGranted(rule, grantedOrigins) {
   return isOriginGranted(getRuleOriginPattern(rule), grantedOrigins);
 }

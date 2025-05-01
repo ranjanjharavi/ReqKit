@@ -196,6 +196,10 @@
             <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="m3.7 2.65 4.3 4.3 4.3-4.3 1.05 1.05-4.3 4.3 4.3 4.3-1.05 1.05-4.3-4.3-4.3 4.3-1.05-1.05 4.3-4.3-4.3-4.3L3.7 2.65Z"/></svg>
           </button>
         </header>
+        <label class="site-access-search" for="siteAccessSearch" hidden>
+          <span>Find a host or pattern</span>
+          <input id="siteAccessSearch" type="search" placeholder="example.com or *.example.com" autocomplete="off" aria-controls="siteAccessList" disabled>
+        </label>
         <p id="siteAccessSummary" class="site-access-summary" aria-live="polite">Checking site access…</p>
         <div id="siteAccessStatus" class="status-msg site-access-status" role="status" aria-live="polite"></div>
         <div id="siteAccessList" class="site-access-list" role="region" aria-label="Site access grants" aria-busy="false"></div>

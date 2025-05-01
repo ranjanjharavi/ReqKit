@@ -3,8 +3,10 @@ import test from 'node:test';
 
 import {
   filterGrantedRules,
+  filterOriginGrants,
   getMissingProfileOrigins,
   getRulesForOriginGrant,
+  isBroadOrigin,
   getProfileOrigins,
   isOriginGranted,
   isRuleGranted
@@ -47,6 +49,43 @@ test('a broad grant covers every host', () => {
 test('host-specific grants cover only the matching host rules', () => {
   assert.deepEqual(getRulesForOriginGrant(rules, 'https://api.example.com/*').map((rule) => rule.id), [1, 2]);
   assert.deepEqual(getRulesForOriginGrant(rules, 'https://unused.example.com/*'), []);
+});
+
+test('broad grants include wildcard subdomains', () => {
+  assert.equal(isBroadOrigin('<all_urls>'), true);
+  assert.equal(isBroadOrigin('https://*/*'), true);
+  assert.equal(isBroadOrigin('https://*.example.com/*'), true);
+  assert.equal(isBroadOrigin('https://api.example.com/*'), false);
+});
+
+test('site access search matches patterns, hosts, and broad grant labels', () => {
+  const origins = [
+    '<all_urls>',
+    'https://*/*',
+    'https://*.example.com/*',
+    'https://api.example.com/*',
+    'https://assets.example.net/*'
+  ];
+
+  assert.deepEqual(filterOriginGrants(origins, ''), origins);
+  assert.deepEqual(filterOriginGrants(origins, 'API EXAMPLE'), ['https://api.example.com/*']);
+  assert.deepEqual(filterOriginGrants(origins, 'api.example.com'), [
+    '<all_urls>',
+    'https://*/*',
+    'https://*.example.com/*',
+    'https://api.example.com/*'
+  ]);
+  assert.deepEqual(filterOriginGrants(origins, 'preview.example.com'), [
+    '<all_urls>',
+    'https://*/*',
+    'https://*.example.com/*'
+  ]);
+  assert.deepEqual(filterOriginGrants(origins, 'example com'), [
+    'https://*.example.com/*',
+    'https://api.example.com/*'
+  ]);
+  assert.deepEqual(filterOriginGrants(origins, 'all websites'), ['<all_urls>']);
+  assert.deepEqual(filterOriginGrants(origins, 'no match'), []);
 });
 
 test('broad and wildcard grants report every host they cover', () => {
