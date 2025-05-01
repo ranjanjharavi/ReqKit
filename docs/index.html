@@ -44,7 +44,7 @@
         </div>
         <ul class="trust-list" aria-label="ReqKit highlights">
           <li><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3 8.1 3.1 3.1L13 4.6"/></svg>Local settings</li>
-          <li><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3 8.1 3.1 3.1L13 4.6"/></svg>Exact-host access</li>
+          <li><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3 8.1 3.1 3.1L13 4.6"/></svg>Exact-host site access</li>
           <li><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3 8.1 3.1 3.1L13 4.6"/></svg>No telemetry</li>
         </ul>
       </div>
@@ -67,7 +67,7 @@
         <article class="feature-card">
           <div class="feature-icon blue"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14v12H5zM8 10h8M8 14h5"/></svg></div>
           <h3>Exact-host headers</h3>
-          <p>Create, pause, edit, and remove request headers only for HTTPS hostnames you explicitly approve through Chrome.</p>
+          <p>Create, pause, edit, and remove request headers only for HTTPS hosts where you grant ReqKit site access through Chrome.</p>
         </article>
         <article class="feature-card">
           <div class="feature-icon sky"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg></div>
@@ -98,7 +98,7 @@
               <li>Optional path-prefix and fetch/XHR-only matching</li>
               <li>Current-host and all-rule views stay one click apart</li>
               <li>Sensitive-looking values masked in the popup</li>
-              <li>Site permission released after the last rule is deleted</li>
+              <li>Site access grant removed after the last rule is deleted</li>
             </ul>
           </div>
           <div class="product-frame">
@@ -147,8 +147,8 @@
       </div>
       <div class="steps-grid">
         <article><span>1</span><h3>Open ReqKit</h3><p>The popup identifies the current hostname and shows the rules that affect it.</p></article>
-        <article><span>2</span><h3>Choose what applies</h3><p>Select a profile and activation lifetime in the rule manager, then enable only the rules you need.</p></article>
-        <article><span>3</span><h3>Keep testing</h3><p>Chrome applies enabled headers to matching exact-host requests and stops them automatically when configured.</p></article>
+        <article><span>2</span><h3>Choose what applies</h3><p>Select a profile and activation lifetime in the rule manager, then turn on only the rules you need.</p></article>
+        <article><span>3</span><h3>Keep testing</h3><p>Chrome applies rules marked On to matching exact-host requests and stops them automatically when configured.</p></article>
       </div>
     </section>
 

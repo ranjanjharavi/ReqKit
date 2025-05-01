@@ -20,6 +20,7 @@ test('popup keeps profile context in the header and scopes rules with tabs', () 
   assert.doesNotMatch(popupMarkup, /class="product-kicker"/);
   assert.match(popupMarkup, /id="activeProfileName"/);
   assert.match(popupMarkup, /id="activeUntilLabel"/);
+  assert.match(popupMarkup, /You must accept this notice to use ReqKit/);
   assert.match(popupMarkup, /id="changeActiveSetupBtn"/);
   assert.match(popupMarkup, /id="ruleScopeTabs"[^>]*role="tablist"/);
   assert.match(popupMarkup, /id="currentSiteTab"[^>]*role="tab"[^>]*aria-controls="ruleListContainer"/);
@@ -30,7 +31,7 @@ test('popup keeps profile context in the header and scopes rules with tabs', () 
   assert.doesNotMatch(popupMarkup, /id="profileSelect"/);
   assert.doesNotMatch(popupMarkup, /id="durationSelect"/);
   assert.doesNotMatch(popupMarkup, /header-composer-heading|headerComposerTitle|headerComposerProfile/);
-  assert.match(popupMarkup, /id="siteAccessPreflight"[\s\S]*?Chrome will ask you to approve this exact HTTPS host/);
+  assert.match(popupMarkup, /id="siteAccessPreflight"[\s\S]*?Chrome will ask you to grant ReqKit site access to this exact HTTPS host/);
   assert.match(popupMarkup, /id="requestScopeDetails"[\s\S]*?id="pathPrefix"[\s\S]*?id="resourceType"/);
   assert.match(popupMarkup, /id="confirmationDialog"[^>]*aria-labelledby="confirmationTitle"/);
 });
@@ -77,6 +78,7 @@ test('popup keeps optional scope secondary and aligns its paired controls', () =
 
 test('rule manager separates active setup, rules, and profile administration', () => {
   assert.match(optionsMarkup, /id="active-setup"/);
+  assert.match(optionsMarkup, /You must accept this notice to use ReqKit/);
   assert.match(optionsMarkup, /id="profileTabs"[^>]*role="tablist"/);
   assert.match(optionsMarkup, /id="profilePanel"[^>]*role="tabpanel"[^>]*aria-labelledby="profileTab-0"/);
   assert.doesNotMatch(optionsMarkup, /activeProfileSelect|profileFilterSelect/);
@@ -86,7 +88,7 @@ test('rule manager separates active setup, rules, and profile administration', (
   assert.match(optionsMarkup, /id="headerComposerToggle"[^>]*>\s*<svg[\s\S]*?New rule/);
   assert.match(optionsMarkup, /class="header-fields-row"[\s\S]*?for="headerName"[\s\S]*?for="headerValue"/);
   assert.match(optionsMarkup, /class="helper-text disclosure-text composer-disclosure"/);
-  assert.match(optionsMarkup, /id="siteAccessPreflight"[\s\S]*?ReqKit will not request access to other sites/);
+  assert.match(optionsMarkup, /id="siteAccessPreflight"[\s\S]*?No other sites are included in the request/);
   assert.match(optionsMarkup, /id="requestScopeDetails"[\s\S]*?id="pathPrefix"[\s\S]*?id="resourceType"/);
   assert.match(sharedRuleRenderSource, /editPathPrefix/);
   assert.match(sharedRuleRenderSource, /editResourceType/);
@@ -98,7 +100,9 @@ test('rule manager separates active setup, rules, and profile administration', (
   assert.match(optionsMarkup, /id="cancelProfileEditorBtn"/);
   assert.doesNotMatch(optionsProfilesSource, /globalThis\.prompt/);
   assert.match(optionsProfilesSource, /validateProfileDraft/);
-  assert.match(optionsProfilesSource, /Copied rules start paused/);
+  assert.match(optionsProfilesSource, /Copied rules start paused and remain editable/);
+  assert.match(popupRulesSource, /Your rules stay saved and editable/);
+  assert.match(optionsRulesSource, /Your rules stay saved and editable/);
   assert.doesNotMatch(optionsMarkup, /class="product-kicker"|class="workspace-kicker"/);
   assert.match(optionsMarkup, /id="confirmationDialog"[^>]*aria-labelledby="confirmationTitle"/);
 });
@@ -119,6 +123,10 @@ test('site access overview audits grants and revokes without deleting rules', ()
   assert.match(siteAccessControllerSource, /removeOriginPermission\(origin\)/);
   assert.match(siteAccessControllerSource, /confirmDestructiveAction/);
   assert.match(siteAccessControllerSource, /Saved rules were kept/);
+  assert.match(optionsMarkup, /Review ReqKit's site access grants/);
+  assert.match(siteAccessControllerSource, /Broad site access/);
+  assert.match(siteAccessControllerSource, /Host-specific site access/);
+  assert.doesNotMatch(siteAccessControllerSource, /No site permissions|Loading site permissions|Broad grant|Host grant/);
   assert.doesNotMatch(siteAccessControllerSource, /headerValue/);
 });
 

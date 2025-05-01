@@ -54,6 +54,23 @@ test('scoped rules expose their scope and editable controls', () => {
   assert.match(editor, /option value="xmlhttprequest" selected/);
 });
 
+test('paused rules are clearly marked while remaining editable and resumable', () => {
+  const row = renderRuleRow({
+    id: 9,
+    domain: 'api.example.com',
+    headerName: 'X-Debug',
+    headerValue: 'on',
+    enabled: false
+  }, { needsAccess: true });
+
+  assert.match(row, /aria-checked="false"[^>]*aria-label="Resume X-Debug rule"/);
+  assert.match(row, /class="rule-enable-label">Paused</);
+  assert.match(row, /data-rule-action="edit"/);
+  assert.match(row, /data-rule-action="delete"/);
+  assert.match(row, /doesn't have site access to <code>api\.example\.com<\/code>/);
+  assert.match(row, /data-rule-action="grant"[^>]*>Grant</);
+});
+
 test('default host-wide rules do not add scope noise', () => {
   const rule = {
     id: 8,
