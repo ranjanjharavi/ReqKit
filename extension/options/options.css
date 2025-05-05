@@ -368,6 +368,11 @@ body {
   width: min(760px, calc(100vw - 32px));
 }
 
+.site-access-dialog .dialog-close-btn {
+  width: 44px;
+  height: 44px;
+}
+
 .site-access-dialog-shell {
   grid-template-rows: auto auto auto auto minmax(0, 1fr) auto;
   gap: 12px;
@@ -387,7 +392,7 @@ body {
 }
 
 .site-access-search input {
-  min-height: 38px;
+  min-height: 44px;
 }
 
 .site-access-summary {
@@ -488,6 +493,7 @@ body {
 }
 
 .site-access-kind {
+  max-width: 48%;
   flex: none;
   padding: 3px 7px;
   border: 1px solid var(--manager-divider);
@@ -511,10 +517,19 @@ body {
 
 .site-access-rules > summary {
   width: fit-content;
+  min-height: 44px;
+  padding: 12px 0;
   color: var(--manager-active-header);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
+}
+
+.site-access-breadth {
+  margin: 8px 0 0;
+  color: var(--manager-muted);
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .site-access-rule-list {
@@ -541,10 +556,13 @@ body {
 }
 
 .site-access-rule-heading span {
-  flex: none;
+  min-width: 0;
+  flex: 0 1 45%;
   color: var(--manager-subtle);
   font-family: var(--font-mono);
   font-size: 12px;
+  text-align: right;
+  overflow-wrap: anywhere;
 }
 
 .site-access-rule-list li p,
@@ -560,7 +578,7 @@ body {
 }
 
 .site-access-revoke-btn {
-  min-height: 40px;
+  min-height: 44px;
   border-color: var(--danger-border);
   background: var(--manager-surface);
   color: var(--danger);
@@ -598,7 +616,13 @@ body {
 }
 
 .site-access-empty .secondary-btn {
+  min-height: 44px;
   margin-top: 4px;
+}
+
+.site-access-dialog-actions .primary-btn,
+.confirmation-dialog-actions > button {
+  min-height: 44px;
 }
 
 .site-access-dialog-actions {
@@ -645,6 +669,12 @@ body {
 
   .site-access-row-heading {
     align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .site-access-kind {
+    max-width: 100%;
   }
 
   .profile-row {

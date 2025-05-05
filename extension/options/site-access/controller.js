@@ -43,6 +43,9 @@ export function renderSiteAccessOverview() {
       origin: document.activeElement.dataset.origin
     }
     : null;
+  const expandedOrigins = new Set([...list.querySelectorAll('.site-access-rules[open]')]
+    .map((details) => details.closest('.site-access-row').dataset.siteAccessOrigin));
+  const scrollTop = list.scrollTop;
   if (!(state.grantedOrigins instanceof Set)) {
     renderLoadError();
     return;
@@ -71,18 +74,20 @@ export function renderSiteAccessOverview() {
 
   search.disabled = false;
   search.closest('.site-access-search').hidden = false;
-  list.innerHTML = `${origins.map(renderOriginGrant).join('')}
+  list.innerHTML = `${origins.map((origin) => renderOriginGrant(origin, expandedOrigins)).join('')}
     <div class="site-access-empty site-access-filter-empty" hidden>
       <strong>No matching grants</strong>
       <p>Try another host or grant pattern.</p>
     </div>`;
   filterSiteAccessGrants();
+  list.scrollTop = scrollTop;
   restoreListFocus(focusedControl);
 }
 
 async function openSiteAccessDialog() {
   const dialog = document.getElementById('siteAccessDialog');
-  if (!dialog.open) {
+  const retrying = dialog.open;
+  if (!retrying) {
     dialog.showModal();
   }
 
@@ -91,9 +96,16 @@ async function openSiteAccessDialog() {
   try {
     await refreshCurrentState();
     renderSiteAccessOverview();
+    if (retrying && dialog.open) {
+      const search = document.getElementById('siteAccessSearch');
+      (search.disabled ? document.getElementById('closeSiteAccessBtn') : search).focus({ preventScroll: true });
+    }
   } catch (error) {
     console.error('Could not load granted site access.', error);
     renderLoadError();
+    if (retrying && dialog.open) {
+      document.querySelector('#siteAccessList [data-site-access-action="retry"]')?.focus({ preventScroll: true });
+    }
   }
 }
 
@@ -203,7 +215,9 @@ function restoreListFocus(focusedControl) {
   const target = controls.find((control) => (
     control.dataset.siteAccessAction === focusedControl.action
       && control.dataset.origin === focusedControl.origin
-  )) || controls[0] || document.getElementById('closeSiteAccessBtn');
+  )) || controls[0] || (document.getElementById('siteAccessSearch').disabled
+    ? document.getElementById('closeSiteAccessBtn')
+    : document.getElementById('siteAccessSearch'));
   target.focus({ preventScroll: true });
 }
 
@@ -216,7 +230,9 @@ function focusAfterRevocation(origin) {
     .filter((control) => !control.closest('.site-access-row')?.hidden);
   const target = controls.find((control) => control.dataset.origin === origin)
     || controls[0]
-    || document.getElementById('closeSiteAccessBtn');
+    || (document.getElementById('siteAccessSearch').disabled
+      ? document.getElementById('closeSiteAccessBtn')
+      : document.getElementById('siteAccessSearch'));
   target.focus({ preventScroll: true });
 }
 
@@ -255,34 +271,34 @@ function clearSiteAccessStatus() {
 function renderLoadError() {
   document.getElementById('siteAccessSummary').textContent = 'Site access is unavailable.';
   const search = document.getElementById('siteAccessSearch');
+  const list = document.getElementById('siteAccessList');
+  const focusRetry = list.contains(document.activeElement) || document.activeElement === search;
   search.disabled = true;
   search.closest('.site-access-search').hidden = true;
-  const list = document.getElementById('siteAccessList');
-  const focusedControl = list.contains(document.activeElement)
-    ? {
-      action: document.activeElement.dataset.siteAccessAction,
-      origin: document.activeElement.dataset.origin
-    }
-    : null;
   list.setAttribute('aria-busy', 'false');
   list.innerHTML = `
     <div class="site-access-empty">
       <strong>Could not read site access</strong>
-      <p>Reload the site access list to try again.</p>
+      <p>Try again to reload the site access list.</p>
       <button class="secondary-btn" type="button" data-site-access-action="retry">Try again</button>
     </div>
   `;
-  restoreListFocus(focusedControl);
+  if (focusRetry) {
+    list.querySelector('[data-site-access-action="retry"]').focus({ preventScroll: true });
+  }
 }
 
-function renderOriginGrant(origin) {
+function renderOriginGrant(origin, expandedOrigins) {
   const isBroad = isBroadOrigin(origin);
   const rules = getRulesForOriginGrant(state.rules, origin);
   const revokeLabel = `Revoke site access for ${getOriginLabel(origin)}`;
   const revokeText = revokingOrigins.has(origin) ? 'Revoking…' : 'Revoke access';
+  const breadthNote = isBroad
+    ? `<p class="site-access-breadth">${escapeHtml(getBroadAccessDescription(origin))}</p>`
+    : '';
   const ruleDetails = rules.length
-    ? `<details class="site-access-rules">
-        <summary>${rules.length} saved ${rules.length === 1 ? 'rule' : 'rules'}</summary>
+    ? `<details class="site-access-rules"${expandedOrigins.has(origin) ? ' open' : ''}>
+        <summary data-site-access-action="rules" data-origin="${escapeHtml(origin)}">${rules.length} saved ${rules.length === 1 ? 'rule' : 'rules'}</summary>
         <ul class="site-access-rule-list">${rules.map(renderCoveredRule).join('')}</ul>
       </details>`
     : '<p class="site-access-no-rules">No saved rules use this grant.</p>';
@@ -297,6 +313,7 @@ function renderOriginGrant(origin) {
           </div>
           <span class="site-access-kind${isBroad ? ' is-broad' : ''}">${isBroad ? 'Broad site access' : 'Host-specific site access'}</span>
         </div>
+        ${breadthNote}
         ${ruleDetails}
       </div>
       <button class="secondary-btn site-access-revoke-btn" type="button" data-site-access-action="revoke" data-origin="${escapeHtml(origin)}" aria-label="${escapeHtml(revokeLabel)}"${revokingOrigins.has(origin) ? ' disabled' : ''}>${revokeText}</button>
@@ -332,6 +349,17 @@ function getOriginLabel(origin) {
 
   const match = /^https:\/\/(\*\.)?([^/*]+)\/\*$/.exec(origin);
   return match ? `${match[1] || ''}${match[2]}` : origin;
+}
+
+function getBroadAccessDescription(origin) {
+  if (origin === '<all_urls>' || origin === 'https://*/*') {
+    return 'Can cover rules for any HTTPS host.';
+  }
+
+  const match = /^https:\/\/\*\.([^/*]+)\/\*$/.exec(origin);
+  return match
+    ? `Can cover rules for ${match[1]} and its subdomains.`
+    : 'Can cover rules on multiple hosts.';
 }
 
 function getRevokeMessage(origin, ruleCount) {
