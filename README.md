@@ -1,6 +1,8 @@
 # ReqKit
 
-ReqKit is a lightweight Chrome extension for creating, organizing, and temporarily applying profile-based request-header rules to exact HTTPS hosts. It is built for API and web-environment testing.
+ReqKit is a lightweight Chrome extension for modifying request headers on exact HTTPS hosts. API developers and QA testers can organize rules into profiles, scope them to API paths or fetch/XHR requests, and stop applying them automatically after a chosen time.
+
+[Install from Chrome Web Store](https://chromewebstore.google.com/detail/reqkit/lobcjikkmbbfkjifaknfnandpapbbfkj) · [Website and guides](https://ranjanjharavi.github.io/ReqKit/)
 
 ## Features
 
@@ -124,4 +126,4 @@ The packaging script creates `reqkit-v<version>.zip` with `manifest.json` at the
 
 ## Support
 
-Report problems or request enhancements through [GitHub Issues](https://github.com/ranjanjharavi/ReqKit/issues).
+Report problems or request enhancements through [Report an issue](https://github.com/ranjanjharavi/ReqKit/issues).
