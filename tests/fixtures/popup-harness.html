@@ -31,11 +31,18 @@
         });
       }
 
+      if (previewParameters.has('campaign')) {
+        const { createStoreData } = await import('./store-data.js');
+        Object.assign(storage, createStoreData());
+      }
+
       let runtimeRules = storage.headerRules || [];
       let runtimeActivation = storage.activation;
       const grantedOrigins = previewParameters.has('noaccess')
         ? []
-        : ['https://example.com/*', 'https://staging.example.com/*'];
+        : previewParameters.has('campaign')
+          ? ['https://api.example.com/*', 'https://qa.example.com/*']
+          : ['https://example.com/*', 'https://staging.example.com/*'];
       window.__REQKIT_CHROME_STUB__ = {
         runtime: {
           lastError: null,
@@ -90,7 +97,7 @@
           remove(_details, callback) { callback(true); }
         },
         tabs: {
-          query(_details, callback) { callback([{ id: 1, url: 'https://example.com/app?view=list#details' }]); },
+          query(_details, callback) { callback([{ id: 1, url: previewParameters.has('campaign') ? 'https://api.example.com/api/v1/users' : 'https://example.com/app?view=list#details' }]); },
           create(details, callback) {
             document.documentElement.dataset.createdTabUrl = details.url;
             callback({ id: 2, ...details });

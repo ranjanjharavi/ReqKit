@@ -30,10 +30,18 @@
         ]
       };
 
+      if (previewParameters.has('campaign')) {
+        const { createStoreData } = await import('./store-data.js');
+        Object.assign(storage, createStoreData());
+      }
+
       let runtimeRules = storage.headerRules;
       let runtimeActivation = storage.activation;
       const permissionEvents = { added: [], removed: [] };
-      const grantedOrigins = previewParameters.has('noaccess') ? [] : [
+      const grantedOrigins = previewParameters.has('noaccess') ? [] : previewParameters.has('campaign') ? [
+        'https://api.example.com/*',
+        'https://qa.example.com/*'
+      ] : [
         'https://api.example.com/*',
         'https://accounts.example.com/*',
         'https://staging.example.com/*',
