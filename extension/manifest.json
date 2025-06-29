@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "ReqKit",
-  "version": "1.1",
+  "name": "ReqKit - Modify Request Headers",
+  "version": "1.2",
   "minimum_chrome_version": "120",
-  "description": "Create and switch profile-based request-header rules for exact HTTPS hosts you approve.",
+  "description": "Create scoped request-header rules for HTTPS sites. Switch profiles, auto-pause sessions, and manage site access locally.",
   "homepage_url": "https://ranjanjharavi.github.io/ReqKit/",
   "permissions": [
     "activeTab",

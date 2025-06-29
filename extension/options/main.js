@@ -1,6 +1,12 @@
 import { requirePrivacyConsent } from '../shared/privacy.js';
-import { bindRuleEvents, initializeRules, refreshFromStorage } from './rules/controller.js';
+import {
+  bindRuleEvents,
+  initializeRules,
+  refreshFromStorage,
+  renderRules
+} from './rules/controller.js';
 import { bindProfileEvents } from './profiles/controller.js';
+import { bindSiteAccessEvents } from './site-access/controller.js';
 import { showStatus } from '../shared/ui.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -15,6 +21,7 @@ async function start() {
   await requirePrivacyConsent();
   bindRuleEvents();
   bindProfileEvents({ onChanged: refreshFromStorage });
+  bindSiteAccessEvents({ onRefreshState: refreshFromStorage, onRenderRules: renderRules });
 
   await initializeRules({ editRuleId: readEditRuleId() }).catch((error) => {
     console.error('Could not load header rules.', error);
@@ -41,6 +48,8 @@ function focusRequestedSection() {
   globalThis.setTimeout(() => {
     const section = document.getElementById('active-setup');
     section.scrollIntoView({ block: 'start' });
-    document.getElementById('activeProfileSelect').focus({ preventScroll: true });
+    const focusTarget = document.querySelector('#durationPills [data-duration][aria-checked="true"]:not(:disabled)')
+      || document.querySelector('#profileTabs [aria-selected="true"]');
+    focusTarget?.focus({ preventScroll: true });
   }, 0);
 }

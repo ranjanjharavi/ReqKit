@@ -71,23 +71,24 @@
     <ul>
     <li><strong>Active tab URL:</strong> after you open the popup, ReqKit reads the active tab URL locally to identify the current host. It does not read page content or retain browsing history.</li>
     <li><strong>Profiles and activation settings:</strong> profile names, the selected profile, pause state, and optional activation timing are stored in <code>chrome.storage.local</code> in your Chrome profile.</li>
-    <li><strong>Header rules:</strong> exact HTTPS hosts, header names, header values, profile assignments, and enabled states are stored in <code>chrome.storage.local</code> in your Chrome profile.</li>
+    <li><strong>Header rules:</strong> exact HTTPS hosts, header names, header values, optional path prefixes and request-type scopes, profile assignments, and enabled states are stored in <code>chrome.storage.local</code> in your Chrome profile.</li>
     <li><strong>Privacy choice:</strong> acceptance of the first-use disclosure is stored locally.</li>
     </ul>
     <h2 id="how-data-is-used-and-transmitted">How data is used and transmitted</h2>
-    <p>ReqKit sends no data to its developer. While an enabled header rule is active, Chrome sends its configured value only in requests to the exact HTTPS host you approved. Destination services process request headers under their own policies, and those values may appear in destination or intermediary logs.</p>
+    <p>ReqKit sends no data to its developer. While an enabled header rule is active, Chrome sends its configured value only to that rule&#039;s exact HTTPS host, and only when a site access grant covers the host. The value is added only to requests matching the rule&#039;s optional path and request-type scope. With no scope selected, the rule matches all request types on that host. Destination services process request headers under their own policies, and those values may appear in destination or intermediary logs.</p>
     <h2 id="retention-and-deletion">Retention and deletion</h2>
-    <p>Profiles, activation settings, header rules, and the privacy choice remain in this Chrome profile until you change or delete them, clear extension data, or uninstall ReqKit. Deleting a profile also deletes the header rules assigned to it. Deleting the last header rule for a host asks Chrome to remove ReqKit&#039;s access to that host.</p>
+    <p>Profiles, activation settings, header rules, and the privacy choice remain in this Chrome profile until you change or delete them, clear extension data, or uninstall ReqKit. Deleting a profile also deletes the header rules assigned to it. Deleting the last header rule for a host asks Chrome to remove ReqKit&#039;s site access grant for that host. You can also review and revoke site access grants from the rule manager; revoking a grant keeps affected rules saved but stops them from applying unless another grant still covers the host.</p>
     <h2 id="permissions">Permissions</h2>
+    <p>Chrome uses technical permission names. In ReqKit, <strong>site access</strong> means permission for rules to run on HTTPS hosts you choose; ReqKit requests it only when a rule needs it.</p>
     <ul>
     <li><code>activeTab</code> reads the active tab URL locally only after you open ReqKit, so the popup can identify the current hostname and show matching rules. It does not read page content or general browsing history.</li>
     <li><code>alarms</code> runs the user-selected automatic expiry so active request-header rules stop applying even when no ReqKit page is open.</li>
     <li><code>storage</code> retains privacy consent, profiles, activation settings, and request-header rules locally in the current Chrome profile.</li>
-    <li><code>declarativeNetRequestWithHostAccess</code> applies user-created request-header rules to approved HTTPS hosts without injecting scripts or reading response bodies.</li>
-    <li>Optional <code>https://*/*</code> host access lets ReqKit ask Chrome for access to the exact HTTPS host you choose when creating or enabling a rule. This optional pattern enables exact-host prompts; it does not grant ReqKit required access to every website.</li>
+    <li><code>declarativeNetRequestWithHostAccess</code> applies user-created request-header rules to HTTPS hosts where you grant ReqKit site access, without injecting scripts or reading response bodies.</li>
+    <li>Chrome&#039;s optional <code>https://*/*</code> host permission lets ReqKit request site access for the exact HTTPS host you choose when creating or resuming a rule. It enables on-demand prompts; it does not give ReqKit access to every website by default. The <strong>Site access</strong> overview shows active site access grants and lets you revoke them.</li>
     </ul>
     <h2 id="security-and-responsible-use">Security and responsible use</h2>
-    <p>ReqKit limits rules to exact HTTPS hosts, masks sensitive-looking header values in the popup, and detects conflicting active header rules. These protections do not prevent you from using data you are authorized to use.</p>
+    <p>ReqKit limits rules to exact HTTPS hosts, supports optional path and fetch/XHR request scoping, masks sensitive-looking header values in the popup, and detects conflicting active rules whose scopes overlap. These protections do not prevent you from using data you are authorized to use.</p>
     <p>Use ReqKit only with systems and data you are authorized to access. Avoid using long-lived production credentials as test header values.</p>
     <h2 id="data-sharing-and-sale">Data sharing and sale</h2>
     <p>ReqKit does not sell or rent user data, and it does not send data to the developer, advertisers, or data brokers. It transmits configured header values only to destinations selected by the user as described above. It does not use data for advertising, creditworthiness, or any purpose unrelated to its user-facing features.</p>

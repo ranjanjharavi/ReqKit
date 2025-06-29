@@ -33,15 +33,18 @@ import {
 import { PROFILE_STORAGE_KEY, getProfileIds, normalizeProfiles } from './shared/profiles.js';
 import { MIGRATED_KEYS, ensureMigrated } from './shared/migrate.js';
 import { resolveBadge } from './shared/badge.js';
+import { createSerialQueue } from './shared/serial-queue.js';
 
 const EXPIRY_ALARM = 'reqkit:activation-expiry';
+// Keep storage, DNR, alarm, and badge work ordered around the latest state.
+const enqueueBackgroundTask = createSerialQueue();
 
 const RULE_MESSAGES = new Set([RULE_MESSAGE_GET, RULE_MESSAGE_COMMIT]);
 const ACTIVATION_MESSAGES = new Set([ACTIVATION_MESSAGE_GET, ACTIVATION_MESSAGE_SET]);
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (RULE_MESSAGES.has(message?.type)) {
-    handleRuleMessage(message)
+    enqueueBackgroundTask(() => handleRuleMessage(message))
       .then((rules) => sendResponse({ ok: true, rules }))
       .catch((error) => {
         console.error('Could not process the header rule request.', error);
@@ -51,7 +54,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 
   if (ACTIVATION_MESSAGES.has(message?.type)) {
-    handleActivationMessage(message)
+    enqueueBackgroundTask(() => handleActivationMessage(message))
       .then((activation) => sendResponse({ ok: true, activation }))
       .catch((error) => {
         console.error('Could not process the activation request.', error);
@@ -64,25 +67,25 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 });
 
 chrome.runtime.onInstalled.addListener(() => {
-  initialize().catch((error) => {
+  enqueueBackgroundTask(() => initialize()).catch((error) => {
     console.error('Could not restore saved header rules after install/update.', error);
   });
 });
 
 chrome.runtime.onStartup.addListener(() => {
-  initialize({ newBrowserSession: true }).catch((error) => {
+  enqueueBackgroundTask(() => initialize({ newBrowserSession: true })).catch((error) => {
     console.error('Could not restore saved header rules on browser startup.', error);
   });
 });
 
 chrome.permissions.onAdded.addListener(() => {
-  refreshAfterPermissionChange().catch((error) => {
+  enqueueBackgroundTask(() => refreshAfterPermissionChange()).catch((error) => {
     console.error('Could not apply rules after site access was granted.', error);
   });
 });
 
 chrome.permissions.onRemoved.addListener(() => {
-  refreshAfterPermissionChange().catch((error) => {
+  enqueueBackgroundTask(() => refreshAfterPermissionChange()).catch((error) => {
     console.error('Could not update rules after site access was removed.', error);
   });
 });
@@ -96,7 +99,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
     return;
   }
 
-  applyExpiry().catch((error) => {
+  enqueueBackgroundTask(() => applyExpiry()).catch((error) => {
     console.error('Could not apply the activation timer.', error);
   });
 });
@@ -134,7 +137,7 @@ chrome.commands.onCommand.addListener((command) => {
     return;
   }
 
-  toggleMasterSwitch().catch((error) => {
+  enqueueBackgroundTask(() => toggleMasterSwitch()).catch((error) => {
     console.error('Could not toggle the ReqKit master switch.', error);
   });
 });
@@ -145,13 +148,13 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     return;
   }
 
-  refreshTabBadge(tabId, tab).catch((error) => {
+  enqueueBackgroundTask(() => refreshTabBadge(tabId, tab)).catch((error) => {
     console.error('Could not update the badge for that tab.', error);
   });
 });
 
 chrome.tabs.onActivated.addListener(({ tabId }) => {
-  refreshTabBadge(tabId).catch((error) => {
+  enqueueBackgroundTask(() => refreshTabBadge(tabId)).catch((error) => {
     console.error('Could not update the badge for the active tab.', error);
   });
 });

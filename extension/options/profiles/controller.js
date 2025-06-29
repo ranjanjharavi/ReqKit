@@ -28,15 +28,18 @@ import { state } from '../state.js';
 import { escapeHtml, showStatus } from '../../shared/ui.js';
 
 let refreshAll = async () => {};
+let profileEditor = null;
 
 export function bindProfileEvents({ onChanged }) {
   refreshAll = onChanged;
 
-  document.getElementById('newProfileBtn').addEventListener('click', createNewProfile);
+  document.getElementById('newProfileBtn').addEventListener('click', () => openProfileEditor('create'));
   document.getElementById('profileList').addEventListener('click', handleProfileListClick);
   document.getElementById('profileTabs').addEventListener('click', handleProfileTabClick);
   document.getElementById('profileTabs').addEventListener('keydown', handleProfileTabKeydown);
-  document.getElementById('activeProfileSelect').addEventListener('change', handleActiveProfileChange);
+  document.getElementById('profileEditorForm').addEventListener('submit', handleProfileEditorSubmit);
+  document.getElementById('profileNameInput').addEventListener('input', clearProfileEditorError);
+  document.getElementById('cancelProfileEditorBtn').addEventListener('click', () => showProfileList());
   document.getElementById('manageProfilesBtn').addEventListener('click', openProfileManager);
   document.getElementById('closeProfileManagerBtn').addEventListener('click', closeProfileManager);
   document.getElementById('doneProfileManagerBtn').addEventListener('click', closeProfileManager);
@@ -45,14 +48,8 @@ export function bindProfileEvents({ onChanged }) {
       closeProfileManager();
     }
   });
-}
-
-function handleActiveProfileChange(event) {
-  const select = event.currentTarget;
-  select.disabled = true;
-  activateProfile(select.value).finally(() => {
-    select.disabled = false;
-    renderProfiles();
+  document.getElementById('profileManagerDialog').addEventListener('close', () => {
+    showProfileList({ restoreFocus: false });
   });
 }
 
@@ -66,6 +63,9 @@ function handleProfileTabClick(event) {
   activateProfile(tab.dataset.profileTab).finally(() => {
     tab.disabled = false;
     renderProfiles();
+    const selectedTab = [...document.querySelectorAll('#profileTabs [data-profile-tab]')]
+      .find((profileTab) => profileTab.getAttribute('aria-selected') === 'true');
+    selectedTab?.focus();
   });
 }
 
@@ -90,6 +90,7 @@ function handleProfileTabKeydown(event) {
 }
 
 function openProfileManager() {
+  showProfileList({ restoreFocus: false });
   document.getElementById('profileManagerDialog').showModal();
 }
 
@@ -107,42 +108,40 @@ function handleProfileListClick(event) {
   }
 
   const { profileAction, id } = button.dataset;
-  const actions = {
-    rename: () => renameProfile(id),
-    duplicate: () => duplicateProfile(id),
-    delete: () => deleteProfile(id)
-  };
-
-  actions[profileAction]?.();
+  if (profileAction === 'rename' || profileAction === 'duplicate') {
+    openProfileEditor(profileAction, id, button);
+    return;
+  }
+  if (profileAction === 'delete') {
+    deleteProfile(id);
+  }
 }
 
 export function renderProfiles() {
   const { profiles, rules } = state;
   const activeProfileId = getTargetProfileId(getActivation());
-  const select = document.getElementById('activeProfileSelect');
+  const selectedTabIndex = profiles.findIndex((profile) => profile.id === activeProfileId);
   const tabs = document.getElementById('profileTabs');
   const list = document.getElementById('profileList');
 
-  const selectSignature = profiles.map((profile) => `${profile.id}:${profile.name}`).join('|');
-  if (select.dataset.renderedFor !== selectSignature) {
-    select.innerHTML = profiles.map((profile) => (
-      `<option value="${escapeHtml(profile.id)}">${escapeHtml(profile.name)}</option>`
-    )).join('');
-    select.dataset.renderedFor = selectSignature;
-  }
-  select.value = activeProfileId;
-
-  tabs.innerHTML = profiles.map((profile) => {
+  tabs.innerHTML = profiles.map((profile, index) => {
     const isActive = profile.id === activeProfileId;
     const ruleCount = countRulesInProfile(rules, profile.id);
 
     return `
-      <button class="profile-tab" type="button" role="tab" aria-selected="${String(isActive)}" tabindex="${isActive ? '0' : '-1'}" data-profile-tab="${escapeHtml(profile.id)}">
+      <button id="profileTab-${index}" class="profile-tab" type="button" role="tab" aria-selected="${String(isActive)}" aria-controls="profilePanel" tabindex="${isActive ? '0' : '-1'}" data-profile-tab="${escapeHtml(profile.id)}">
         <span>${escapeHtml(profile.name)}</span>
         <span class="profile-tab-count">${ruleCount}</span>
       </button>
     `;
   }).join('');
+
+  const profilePanel = document.getElementById('profilePanel');
+  if (selectedTabIndex >= 0) {
+    profilePanel.setAttribute('aria-labelledby', `profileTab-${selectedTabIndex}`);
+  } else {
+    profilePanel.removeAttribute('aria-labelledby');
+  }
 
   document.getElementById('activeProfileRunLabel').textContent = `${getProfileName(profiles, activeProfileId)} runs until`;
 
@@ -173,93 +172,187 @@ function getActivation() {
   return state.activation || createDefaultActivation();
 }
 
-async function createNewProfile() {
-  const name = globalThis.prompt('Name the new profile', '');
-  if (name === null) {
+function openProfileEditor(mode, id = null, returnFocus = null) {
+  const source = id ? state.profiles.find((profile) => profile.id === id) : null;
+  if (id && !source) {
     return;
   }
 
-  const validation = validateProfileDraft({ name }, state.profiles);
-  if (!validation.ok) {
-    showStatus('profileStatus', validation.error, 'error');
+  profileEditor = { mode, id, returnFocus };
+  const input = document.getElementById('profileNameInput');
+  const title = document.getElementById('profileManagerTitle');
+  const description = document.getElementById('profileManagerDescription');
+  const submitButton = document.getElementById('saveProfileEditorBtn');
+  const suggestedName = mode === 'duplicate' ? `${source.name} copy`.slice(0, 40) : '';
+
+  if (mode === 'create') {
+    title.textContent = 'New profile';
+    description.textContent = 'Create an empty profile. It will not become active automatically.';
+    submitButton.textContent = 'Create profile';
+    input.value = '';
+  } else if (mode === 'rename') {
+    title.textContent = 'Rename profile';
+    description.textContent = `Choose a new name for ${source.name}.`;
+    submitButton.textContent = 'Save name';
+    input.value = source.name;
+  } else {
+    title.textContent = `Duplicate ${source.name}`;
+    description.textContent = countRulesInProfile(state.rules, source.id)
+      ? 'Copied rules start paused and remain editable, so the copy will not change your active requests.'
+      : 'This profile has no rules to copy, so the new profile will be empty.';
+    submitButton.textContent = 'Create copy';
+    input.value = suggestedName;
+  }
+
+  clearProfileEditorError();
+  document.getElementById('profileList').hidden = true;
+  document.getElementById('profileStatus').hidden = true;
+  document.getElementById('profileManagerActions').hidden = true;
+  document.getElementById('profileEditorForm').hidden = false;
+  input.focus();
+  input.select();
+}
+
+function showProfileList({ restoreFocus = true, focusAction = null, profileId = null } = {}) {
+  const previousEditor = profileEditor;
+  profileEditor = null;
+  document.getElementById('profileManagerTitle').textContent = 'Manage profiles';
+  document.getElementById('profileManagerDescription').textContent = 'Organize rule sets without changing what is currently applied.';
+  document.getElementById('profileEditorForm').reset();
+  document.getElementById('profileEditorForm').hidden = true;
+  document.getElementById('profileList').hidden = false;
+  document.getElementById('profileStatus').hidden = false;
+  document.getElementById('profileManagerActions').hidden = false;
+  clearProfileEditorError();
+
+  if (!restoreFocus) {
     return;
   }
 
-  if (await saveProfiles([...state.profiles, createProfile(validation.profile.name)])) {
-    showStatus('profileStatus', `Created ${validation.profile.name}.`, 'success');
+  if (focusAction && profileId) {
+    const action = [...document.querySelectorAll('#profileList [data-profile-action]')]
+      .find((button) => button.dataset.profileAction === focusAction && button.dataset.id === profileId);
+    (action || document.getElementById('newProfileBtn')).focus();
+    return;
+  }
+
+  if (previousEditor?.returnFocus?.isConnected) {
+    previousEditor.returnFocus.focus();
+  } else {
+    document.getElementById('newProfileBtn').focus();
   }
 }
 
-async function renameProfile(id) {
-  const profile = state.profiles.find((candidate) => candidate.id === id);
-  if (!profile) {
+function clearProfileEditorError() {
+  const input = document.getElementById('profileNameInput');
+  const error = document.getElementById('profileEditorError');
+  if (!input || !error) {
     return;
   }
 
-  const name = globalThis.prompt('Rename profile', profile.name);
-  if (name === null || name.trim() === profile.name) {
-    return;
-  }
-
-  const validation = validateProfileDraft({ name }, state.profiles, { excludeId: id });
-  if (!validation.ok) {
-    showStatus('profileStatus', validation.error, 'error');
-    return;
-  }
-
-  const saved = await saveProfiles(state.profiles.map((candidate) => (
-    candidate.id === id ? { ...candidate, name: validation.profile.name } : candidate
-  )));
-  if (saved) {
-    showStatus('profileStatus', `Renamed to ${validation.profile.name}.`, 'success');
-  }
+  error.textContent = '';
+  error.hidden = true;
+  input.removeAttribute('aria-invalid');
 }
 
-/**
- * Cloning is the shortest path to a second environment: duplicate, then change
- * the values that differ. The copies start paused so nothing goes live by
- * accident when the new profile is activated.
- */
-async function duplicateProfile(id) {
-  const source = state.profiles.find((candidate) => candidate.id === id);
-  if (!source) {
+function showProfileEditorError(message) {
+  const input = document.getElementById('profileNameInput');
+  const error = document.getElementById('profileEditorError');
+  error.textContent = message;
+  error.hidden = false;
+  input.setAttribute('aria-invalid', 'true');
+  input.focus();
+}
+
+async function handleProfileEditorSubmit(event) {
+  event.preventDefault();
+  if (!profileEditor) {
     return;
   }
 
-  const name = globalThis.prompt('Name the copy', `${source.name} copy`);
-  if (name === null) {
-    return;
-  }
-
-  const validation = validateProfileDraft({ name }, state.profiles);
+  const { mode, id } = profileEditor;
+  const name = document.getElementById('profileNameInput').value;
+  const validation = validateProfileDraft(
+    { name },
+    state.profiles,
+    { excludeId: mode === 'rename' ? id : null }
+  );
   if (!validation.ok) {
-    showStatus('profileStatus', validation.error, 'error');
+    showProfileEditorError(validation.error);
     return;
   }
 
-  const newProfile = createProfile(validation.profile.name);
-  const clonedRules = cloneRulesIntoProfile(
-    state.rules,
-    id,
-    newProfile.id,
-    getNextRuleId(state.rules)
-  ).map((rule) => ({ ...rule, enabled: false }));
+  const submitButton = document.getElementById('saveProfileEditorBtn');
+  submitButton.disabled = true;
+  const originalLabel = submitButton.textContent;
+  submitButton.textContent = 'Saving…';
 
   try {
+    if (mode === 'create') {
+      const newProfile = createProfile(validation.profile.name);
+      await saveProfiles([...state.profiles, newProfile]);
+      showProfileList({ focusAction: 'rename', profileId: newProfile.id });
+      showStatus('profileStatus', `Created ${validation.profile.name}.`, 'success');
+      return;
+    }
+
+    if (mode === 'rename') {
+      const profile = state.profiles.find((candidate) => candidate.id === id);
+      if (!profile) {
+        throw new Error('That profile no longer exists.');
+      }
+      if (profile.name === validation.profile.name) {
+        showProfileList({ focusAction: 'rename', profileId: id });
+        return;
+      }
+
+      await saveProfiles(state.profiles.map((candidate) => (
+        candidate.id === id ? { ...candidate, name: validation.profile.name } : candidate
+      )));
+      showProfileList({ focusAction: 'rename', profileId: id });
+      showStatus('profileStatus', `Renamed to ${validation.profile.name}.`, 'success');
+      return;
+    }
+
+    const source = state.profiles.find((candidate) => candidate.id === id);
+    if (!source) {
+      throw new Error('That profile no longer exists.');
+    }
+    const newProfile = createProfile(validation.profile.name);
+    const clonedRules = cloneRulesIntoProfile(
+      state.rules,
+      id,
+      newProfile.id,
+      getNextRuleId(state.rules)
+    ).map((rule) => ({ ...rule, enabled: false }));
+
     state.syncPaused = true;
-    await storeProfiles([...state.profiles, newProfile]);
-    await commitRules([...state.rules, ...clonedRules]);
-    await refreshAll();
-    showStatus(
-      'profileStatus',
-      `Copied ${clonedRules.length} ${clonedRules.length === 1 ? 'rule' : 'rules'} into ${newProfile.name}, paused.`,
-      'success'
-    );
+    try {
+      await storeProfiles([...state.profiles, newProfile]);
+      try {
+        await commitRules([...state.rules, ...clonedRules]);
+      } catch (error) {
+        await storeProfiles(state.profiles);
+        throw error;
+      }
+      await refreshAll();
+    } finally {
+      state.syncPaused = false;
+    }
+
+    showProfileList({ focusAction: 'duplicate', profileId: id });
+    const copyMessage = clonedRules.length === 0
+      ? `Created an empty copy of ${source.name} as ${newProfile.name}.`
+      : clonedRules.length === 1
+        ? `Copied 1 rule into ${newProfile.name}. It remains paused and editable.`
+        : `Copied ${clonedRules.length} rules into ${newProfile.name}. They remain paused and editable.`;
+    showStatus('profileStatus', copyMessage, 'success');
   } catch (error) {
     console.error(error);
-    showStatus('profileStatus', error.message || 'Could not duplicate that profile.', 'error');
+    showProfileEditorError(error.message || 'Could not save that profile.');
   } finally {
-    state.syncPaused = false;
+    submitButton.disabled = false;
+    submitButton.textContent = originalLabel;
   }
 }
 
@@ -377,15 +470,10 @@ export async function readGrantedOrigins() {
 }
 
 async function saveProfiles(profiles) {
+  state.syncPaused = true;
   try {
-    state.syncPaused = true;
     await storeProfiles(profiles);
     await refreshAll();
-    return true;
-  } catch (error) {
-    console.error(error);
-    showStatus('profileStatus', error.message || 'Could not save profiles.', 'error');
-    return false;
   } finally {
     state.syncPaused = false;
   }

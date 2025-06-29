@@ -208,12 +208,9 @@ function renderMasterSwitch() {
       ? 'No profile is active'
       : 'All header rules are paused';
     document.getElementById('masterPausedDetail').textContent = parked
-      ? `Resume to switch back to ${getProfileName(state.headers.profiles, getTargetProfileId(activation))}.`
-      : 'No headers are being applied to any site.';
+      ? `Resume to switch back to ${getProfileName(state.headers.profiles, getTargetProfileId(activation))}. Your rules remain saved and editable.`
+      : 'No headers are being applied. Your rules stay saved and editable, with their own On or Paused settings.';
   }
-
-  document.querySelector('#headers-panel .content-stack')
-    .classList.toggle('is-master-paused', status !== 'live');
 }
 
 function renderActivationSummary() {
@@ -296,6 +293,9 @@ function openRuleEditor(id) {
   document.getElementById('domain').value = rule.domain;
   document.getElementById('headerName').value = rule.headerName;
   document.getElementById('headerValue').value = rule.headerValue;
+  document.getElementById('pathPrefix').value = rule.pathPrefix || '';
+  document.getElementById('resourceType').value = rule.resourceType || 'all';
+  document.getElementById('requestScopeDetails').open = Boolean(rule.pathPrefix) || rule.resourceType === 'xmlhttprequest';
   configureComposer();
   setHeaderComposerExpanded(true, { focusFirstField: true });
 }
@@ -523,6 +523,10 @@ function updateCurrentSiteControls() {
     tab.setAttribute('aria-selected', String(selected));
     tab.tabIndex = selected ? 0 : -1;
   });
+  document.getElementById('ruleListContainer').setAttribute(
+    'aria-labelledby',
+    state.headers.scope === 'all' ? 'allRulesTab' : 'currentSiteTab'
+  );
 
   document.getElementById('headerComposerToggle').disabled = !currentHostname || state.headers.composerOpen;
 
@@ -606,7 +610,7 @@ async function addRule() {
         renderRules();
         showStatus(
           'headerStatus',
-          `Rule saved, but site access to https://${newRule.domain} was not granted.`,
+          `Rule saved, but ReqKit still needs site access to https://${newRule.domain} before it can be applied.`,
           'error'
         );
         return true;
@@ -707,7 +711,7 @@ async function toggleRule(id) {
   try {
     await persistRules(updatedRules);
     const toggledRule = state.headers.rules.find((rule) => rule.id === id);
-    showStatus('headerStatus', toggledRule?.enabled ? 'Rule enabled.' : 'Rule paused.', 'success');
+    showStatus('headerStatus', toggledRule?.enabled ? 'Rule resumed.' : 'Rule paused.', 'success');
   } catch (error) {
     console.error(error);
     showStatus('headerStatus', error.message || 'Could not toggle that rule.', 'error');
@@ -771,14 +775,14 @@ async function grantRuleAccess(id) {
     showStatus('headerStatus', `Site access granted for ${rule.domain}.`, 'success');
   } catch (error) {
     console.error(error);
-    showStatus('headerStatus', error.message || 'Chrome denied site access.', 'error');
+    showStatus('headerStatus', error.message || 'Chrome did not grant site access.', 'error');
   }
 }
 
 async function ensureRulePermission(rule) {
   const granted = await requestOriginPermission(getRuleOriginPattern(rule));
   if (!granted) {
-    throw new Error(`Site access to https://${rule.domain} is required to enable this rule.`);
+    throw new Error(`Site access to https://${rule.domain} is required to resume this rule.`);
   }
 }
 
@@ -812,7 +816,9 @@ function readCreateDraft() {
   return {
     domain: document.getElementById('domain').value,
     headerName: document.getElementById('headerName').value,
-    headerValue: document.getElementById('headerValue').value
+    headerValue: document.getElementById('headerValue').value,
+    pathPrefix: document.getElementById('pathPrefix').value,
+    resourceType: document.getElementById('resourceType').value
   };
 }
 
@@ -820,4 +826,7 @@ function clearHeaderForm() {
   document.getElementById('domain').value = state.headers.currentHostname;
   document.getElementById('headerName').value = '';
   document.getElementById('headerValue').value = '';
+  document.getElementById('pathPrefix').value = '';
+  document.getElementById('resourceType').value = 'all';
+  document.getElementById('requestScopeDetails').open = false;
 }

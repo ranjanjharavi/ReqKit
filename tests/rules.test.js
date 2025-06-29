@@ -12,6 +12,7 @@ import {
   groupRulesByDomain,
   getRuleOriginPattern,
   normalizeDomain,
+  normalizePathPrefix,
   normalizeRules,
   validateRuleDraft
 } from '../extension/shared/rules.js';
@@ -32,6 +33,18 @@ const sampleRules = [
     enabled: false
   }
 ];
+
+test('path prefixes normalize to segment prefixes and reject unsafe URL parts', () => {
+  assert.equal(normalizePathPrefix('api/v1/'), '/api/v1');
+  assert.equal(normalizePathPrefix('/'), '');
+  assert.equal(normalizePathPrefix(''), '');
+  assert.equal(normalizePathPrefix('/api?debug=1'), null);
+  assert.equal(normalizePathPrefix('/api#section'), null);
+  assert.equal(normalizePathPrefix('/api/../admin'), null);
+  assert.equal(normalizePathPrefix('/api\\\\admin'), null);
+  assert.equal(normalizePathPrefix('/api\u0001x'), null);
+  assert.equal(normalizePathPrefix(`/${'a'.repeat(513)}`), null);
+});
 
 test('normalizeDomain accepts HTTPS hosts and rejects HTTP', () => {
   assert.equal(normalizeDomain('API.Example.com/path'), 'api.example.com');
@@ -59,7 +72,7 @@ test('normalizeRules repairs identifiers and normalizes fields', () => {
   assert.equal(normalized[1].enabled, false);
 });
 
-test('validateRuleDraft normalizes valid input', () => {
+test('validateRuleDraft normalizes host and optional request scope', () => {
   const result = validateRuleDraft({
     domain: 'https://API.example.com/path',
     headerName: ' X-Test ',
@@ -71,8 +84,25 @@ test('validateRuleDraft normalizes valid input', () => {
     rule: {
       domain: 'api.example.com',
       headerName: 'X-Test',
-      headerValue: 'value'
+      headerValue: 'value',
+      pathPrefix: '',
+      resourceType: 'all'
     }
+  });
+
+  const scoped = validateRuleDraft({
+    domain: 'api.example.com',
+    headerName: 'X-Test',
+    headerValue: 'value',
+    pathPrefix: 'api/v2/',
+    resourceType: 'xmlhttprequest'
+  }, []);
+  assert.deepEqual(scoped.rule, {
+    domain: 'api.example.com',
+    headerName: 'X-Test',
+    headerValue: 'value',
+    pathPrefix: '/api/v2',
+    resourceType: 'xmlhttprequest'
   });
 });
 
@@ -88,9 +118,21 @@ test('validateRuleDraft rejects invalid and duplicate rules', () => {
     headerName: 'X-Test',
     headerValue: 'bad\nvalue'
   }, []).error, 'Header values cannot contain line breaks.');
+  assert.match(validateRuleDraft({
+    domain: 'example.com',
+    headerName: 'X-Test',
+    headerValue: 'value',
+    pathPrefix: '/api?token=1'
+  }, []).error, /valid path prefix/);
+  assert.equal(validateRuleDraft({
+    domain: 'example.com',
+    headerName: 'X-Test',
+    headerValue: 'value',
+    resourceType: 'script'
+  }, []).error, 'Choose a supported request type.');
   assert.equal(
     validateRuleDraft(sampleRules[0], sampleRules).error,
-    'That header already exists for this host in this profile.'
+    'A rule for that header and request scope already exists for this host in this profile.'
   );
   assert.equal(validateRuleDraft({
     ...sampleRules[0],
@@ -166,6 +208,27 @@ test('the same header with different values is allowed across profiles', () => {
   assert.equal(findActiveRuleConflict(prodRule, [stagingRule], { activation }), null);
 });
 
+test('conflicts only occur when request scopes overlap', () => {
+  const base = { ...sampleRules[0], pathPrefix: '/api', resourceType: 'xmlhttprequest' };
+  const nested = { ...base, id: 8, pathPrefix: '/api/v2', headerValue: 'different' };
+  const otherPath = { ...base, id: 9, pathPrefix: '/admin', headerValue: 'different' };
+  const similarName = { ...base, id: 10, pathPrefix: '/apix', headerValue: 'different' };
+  const wholeHost = { ...base, id: 11, pathPrefix: '', headerValue: 'different' };
+
+  assert.equal(areRulesConflicting(base, nested), true);
+  assert.equal(areRulesConflicting(base, otherPath), false);
+  assert.equal(areRulesConflicting(base, similarName), false);
+  assert.equal(areRulesConflicting(base, wholeHost), true);
+});
+
+test('the same header can have different values in disjoint scopes', () => {
+  const apiRule = { ...sampleRules[0], pathPrefix: '/api' };
+  const adminRule = { ...sampleRules[0], id: 12, pathPrefix: '/admin', headerValue: 'different' };
+
+  assert.equal(validateRuleDraft(adminRule, [apiRule]).ok, true);
+  assert.equal(validateRuleDraft({ ...adminRule, pathPrefix: '/api/v2' }, [apiRule]).ok, false);
+});
+
 test('conflicts inside the active profile are still caught', () => {
   const stagingRule = { ...sampleRules[0], profileId: 'staging' };
   const clashingRule = { ...sampleRules[0], id: 9, headerValue: 'different', profileId: 'staging' };
@@ -193,7 +256,7 @@ test('an identical rule in another profile is not a duplicate', () => {
   assert.equal(validateRuleDraft(sampleRules[0], stagingRules, {
     activation: { masterEnabled: true, profileId: 'staging' },
     profileId: 'staging'
-  }).error, 'That header already exists for this host in this profile.');
+  }).error, 'A rule for that header and request scope already exists for this host in this profile.');
 });
 
 test('profile helpers filter rules', () => {
@@ -204,13 +267,26 @@ test('profile helpers filter rules', () => {
   assert.deepEqual(filterRulesByProfile([sampleRules[1]], 'default'), [sampleRules[1]]);
 });
 
-test('buildDynamicRule produces an exact-host DNR rule', () => {
-  const dynamicRule = buildDynamicRule(sampleRules[0]);
+test('buildDynamicRule preserves host-wide defaults and applies path/type scopes', () => {
+  const defaultRule = buildDynamicRule(sampleRules[0]);
+  assert.deepEqual(defaultRule.condition.resourceTypes, [
+    'main_frame', 'sub_frame', 'stylesheet', 'script', 'image', 'font', 'object',
+    'xmlhttprequest', 'ping', 'csp_report', 'media', 'other'
+  ]);
+  assert.match('https://api.example.com/path', new RegExp(defaultRule.condition.regexFilter));
+  assert.doesNotMatch('http://api.example.com/path', new RegExp(defaultRule.condition.regexFilter));
+  assert.doesNotMatch('https://sub.api.example.com/path', new RegExp(defaultRule.condition.regexFilter));
 
-  assert.equal(dynamicRule.id, 1);
-  assert.equal(dynamicRule.action.requestHeaders[0].header, 'X-Auth');
-  assert.match('https://api.example.com/path', new RegExp(dynamicRule.condition.regexFilter));
-  assert.doesNotMatch('http://api.example.com/path', new RegExp(dynamicRule.condition.regexFilter));
-  assert.doesNotMatch('https://sub.api.example.com/path', new RegExp(dynamicRule.condition.regexFilter));
+  const scopedRule = buildDynamicRule({
+    ...sampleRules[0],
+    pathPrefix: '/api/v1',
+    resourceType: 'xmlhttprequest'
+  });
+  const scopedPattern = new RegExp(scopedRule.condition.regexFilter);
+  assert.deepEqual(scopedRule.condition.resourceTypes, ['xmlhttprequest']);
+  assert.match('https://api.example.com/api/v1', scopedPattern);
+  assert.match('https://api.example.com/api/v1/users?active=1', scopedPattern);
+  assert.doesNotMatch('https://api.example.com/api/v10/users', scopedPattern);
+  assert.doesNotMatch('https://api.example.com/admin', scopedPattern);
   assert.equal(getRuleOriginPattern(sampleRules[0]), 'https://api.example.com/*');
 });

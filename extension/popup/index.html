@@ -9,11 +9,11 @@
 <body>
   <section id="privacyGate" class="privacy-gate" aria-labelledby="privacyGateTitle">
     <img class="privacy-gate-icon" src="../icons/reqkit-128.png" width="72" height="72" alt="ReqKit">
-    <span class="privacy-gate-kicker">Before you begin</span>
     <h1 id="privacyGateTitle">Choose when ReqKit handles your data</h1>
     <p>ReqKit reads the active tab URL locally to identify the current host and stores profiles, activation settings, and header rules in this Chrome profile.</p>
-    <p>ReqKit has no analytics or developer server. Header values are sent only to the exact HTTPS sites you approve and may be visible in destination or intermediary logs.</p>
+    <p>ReqKit has no analytics or developer server. Header values are sent only to each rule's exact HTTPS host, and only when a site access grant covers it. Destination or intermediary logs may include those values.</p>
     <a class="privacy-policy-link" href="../privacy/index.html" target="_blank" rel="noreferrer">Read the privacy policy</a>
+    <p>You must accept this notice to use ReqKit. You can review the privacy policy before continuing.</p>
     <button id="privacyConsentBtn" class="primary-btn privacy-consent-btn" type="button">Accept and continue</button>
     <div id="privacyConsentStatus" class="status-msg privacy-consent-status" role="status" aria-live="polite"></div>
   </section>
@@ -23,8 +23,7 @@
       <article class="panel">
         <div class="panel-head">
           <div class="panel-heading">
-            <span class="product-kicker">ReqKit</span>
-            <h2 class="panel-title">Headers</h2>
+            <h2 class="panel-title">ReqKit <span aria-hidden="true">·</span> Headers</h2>
             <div class="panel-profile-summary" aria-label="Active profile and duration">
               <button id="changeActiveSetupBtn" class="panel-profile-btn" type="button">
                 <span id="activeProfileName">Default</span>
@@ -45,17 +44,17 @@
             <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1a7 7 0 1 1 0 14A7 7 0 0 1 8 1Zm0 1.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM6.5 5.5h1.25v5H6.5v-5Zm1.75 0h1.25v5H8.25v-5Z"/></svg>
             <div class="master-paused-copy">
               <strong id="masterPausedTitle">All header rules are paused</strong>
-              <span id="masterPausedDetail">No headers are being applied to any site.</span>
+              <span id="masterPausedDetail">No headers are being applied. Your rules stay saved and editable, with their own On or Paused settings.</span>
             </div>
             <button id="resumeMasterBtn" class="master-resume-btn" type="button">Resume</button>
           </div>
 
           <div id="ruleScopeTabs" class="rule-scope-tabs" role="tablist" aria-label="Rule scope">
-            <button id="currentSiteTab" class="rule-scope-tab" type="button" role="tab" aria-selected="true" tabindex="0" data-rule-scope="site">
+            <button id="currentSiteTab" class="rule-scope-tab" type="button" role="tab" aria-selected="true" aria-controls="ruleListContainer" tabindex="0" data-rule-scope="site">
               <span id="currentSiteHost" class="rule-scope-label" aria-live="polite">Detecting current site…</span>
               <span id="currentSiteRuleCount" class="rule-scope-count">0</span>
             </button>
-            <button id="allRulesTab" class="rule-scope-tab" type="button" role="tab" aria-selected="false" tabindex="-1" data-rule-scope="all">
+            <button id="allRulesTab" class="rule-scope-tab" type="button" role="tab" aria-selected="false" aria-controls="ruleListContainer" tabindex="-1" data-rule-scope="all">
               <span class="rule-scope-label">All</span>
               <span id="allRulesCount" class="rule-scope-count">0</span>
             </button>
@@ -67,7 +66,7 @@
                 <div class="field">
                   <label for="domain">Exact HTTPS host</label>
                   <input type="text" id="domain" placeholder="https://api.example.com">
-                  <p class="helper-text">HTTPS is required. Only the exact hostname is used; paths are ignored.</p>
+                  <p class="helper-text">ReqKit applies this rule only to the exact HTTPS host you enter. Use optional request scoping below to narrow which requests receive the header.</p>
                 </div>
 
                 <div class="field">
@@ -81,11 +80,28 @@
                   <p class="helper-text disclosure-text">Stored in this Chrome profile and sent only to the exact HTTPS host you approve. Use only authorized systems.</p>
                 </div>
 
+                <details id="requestScopeDetails" class="request-scope-options">
+                  <summary>Optional request scoping <span class="scope-default-label">Defaults: all paths · all requests</span></summary>
+                  <div class="request-scope-fields">
+                    <div class="field">
+                      <label for="pathPrefix">Path prefix</label>
+                      <input type="text" id="pathPrefix" placeholder="/api/v1" maxlength="512" autocapitalize="off" autocorrect="off" spellcheck="false">
+                    </div>
+                    <div class="field">
+                      <label for="resourceType">Request type</label>
+                      <select id="resourceType">
+                        <option value="all">All requests</option>
+                        <option value="xmlhttprequest">API calls (fetch/XHR)</option>
+                      </select>
+                    </div>
+                    <p class="helper-text request-scope-hint">Blank matches all paths. Prefixes include nested paths, not similar names. Fetch/XHR excludes page loads and static assets.</p>
+                  </div>
+                </details>
                 <div id="siteAccessPreflight" class="site-access-preflight" role="note" aria-live="polite" hidden>
                   <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1.25 13 3v3.85c0 3.38-2.08 6.43-5 7.9-2.92-1.47-5-4.52-5-7.9V3l5-1.75Zm0 1.59L4.5 4.07v2.78c0 2.58 1.47 4.99 3.5 6.21 2.03-1.22 3.5-3.63 3.5-6.21V4.07L8 2.84Zm-.75 2.41h1.5V8h-1.5V5.25Zm0 3.75h1.5v1.5h-1.5V9Z"/></svg>
                   <div>
-                    <strong>Site access required for <code id="siteAccessPreflightHost"></code></strong>
-                    <p>Chrome will ask you to approve this exact HTTPS host. ReqKit will not request access to other sites.</p>
+                    <strong>Site access needed for <code id="siteAccessPreflightHost"></code></strong>
+                    <p>Chrome will ask you to grant ReqKit site access to this exact HTTPS host. No other sites are included in the request.</p>
                   </div>
                 </div>
 
@@ -97,8 +113,8 @@
             </div>
           </div>
 
-          <div id="headerStatus" class="status-msg"></div>
-          <div id="ruleListContainer" class="rule-list"></div>
+          <div id="headerStatus" class="status-msg" role="status" aria-live="polite" aria-atomic="true"></div>
+          <div id="ruleListContainer" class="rule-list" role="tabpanel" aria-labelledby="currentSiteTab" tabindex="0"></div>
           <footer class="panel-footer">
             <button id="headerComposerToggle" class="primary-btn footer-add-rule-btn" type="button" aria-expanded="false" aria-controls="headerComposer">
               <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M7.25 2.5h1.5v4.75h4.75v1.5H8.75v4.75h-1.5V8.75H2.5v-1.5h4.75V2.5Z"/></svg>
@@ -116,7 +132,6 @@
           <svg viewBox="0 0 16 16"><path fill="currentColor" d="M6.25 2.5h3.5l.5 1H13a.75.75 0 0 1 0 1.5h-.6l-.55 7.14A1.5 1.5 0 0 1 10.35 13.5h-4.7a1.5 1.5 0 0 1-1.5-1.36L3.6 5H3a.75.75 0 0 1 0-1.5h2.75l.5-1Zm-.46 2.5.5 6.5h3.42l.5-6.5H5.79Z"/></svg>
         </div>
         <div class="confirmation-dialog-copy">
-          <span class="product-kicker">ReqKit</span>
           <h2 id="confirmationTitle">Delete this item?</h2>
           <p id="confirmationMessage">This cannot be undone.</p>
         </div>

@@ -19,7 +19,12 @@ const nextRules = [{
   enabled: true
 }];
 
-const normalizedNextRules = [{ ...nextRules[0], profileId: 'default' }];
+const normalizedNextRules = [{
+  ...nextRules[0],
+  pathPrefix: '',
+  resourceType: 'all',
+  profileId: 'default'
+}];
 
 test('commitRuleSet applies and stores normalized rules', async () => {
   const applied = [];
@@ -70,7 +75,22 @@ test('commitRuleSet permits the same header in different profiles', async () => 
   assert.equal(applied.length, 1);
 });
 
-test('commitRuleSet rejects duplicate headers inside a profile', async () => {
+test('commitRuleSet permits different request scopes for the same header', async () => {
+  const scopedRules = [
+    { ...nextRules[0], pathPrefix: '/api' },
+    { ...nextRules[0], id: 3, headerValue: 'different', pathPrefix: '/admin' }
+  ];
+
+  const result = await commitRuleSet(scopedRules, {
+    getCurrentRules: async () => previousRules,
+    applyRules: async () => {},
+    storeRules: async () => {}
+  });
+
+  assert.deepEqual(result.map((rule) => rule.pathPrefix), ['/api', '/admin']);
+});
+
+test('commitRuleSet rejects duplicate rules with the same request scope', async () => {
   let applied = false;
   const conflictingRules = [
     { ...nextRules[0], profileId: 'staging' },

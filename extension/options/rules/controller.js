@@ -53,6 +53,7 @@ import { confirmDestructiveAction } from '../../shared/confirmation-dialog.js';
 import { state } from '../state.js';
 import { showStatus } from '../../shared/ui.js';
 import { getRuleWorkspaceSummary } from '../view-model.js';
+import { renderSiteAccessOverview } from '../site-access/controller.js';
 
 const SEARCH_VISIBLE_FROM = 5;
 const DURATION_OPTIONS = [3_600_000, 28_800_000];
@@ -74,10 +75,6 @@ export function bindRuleEvents() {
   document.getElementById('ruleSearchInput').addEventListener('input', handleRuleSearchInput);
   document.getElementById('masterSwitch').addEventListener('click', () => toggleMaster());
   document.getElementById('resumeMasterBtn').addEventListener('click', resumeFromBanner);
-  document.getElementById('profileFilterSelect').addEventListener('change', (event) => {
-    state.profileFilter = event.target.value;
-    renderRules();
-  });
   const durationPills = document.getElementById('durationPills');
   durationPills.addEventListener('click', handleDurationClick);
   durationPills.addEventListener('keydown', handleDurationKeydown);
@@ -183,12 +180,9 @@ function renderMasterSwitch() {
       ? 'No profile is active'
       : 'All header rules are paused';
     document.getElementById('masterPausedDetail').textContent = parked
-      ? `Resume to switch back to ${getProfileName(state.profiles, getTargetProfileId(activation))}.`
-      : 'No headers are being applied to any site. Rules keep their own on/off state.';
+      ? `Resume to switch back to ${getProfileName(state.profiles, getTargetProfileId(activation))}. Your rules remain saved and editable.`
+      : 'No headers are being applied. Your rules stay saved and editable, with their own On or Paused settings.';
   }
-
-  document.querySelector('.options-workspace')
-    .classList.toggle('is-master-paused', status !== 'live');
 }
 
 /**
@@ -308,21 +302,8 @@ function describeDuration(value) {
   return `Rules will pause in ${formatRemainingTime(Number(value))}.`;
 }
 
-function renderProfileFilter() {
-  const filter = document.getElementById('profileFilter');
-  filter.hidden = true;
-  state.profileFilter = 'active';
-}
-
-function resolveFilterValue() {
-  return state.profileFilter === 'active'
-    ? getTargetProfileId(getActivation())
-    : state.profileFilter;
-}
-
 function getVisibleRules() {
-  const filterValue = resolveFilterValue();
-  return filterValue === 'all' ? state.rules : filterRulesByProfile(state.rules, filterValue);
+  return filterRulesByProfile(state.rules, getTargetProfileId(getActivation()));
 }
 
 /**
@@ -330,11 +311,8 @@ function getVisibleRules() {
  * rule as broken.
  */
 function describeRule(rule) {
-  const showProfile = state.profiles.length > 1 && resolveFilterValue() === 'all';
-
   return {
-    needsAccess: Boolean(state.grantedOrigins) && !isRuleGranted(rule, state.grantedOrigins),
-    profileName: showProfile ? getProfileName(state.profiles, rule.profileId) : ''
+    needsAccess: Boolean(state.grantedOrigins) && !isRuleGranted(rule, state.grantedOrigins)
   };
 }
 
@@ -351,7 +329,7 @@ async function grantRuleAccess(id) {
     showStatus('headerStatus', `Site access granted for ${rule.domain}.`, 'success');
   } catch (error) {
     console.error(error);
-    showStatus('headerStatus', error.message || 'Chrome denied site access.', 'error');
+    showStatus('headerStatus', error.message || 'Chrome did not grant site access.', 'error');
   }
 }
 
@@ -503,15 +481,15 @@ function setHeaderComposerExpanded(expanded, {
   }
 }
 
-function renderRules() {
+export function renderRules() {
   const container = document.getElementById('ruleListContainer');
   const conflictMap = createConflictMap(getActiveRuleConflicts(state.rules, getActivation()));
   const conflictingIds = new Set(conflictMap.keys());
   renderMasterSwitch();
   renderProfiles();
   renderDurationField();
-  renderProfileFilter();
   updateSummary();
+  renderSiteAccessOverview();
 
   const visibleRules = filterRulesBySearch(getVisibleRules(), state.searchQuery);
   if (!visibleRules.length) {
@@ -640,10 +618,9 @@ function toggleRuleValueVisibility(id) {
 
 async function addRule() {
   const activation = getActivation();
-  const filterValue = resolveFilterValue();
-  // Add into the profile currently on screen, so the new rule appears where
-  // the user is looking rather than silently landing elsewhere.
-  const profileId = filterValue === 'all' ? getTargetProfileId(activation) : filterValue;
+  // New rules belong to the selected profile, which is also the profile shown
+  // in the manager's rule list.
+  const profileId = getTargetProfileId(activation);
   const validation = validateRuleDraft(readCreateDraft(), state.rules, { activation, profileId });
   if (!validation.ok) {
     showStatus('headerStatus', validation.error, 'error');
@@ -679,7 +656,7 @@ async function addRule() {
         renderRules();
         showStatus(
           'headerStatus',
-          `Rule saved, but site access to https://${newRule.domain} was not granted.`,
+          `Rule saved, but ReqKit still needs site access to https://${newRule.domain} before it can be applied.`,
           'error'
         );
         return true;
@@ -736,7 +713,7 @@ async function toggleRule(id) {
   try {
     await persistRules(updatedRules);
     const toggledRule = state.rules.find((rule) => rule.id === id);
-    showStatus('headerStatus', toggledRule?.enabled ? 'Rule enabled.' : 'Rule paused.', 'success');
+    showStatus('headerStatus', toggledRule?.enabled ? 'Rule resumed.' : 'Rule paused.', 'success');
   } catch (error) {
     console.error(error);
     showStatus('headerStatus', error.message || 'Could not toggle that rule.', 'error');
@@ -834,7 +811,7 @@ function clearRuleSearch() {
 async function ensureRulePermission(rule) {
   const granted = await requestOriginPermission(getRuleOriginPattern(rule));
   if (!granted) {
-    throw new Error(`Site access to https://${rule.domain} is required to enable this rule.`);
+    throw new Error(`Site access to https://${rule.domain} is required to resume this rule.`);
   }
 }
 
@@ -868,7 +845,9 @@ function readCreateDraft() {
   return {
     domain: document.getElementById('domain').value,
     headerName: document.getElementById('headerName').value,
-    headerValue: document.getElementById('headerValue').value
+    headerValue: document.getElementById('headerValue').value,
+    pathPrefix: document.getElementById('pathPrefix').value,
+    resourceType: document.getElementById('resourceType').value
   };
 }
 
@@ -877,6 +856,8 @@ function readEditDraft(id) {
     domain: document.getElementById(`editDomain-${id}`).value,
     headerName: document.getElementById(`editHeaderName-${id}`).value,
     headerValue: document.getElementById(`editHeaderValue-${id}`).value,
+    pathPrefix: document.getElementById(`editPathPrefix-${id}`).value,
+    resourceType: document.getElementById(`editResourceType-${id}`).value,
     profileId: document.getElementById(`editProfile-${id}`)?.value
   };
 }
@@ -885,4 +866,7 @@ function clearHeaderForm() {
   document.getElementById('domain').value = '';
   document.getElementById('headerName').value = '';
   document.getElementById('headerValue').value = '';
+  document.getElementById('pathPrefix').value = '';
+  document.getElementById('resourceType').value = 'all';
+  document.getElementById('requestScopeDetails').open = false;
 }
