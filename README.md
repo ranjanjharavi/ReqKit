@@ -127,3 +127,9 @@ The packaging script creates `reqkit-v<version>.zip` with `manifest.json` at the
 ## Support
 
 Report problems or request enhancements through [Report an issue](https://github.com/ranjanjharavi/ReqKit/issues).
+
+## License
+
+ReqKit is available under the [MIT License](LICENSE). 
+
+> **Note:** This repository was originally hosted under another account belonging to the same author. 
